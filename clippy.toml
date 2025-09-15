@@ -1,0 +1,16 @@
+# Clippy configuration for nvbind
+# Enable additional lints for higher code quality
+
+# Complexity lints
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250
+
+# Style preferences
+avoid-breaking-exported-api = true
+
+# Performance lints
+trivial-copy-size-limit = 128
+
+# Size thresholds
+pass-by-value-size-limit = 256
