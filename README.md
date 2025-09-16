@@ -1,7 +1,7 @@
 # nvbind
 
 <div align="center">
-  <img src="assets/nvbind.png" alt="nvbind logo" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/ghostkellz/nvbind/main/assets/nvbind-logo.png" alt="nvbind logo" width="128" height="128">
 
   **nvbind** – A lightning-fast, Rust-based alternative to NVIDIA Container Toolkit
   *Next-gen GPU passthrough for modern container workflows*

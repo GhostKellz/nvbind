@@ -4,6 +4,138 @@ use anyhow::{Context, Result};
 use std::process::Command;
 use tracing::{debug, info};
 
+/// Run container with CDI devices
+pub async fn run_with_cdi_devices(
+    config: Config,
+    runtime: String,
+    gpu: String,
+    image: String,
+    args: Vec<String>,
+) -> Result<()> {
+    info!("Setting up container with CDI devices");
+
+    // Check NVIDIA requirements
+    check_nvidia_requirements()?;
+
+    // Validate runtime exists
+    validate_runtime(&runtime)?;
+
+    // Load CDI devices
+    let mut cdi_registry = crate::cdi::CdiRegistry::new();
+    cdi_registry.load_specs()?;
+
+    // Determine CDI device names based on GPU selection
+    let cdi_devices = match gpu.as_str() {
+        "all" => vec!["nvidia.com/gpu=all".to_string()],
+        "none" => vec![],
+        gpu_id => {
+            // Try to find specific GPU device
+            let device_name = format!("nvidia.com/gpu=gpu{}", gpu_id);
+            if cdi_registry.get_device(&device_name).is_some() {
+                vec![device_name]
+            } else {
+                return Err(anyhow::anyhow!("CDI device not found: {}", device_name));
+            }
+        }
+    };
+
+    match runtime.as_str() {
+        "podman" => run_podman_with_cdi(&config, image, args, cdi_devices).await,
+        "docker" => run_docker_with_cdi(&config, image, args, cdi_devices).await,
+        _ => Err(anyhow::anyhow!("Unsupported runtime: {}", runtime)),
+    }
+}
+
+async fn run_podman_with_cdi(
+    config: &Config,
+    image: String,
+    args: Vec<String>,
+    cdi_devices: Vec<String>,
+) -> Result<()> {
+    let mut cmd = Command::new("podman");
+    cmd.arg("run");
+
+    // Add default runtime args from config
+    for arg in &config.runtime.default_args {
+        cmd.arg(arg);
+    }
+
+    // Add CDI devices
+    for cdi_device in &cdi_devices {
+        cmd.arg("--device").arg(cdi_device);
+    }
+
+    // Add security options from config
+    for opt in &config.security.security_opts {
+        cmd.arg("--security-opt").arg(opt);
+    }
+
+    // Add environment variables from config
+    for (key, value) in &config.runtime.environment {
+        cmd.env(key, value);
+    }
+
+    cmd.arg(&image);
+    cmd.args(&args);
+
+    info!("Executing: podman run with CDI devices");
+    debug!("Command: {:?}", cmd);
+    debug!("CDI devices: {:?}", cdi_devices);
+
+    let status = cmd.status().context("Failed to execute podman")?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("Podman exited with status: {}", status));
+    }
+
+    Ok(())
+}
+
+async fn run_docker_with_cdi(
+    config: &Config,
+    image: String,
+    args: Vec<String>,
+    cdi_devices: Vec<String>,
+) -> Result<()> {
+    let mut cmd = Command::new("docker");
+    cmd.arg("run");
+
+    // Add default runtime args from config
+    for arg in &config.runtime.default_args {
+        cmd.arg(arg);
+    }
+
+    // Add CDI devices
+    for cdi_device in &cdi_devices {
+        cmd.arg("--device").arg(cdi_device);
+    }
+
+    // Add security options from config
+    for opt in &config.security.security_opts {
+        cmd.arg("--security-opt").arg(opt);
+    }
+
+    // Add environment variables from config
+    for (key, value) in &config.runtime.environment {
+        cmd.env(key, value);
+    }
+
+    cmd.arg(&image);
+    cmd.args(&args);
+
+    info!("Executing: docker run with CDI devices");
+    debug!("Command: {:?}", cmd);
+    debug!("CDI devices: {:?}", cdi_devices);
+
+    let status = cmd.status().context("Failed to execute docker")?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("Docker exited with status: {}", status));
+    }
+
+    Ok(())
+}
+
 // Legacy function kept for API compatibility
 #[allow(dead_code)]
 pub async fn run(runtime: String, gpu: String, image: String, args: Vec<String>) -> Result<()> {

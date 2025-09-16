@@ -86,7 +86,7 @@ pub async fn info() -> Result<()> {
 pub async fn discover_gpus() -> Result<Vec<GpuDevice>> {
     let mut gpus = Vec::new();
 
-    let nvidia_devices = find_nvidia_devices()?;
+    let nvidia_devices = find_nvidia_devices_internal()?;
     debug!("Found {} NVIDIA device(s)", nvidia_devices.len());
 
     for (i, device_path) in nvidia_devices.iter().enumerate() {
@@ -98,7 +98,7 @@ pub async fn discover_gpus() -> Result<Vec<GpuDevice>> {
     Ok(gpus)
 }
 
-fn find_nvidia_devices() -> Result<Vec<String>> {
+fn find_nvidia_devices_internal() -> Result<Vec<String>> {
     let mut devices = Vec::new();
 
     // Check /dev for NVIDIA devices
@@ -426,6 +426,10 @@ fn find_nvidia_libraries() -> Result<Vec<String>> {
     Ok(libraries)
 }
 
+pub fn find_nvidia_devices() -> Result<Vec<String>> {
+    find_nvidia_devices_internal()
+}
+
 pub fn get_required_devices() -> Vec<String> {
     let mut devices = vec!["/dev/nvidiactl".to_string(), "/dev/nvidia-uvm".to_string()];
 
@@ -498,7 +502,7 @@ pub fn check_nvidia_requirements() -> Result<()> {
         ));
     }
 
-    let devices = find_nvidia_devices()?;
+    let devices = find_nvidia_devices_internal()?;
     if devices.is_empty() {
         return Err(anyhow::anyhow!(
             "No NVIDIA devices found. Ensure:\n\
