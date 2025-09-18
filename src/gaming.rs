@@ -219,7 +219,7 @@ pub struct DlssConfig {
 }
 
 /// DLSS quality settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DlssQuality {
     /// Performance mode (fastest)
     Performance,
@@ -307,7 +307,7 @@ pub struct GpuScheduling {
 }
 
 /// GPU priority levels
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum GpuPriority {
     /// Real-time priority (competitive gaming)
     Realtime,

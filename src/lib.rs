@@ -11,6 +11,10 @@ pub mod isolation;
 pub mod ollama;
 pub mod runtime;
 pub mod wsl2;
+pub mod plugin;
+pub mod snapshot;
+pub mod metrics;
+pub mod wine;
 
 #[cfg(feature = "bolt")]
 pub mod bolt;
