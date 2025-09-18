@@ -24,6 +24,13 @@ hostname = "0.3"
 which = "4.4"
 libc = "0.2"
 
+# Bolt integration dependencies (optional)
+async-trait = { version = "0.1", optional = true }
+
+[features]
+default = []
+bolt = ["async-trait"]
+
 [dev-dependencies]
 tempfile = "3.8"
 criterion = { version = "0.5", features = ["html_reports"] }

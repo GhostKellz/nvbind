@@ -1,135 +1,121 @@
 #!/bin/bash
+
+# nvbind Universal Installer
+# Install nvbind GPU container runtime on Linux systems
+
 set -e
 
-# nvbind Installation Script
-# A lightweight, Rust-based alternative to NVIDIA Container Toolkit
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
+# Configuration
+NVBIND_VERSION="0.1.0"
+NVBIND_REPO="https://github.com/ghostkellz/nvbind"
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/nvbind"
-REPO_URL="https://github.com/ghostkellz/nvbind"
+USER_INSTALL=false
 
-echo "🚀 Installing nvbind - NVIDIA Container GPU Passthrough Tool"
-echo ""
+# Utility functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
 
-# Check if running as root for system install
-if [[ $EUID -ne 0 && "$1" != "--user" ]]; then
-    echo "❌ This script needs to run as root for system installation."
-    echo "   Run with 'sudo $0' for system install, or '$0 --user' for user install"
-    exit 1
-fi
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
 
-# Set install directory based on user/system install
-if [[ "$1" == "--user" ]]; then
-    INSTALL_DIR="$HOME/.local/bin"
-    CONFIG_DIR="$HOME/.config/nvbind"
-    echo "📁 Installing to user directory: $INSTALL_DIR"
-else
-    echo "📁 Installing to system directory: $INSTALL_DIR"
-fi
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
 
-# Check dependencies
-echo "🔍 Checking dependencies..."
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-if ! command -v cargo &> /dev/null; then
-    echo "❌ Rust/Cargo not found. Please install Rust first:"
-    echo "   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-    exit 1
-fi
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --user)
+            USER_INSTALL=true
+            INSTALL_DIR="$HOME/.local/bin"
+            CONFIG_DIR="$HOME/.config/nvbind"
+            shift
+            ;;
+        --version)
+            NVBIND_VERSION="$2"
+            shift 2
+            ;;
+        --help)
+            echo "nvbind installer"
+            echo ""
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "OPTIONS:"
+            echo "  --user      Install to user directory (~/.local/bin)"
+            echo "  --version   Specify version to install (default: $NVBIND_VERSION)"
+            echo "  --help      Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
-if ! command -v git &> /dev/null; then
-    echo "❌ Git not found. Please install git first."
-    exit 1
-fi
+# Main installation flow
+main() {
+    echo "🚀 nvbind GPU Container Runtime Installer"
+    echo "========================================"
+    echo ""
 
-# Check for container runtime
-HAS_PODMAN=false
-HAS_DOCKER=false
+    log_info "Installing nvbind $NVBIND_VERSION..."
 
-if command -v podman &> /dev/null; then
-    echo "✅ Found Podman: $(podman --version)"
-    HAS_PODMAN=true
-fi
+    # Create temporary directory
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
 
-if command -v docker &> /dev/null; then
-    echo "✅ Found Docker: $(docker --version)"
-    HAS_DOCKER=true
-fi
+    # Clone repository
+    log_info "Cloning nvbind repository..."
+    git clone "$NVBIND_REPO" nvbind
+    cd nvbind
 
-if [[ "$HAS_PODMAN" == false && "$HAS_DOCKER" == false ]]; then
-    echo "⚠️  No container runtime found. Please install Podman or Docker:"
-    echo "   - Podman: https://podman.io/getting-started/installation"
-    echo "   - Docker: https://docs.docker.com/get-docker/"
-fi
+    # Build release binary
+    log_info "Building nvbind (this may take a few minutes)..."
+    cargo build --release
 
-# Check NVIDIA drivers
-echo "🔍 Checking NVIDIA drivers..."
-if [[ -f "/proc/driver/nvidia/version" ]]; then
-    NVIDIA_VERSION=$(head -n1 /proc/driver/nvidia/version | awk '{print $8}')
-    echo "✅ NVIDIA Driver detected: $NVIDIA_VERSION"
-elif command -v nvidia-smi &> /dev/null; then
-    NVIDIA_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n1)
-    echo "✅ NVIDIA Driver detected: $NVIDIA_VERSION"
-else
-    echo "⚠️  NVIDIA drivers not detected. nvbind requires NVIDIA drivers to function."
-    echo "   Install from: https://www.nvidia.com/drivers"
-fi
-
-# Build and install
-echo ""
-echo "🔨 Building nvbind..."
-
-# Create temporary directory for build
-TEMP_DIR=$(mktemp -d)
-cd "$TEMP_DIR"
-
-# Clone repository
-echo "📥 Downloading source code..."
-git clone "$REPO_URL" .
-
-# Build release binary
-echo "⚙️  Compiling..."
-cargo build --release
-
-# Create directories
-echo "📁 Creating directories..."
-mkdir -p "$INSTALL_DIR"
-if [[ "$1" != "--user" ]]; then
+    # Create installation directories
+    mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
-fi
 
-# Install binary
-echo "📦 Installing binary..."
-cp target/release/nvbind "$INSTALL_DIR/"
-chmod +x "$INSTALL_DIR/nvbind"
+    # Install binary
+    if [[ "$USER_INSTALL" == false ]]; then
+        sudo cp target/release/nvbind "$INSTALL_DIR/"
+        sudo chmod +x "$INSTALL_DIR/nvbind"
+    else
+        cp target/release/nvbind "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/nvbind"
+    fi
 
-# Create default config
-echo "⚙️  Creating default configuration..."
-if [[ "$1" == "--user" ]]; then
-    # User install - let nvbind create config in user's config dir
-    "$INSTALL_DIR/nvbind" config --output "$CONFIG_DIR/config.toml" 2>/dev/null || true
-else
-    # System install - create system config
-    "$INSTALL_DIR/nvbind" config --output "$CONFIG_DIR/config.toml" 2>/dev/null || true
-fi
+    # Generate default configuration
+    log_info "Generating default configuration..."
+    "$INSTALL_DIR/nvbind" config --output "$CONFIG_DIR/nvbind.toml"
 
-# Cleanup
-cd /
-rm -rf "$TEMP_DIR"
+    # Cleanup
+    cd /
+    rm -rf "$TEMP_DIR"
 
-echo ""
-echo "✅ nvbind installed successfully!"
-echo ""
-echo "📋 Usage:"
-echo "   nvbind info                    # Show GPU information"
-echo "   nvbind config --show           # Show current configuration"
-echo "   nvbind run ubuntu nvidia-smi   # Run container with GPU access"
-echo ""
+    log_success "nvbind installed to $INSTALL_DIR/nvbind"
+    echo ""
+    echo "Next steps:"
+    echo "1. Run 'nvbind info' to check GPU detection"
+    echo "2. Run 'nvbind doctor' for system compatibility"
+    echo "3. Run 'nvbind run --runtime bolt --gpu all ubuntu nvidia-smi'"
+}
 
-if [[ "$1" == "--user" ]]; then
-    echo "📝 Note: Add $INSTALL_DIR to your PATH if not already present:"
-    echo "   echo 'export PATH=\$PATH:$INSTALL_DIR' >> ~/.bashrc"
-    echo "   source ~/.bashrc"
-fi
-
-echo "🔗 Documentation: $REPO_URL"
-echo "🏁 Ready to use GPU containers with nvbind!"
+# Run main installation
+main "$@"

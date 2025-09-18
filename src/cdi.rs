@@ -401,6 +401,220 @@ pub fn apply_cdi_device(device_name: &str) -> Result<ContainerEdits> {
     }
 }
 
+/// Bolt-specific CDI enhancements
+pub mod bolt {
+    use super::*;
+
+    /// Bolt capsule-specific configuration
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct BoltCapsuleConfig {
+        /// Enable snapshot/restore support for GPU state
+        pub snapshot_support: bool,
+        /// GPU isolation level for Bolt capsules
+        pub isolation_level: BoltGpuIsolation,
+        /// Gaming-specific optimizations
+        pub gaming_optimizations: Option<BoltGamingConfig>,
+        /// WSL2 compatibility mode
+        pub wsl2_mode: bool,
+    }
+
+    /// GPU isolation levels for Bolt capsules
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub enum BoltGpuIsolation {
+        /// Shared GPU access with other containers
+        Shared,
+        /// Exclusive GPU access for this capsule
+        Exclusive,
+        /// Virtual GPU with resource limits
+        Virtual { memory_limit: String, compute_limit: String },
+    }
+
+    /// Gaming-specific configuration for Bolt
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct BoltGamingConfig {
+        /// Enable DLSS support
+        pub dlss_enabled: bool,
+        /// Ray tracing acceleration
+        pub rt_cores_enabled: bool,
+        /// Gaming performance profile
+        pub performance_profile: GamingProfile,
+        /// Wine/Proton compatibility optimizations
+        pub wine_optimizations: bool,
+    }
+
+    /// Gaming performance profiles
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub enum GamingProfile {
+        /// Maximum performance, highest power consumption
+        Performance,
+        /// Balanced performance and efficiency
+        Balanced,
+        /// Power-efficient gaming
+        Efficiency,
+        /// Ultra-low latency for competitive gaming
+        UltraLowLatency,
+    }
+
+    /// Generate Bolt-optimized CDI specification for NVIDIA GPUs
+    pub async fn generate_bolt_nvidia_cdi_spec(capsule_config: BoltCapsuleConfig) -> Result<CdiSpec> {
+        info!("Generating Bolt-optimized NVIDIA CDI specification");
+
+        let mut base_spec = generate_nvidia_cdi_spec().await?;
+
+        // Enhance the base spec with Bolt-specific features
+        base_spec.kind = "nvidia.com/gpu-bolt".to_string();
+
+        // Add Bolt-specific environment variables
+        if let Some(env) = &mut base_spec.container_edits.env {
+            env.push("BOLT_GPU_RUNTIME=nvbind".to_string());
+            env.push(format!("BOLT_GPU_ISOLATION={}",
+                match capsule_config.isolation_level {
+                    BoltGpuIsolation::Shared => "shared",
+                    BoltGpuIsolation::Exclusive => "exclusive",
+                    BoltGpuIsolation::Virtual { .. } => "virtual",
+                }
+            ));
+
+            if capsule_config.snapshot_support {
+                env.push("BOLT_CAPSULE_SNAPSHOT_GPU=enabled".to_string());
+            }
+
+            if capsule_config.wsl2_mode {
+                env.push("BOLT_WSL2_MODE=enabled".to_string());
+                env.push("BOLT_WSL2_GPU_ACCELERATION=enabled".to_string());
+            }
+        }
+
+        // Add gaming-specific configuration
+        if let Some(gaming_config) = &capsule_config.gaming_optimizations {
+            if let Some(env) = &mut base_spec.container_edits.env {
+                if gaming_config.dlss_enabled {
+                    env.push("NVIDIA_DLSS_ENABLE=1".to_string());
+                    env.push("BOLT_DLSS_OPTIMIZATION=enabled".to_string());
+                }
+
+                if gaming_config.rt_cores_enabled {
+                    env.push("NVIDIA_RT_CORES_ENABLE=1".to_string());
+                    env.push("BOLT_RT_ACCELERATION=enabled".to_string());
+                }
+
+                env.push(format!("BOLT_GAMING_PROFILE={}",
+                    match gaming_config.performance_profile {
+                        GamingProfile::Performance => "performance",
+                        GamingProfile::Balanced => "balanced",
+                        GamingProfile::Efficiency => "efficiency",
+                        GamingProfile::UltraLowLatency => "ultra-low-latency",
+                    }
+                ));
+
+                if gaming_config.wine_optimizations {
+                    env.push("BOLT_WINE_GPU_OPTIMIZATION=enabled".to_string());
+                    env.push("DXVK_HUD=1".to_string());
+                    env.push("VKD3D_CONFIG=dxr".to_string());
+                }
+            }
+        }
+
+        // Add Bolt-specific hooks for capsule lifecycle
+        let bolt_hooks = vec![
+            Hook {
+                hook_name: "prestart".to_string(),
+                path: "/usr/local/bin/bolt-gpu-prestart".to_string(),
+                args: Some(vec!["--capsule-isolation".to_string()]),
+                env: None,
+                timeout: Some(30),
+            },
+            Hook {
+                hook_name: "poststop".to_string(),
+                path: "/usr/local/bin/bolt-gpu-cleanup".to_string(),
+                args: Some(vec!["--release-gpu".to_string()]),
+                env: None,
+                timeout: Some(10),
+            },
+        ];
+
+        // Add snapshot hooks if enabled
+        let mut hooks = bolt_hooks;
+        if capsule_config.snapshot_support {
+            hooks.extend(vec![
+                Hook {
+                    hook_name: "presnapshot".to_string(),
+                    path: "/usr/local/bin/bolt-gpu-snapshot-prepare".to_string(),
+                    args: Some(vec!["--save-gpu-state".to_string()]),
+                    env: None,
+                    timeout: Some(60),
+                },
+                Hook {
+                    hook_name: "postrestore".to_string(),
+                    path: "/usr/local/bin/bolt-gpu-snapshot-restore".to_string(),
+                    args: Some(vec!["--restore-gpu-state".to_string()]),
+                    env: None,
+                    timeout: Some(60),
+                },
+            ]);
+        }
+
+        base_spec.container_edits.hooks = Some(hooks);
+
+        // Enhance individual device configurations for Bolt
+        for device in &mut base_spec.devices {
+            if let Some(env) = &mut device.container_edits.env {
+                env.push("BOLT_DEVICE_TYPE=gpu".to_string());
+
+                // Add virtual GPU configuration if specified
+                if let BoltGpuIsolation::Virtual { memory_limit, compute_limit } = &capsule_config.isolation_level {
+                    env.push(format!("BOLT_GPU_MEMORY_LIMIT={}", memory_limit));
+                    env.push(format!("BOLT_GPU_COMPUTE_LIMIT={}", compute_limit));
+                }
+            }
+        }
+
+        Ok(base_spec)
+    }
+
+    /// Generate Bolt CDI specification with default gaming configuration
+    pub async fn generate_bolt_gaming_cdi_spec() -> Result<CdiSpec> {
+        let gaming_config = BoltCapsuleConfig {
+            snapshot_support: true,
+            isolation_level: BoltGpuIsolation::Exclusive,
+            gaming_optimizations: Some(BoltGamingConfig {
+                dlss_enabled: true,
+                rt_cores_enabled: true,
+                performance_profile: GamingProfile::Performance,
+                wine_optimizations: true,
+            }),
+            wsl2_mode: crate::wsl2::Wsl2Manager::detect_wsl2(),
+        };
+
+        generate_bolt_nvidia_cdi_spec(gaming_config).await
+    }
+
+    /// Generate Bolt CDI specification with AI/ML optimizations
+    pub async fn generate_bolt_aiml_cdi_spec() -> Result<CdiSpec> {
+        let aiml_config = BoltCapsuleConfig {
+            snapshot_support: true,
+            isolation_level: BoltGpuIsolation::Virtual {
+                memory_limit: "16GB".to_string(),
+                compute_limit: "80%".to_string(),
+            },
+            gaming_optimizations: None,
+            wsl2_mode: crate::wsl2::Wsl2Manager::detect_wsl2(),
+        };
+
+        let mut spec = generate_bolt_nvidia_cdi_spec(aiml_config).await?;
+
+        // Add AI/ML specific environment variables
+        if let Some(env) = &mut spec.container_edits.env {
+            env.push("BOLT_WORKLOAD_TYPE=ai-ml".to_string());
+            env.push("CUDA_CACHE_DISABLE=0".to_string());
+            env.push("CUDA_CACHE_MAXSIZE=2147483648".to_string()); // 2GB CUDA cache
+            env.push("NVIDIA_TF32_OVERRIDE=1".to_string());
+        }
+
+        Ok(spec)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

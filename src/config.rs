@@ -9,6 +9,64 @@ pub struct Config {
     pub gpu: GpuConfig,
     pub runtime: RuntimeConfig,
     pub security: SecurityConfig,
+    #[cfg(feature = "bolt")]
+    pub bolt: Option<BoltConfig>,
+}
+
+#[cfg(feature = "bolt")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoltConfig {
+    /// Bolt capsule-specific GPU configuration
+    pub capsule: BoltCapsuleGpuConfig,
+    /// Gaming-specific configuration
+    pub gaming: Option<BoltGamingGpuConfig>,
+    /// AI/ML workload configuration
+    pub aiml: Option<BoltAiMlGpuConfig>,
+}
+
+#[cfg(feature = "bolt")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoltCapsuleGpuConfig {
+    /// Enable GPU state snapshot/restore
+    pub snapshot_gpu_state: bool,
+    /// GPU isolation level for capsules
+    pub isolation_level: String, // "shared", "exclusive", "virtual"
+    /// Enable Bolt's QUIC GPU acceleration
+    pub quic_acceleration: bool,
+    /// Capsule memory limit for GPU operations
+    pub gpu_memory_limit: Option<String>,
+}
+
+#[cfg(feature = "bolt")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoltGamingGpuConfig {
+    /// Enable DLSS support
+    pub dlss_enabled: bool,
+    /// Enable ray tracing cores
+    pub rt_cores_enabled: bool,
+    /// Gaming performance profile
+    pub performance_profile: String, // "performance", "balanced", "efficiency", "ultra-low-latency"
+    /// Wine/Proton optimizations
+    pub wine_optimizations: bool,
+    /// Enable variable rate shading
+    pub vrs_enabled: bool,
+    /// GPU power management
+    pub power_profile: String, // "maximum", "balanced", "power-saver"
+}
+
+#[cfg(feature = "bolt")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoltAiMlGpuConfig {
+    /// CUDA cache size in MB
+    pub cuda_cache_size: u64,
+    /// Enable Tensor Core optimizations
+    pub tensor_cores_enabled: bool,
+    /// Mixed precision training support
+    pub mixed_precision: bool,
+    /// GPU memory pool configuration
+    pub memory_pool_size: Option<String>,
+    /// Multi-instance GPU support
+    pub mig_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,6 +123,37 @@ impl Default for Config {
                 restrict_devices: false,
                 security_opts: vec![],
             },
+            #[cfg(feature = "bolt")]
+            bolt: Some(BoltConfig::default()),
+        }
+    }
+}
+
+#[cfg(feature = "bolt")]
+impl Default for BoltConfig {
+    fn default() -> Self {
+        Self {
+            capsule: BoltCapsuleGpuConfig {
+                snapshot_gpu_state: true,
+                isolation_level: "exclusive".to_string(),
+                quic_acceleration: true,
+                gpu_memory_limit: None,
+            },
+            gaming: Some(BoltGamingGpuConfig {
+                dlss_enabled: true,
+                rt_cores_enabled: true,
+                performance_profile: "performance".to_string(),
+                wine_optimizations: true,
+                vrs_enabled: true,
+                power_profile: "maximum".to_string(),
+            }),
+            aiml: Some(BoltAiMlGpuConfig {
+                cuda_cache_size: 2048, // 2GB
+                tensor_cores_enabled: true,
+                mixed_precision: true,
+                memory_pool_size: Some("8GB".to_string()),
+                mig_enabled: false,
+            }),
         }
     }
 }

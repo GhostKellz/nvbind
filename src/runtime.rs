@@ -42,6 +42,7 @@ pub async fn run_with_cdi_devices(
     match runtime.as_str() {
         "podman" => run_podman_with_cdi(&config, image, args, cdi_devices).await,
         "docker" => run_docker_with_cdi(&config, image, args, cdi_devices).await,
+        "bolt" => run_bolt_with_cdi(&config, image, args, cdi_devices).await,
         _ => Err(anyhow::anyhow!("Unsupported runtime: {}", runtime)),
     }
 }
@@ -167,6 +168,7 @@ pub async fn run_with_config(
     match runtime.as_str() {
         "podman" => run_podman_with_config(&config, gpu, image, args, devices, libraries).await,
         "docker" => run_docker_with_config(&config, gpu, image, args, devices, libraries).await,
+        "bolt" => run_bolt_with_config(&config, gpu, image, args, devices, libraries).await,
         _ => Err(anyhow::anyhow!("Unsupported runtime: {}", runtime)),
     }
 }
@@ -279,11 +281,133 @@ async fn run_docker_with_config(
     Ok(())
 }
 
+async fn run_bolt_with_config(
+    config: &Config,
+    gpu: String,
+    image: String,
+    args: Vec<String>,
+    devices: Vec<String>,
+    libraries: Vec<String>,
+) -> Result<()> {
+    let mut cmd = Command::new("bolt");
+    cmd.arg("surge").arg("run");
+
+    // Add default runtime args from config
+    for arg in &config.runtime.default_args {
+        cmd.arg(arg);
+    }
+
+    // Add device mounts in Bolt format
+    for device in &devices {
+        cmd.arg("--device").arg(format!("{}:{}", device, device));
+    }
+
+    // Add library bind mounts
+    for lib in &libraries {
+        cmd.arg("--volume").arg(format!("{}:{}:ro", lib, lib));
+    }
+
+    // Add security options from config (adapted for Bolt's capsule security model)
+    for opt in &config.security.security_opts {
+        // Convert Docker/Podman security opts to Bolt capsule format
+        if opt.starts_with("seccomp=") {
+            cmd.arg("--seccomp").arg(&opt[8..]);
+        } else if opt.starts_with("apparmor=") {
+            cmd.arg("--apparmor").arg(&opt[9..]);
+        }
+    }
+
+    // Add environment variables from config
+    for (key, value) in &config.runtime.environment {
+        cmd.arg("--env").arg(format!("{}={}", key, value));
+    }
+
+    // Override with GPU-specific env vars
+    cmd.arg("--env").arg(format!("NVIDIA_VISIBLE_DEVICES={}", gpu));
+
+    // Add Bolt-specific GPU optimizations
+    cmd.arg("--gpu").arg(&gpu);
+    cmd.arg("--runtime-optimization").arg("gpu-passthrough");
+
+    cmd.arg(&image);
+    cmd.args(&args);
+
+    info!("Executing: bolt surge run with GPU passthrough");
+    debug!("Command: {:?}", cmd);
+
+    let status = cmd.status().context("Failed to execute bolt")?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("Bolt exited with status: {}", status));
+    }
+
+    Ok(())
+}
+
+async fn run_bolt_with_cdi(
+    config: &Config,
+    image: String,
+    args: Vec<String>,
+    cdi_devices: Vec<String>,
+) -> Result<()> {
+    let mut cmd = Command::new("bolt");
+    cmd.arg("surge").arg("run");
+
+    // Add default runtime args from config
+    for arg in &config.runtime.default_args {
+        cmd.arg(arg);
+    }
+
+    // Add CDI devices in Bolt format
+    for cdi_device in &cdi_devices {
+        cmd.arg("--cdi-device").arg(cdi_device);
+    }
+
+    // Add security options from config (adapted for Bolt's capsule security model)
+    for opt in &config.security.security_opts {
+        if opt.starts_with("seccomp=") {
+            cmd.arg("--seccomp").arg(&opt[8..]);
+        } else if opt.starts_with("apparmor=") {
+            cmd.arg("--apparmor").arg(&opt[9..]);
+        }
+    }
+
+    // Add environment variables from config
+    for (key, value) in &config.runtime.environment {
+        cmd.arg("--env").arg(format!("{}={}", key, value));
+    }
+
+    // Add Bolt-specific optimizations for CDI
+    cmd.arg("--capsule-isolation").arg("gpu-exclusive");
+    cmd.arg("--runtime-optimization").arg("cdi-passthrough");
+
+    cmd.arg(&image);
+    cmd.args(&args);
+
+    info!("Executing: bolt surge run with CDI devices");
+    debug!("Command: {:?}", cmd);
+    debug!("CDI devices: {:?}", cdi_devices);
+
+    let status = cmd.status().context("Failed to execute bolt")?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("Bolt exited with status: {}", status));
+    }
+
+    Ok(())
+}
+
 pub fn validate_runtime(runtime: &str) -> Result<()> {
-    let output = Command::new(runtime)
-        .arg("--version")
-        .output()
-        .context(format!("Failed to check {} availability", runtime))?;
+    let output = match runtime {
+        "bolt" => Command::new("bolt")
+            .arg("--version")
+            .output()
+            .context("Failed to check bolt availability")?,
+        _ => Command::new(runtime)
+            .arg("--version")
+            .output()
+            .context(format!("Failed to check {} availability", runtime))?,
+    };
 
     if !output.status.success() {
         return Err(anyhow::anyhow!(

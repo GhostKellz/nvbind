@@ -571,6 +571,50 @@ pub mod gaming {
         env.insert("MESA_SHADER_CACHE_DISABLE".to_string(), "false".to_string());
         env.insert("MESA_OPTIMIZATION_LEVEL".to_string(), "3".to_string()); // Maximum optimization
 
+        Ok(env)
+    }
+
+    /// Setup Bolt-specific gaming optimizations for WSL2
+    #[cfg(feature = "bolt")]
+    pub fn setup_bolt_gaming_optimizations(profile: &str) -> Result<HashMap<String, String>> {
+        let mut env = setup_gaming_optimizations()?;
+
+        // Add Bolt-specific gaming optimizations
+        env.insert("BOLT_GAMING_MODE".to_string(), "enabled".to_string());
+        env.insert("BOLT_GPU_PRIORITY".to_string(), "gaming".to_string());
+
+        match profile {
+            "performance" => {
+                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "performance".to_string());
+                env.insert("__GL_SYNC_TO_VBLANK".to_string(), "0".to_string());
+                env.insert("BOLT_CAPSULE_PRIORITY".to_string(), "realtime".to_string());
+                env.insert("NVIDIA_DLSS_ENABLE".to_string(), "1".to_string());
+            }
+            "ultra-low-latency" => {
+                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "performance".to_string());
+                env.insert("__GL_SYNC_TO_VBLANK".to_string(), "0".to_string());
+                env.insert("NVIDIA_LOW_LATENCY_MODE".to_string(), "ultra".to_string());
+                env.insert("BOLT_CAPSULE_PRIORITY".to_string(), "realtime".to_string());
+                env.insert("BOLT_QUIC_ACCELERATION".to_string(), "ultra".to_string());
+            }
+            "balanced" => {
+                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "adaptive".to_string());
+                env.insert("BOLT_CAPSULE_PRIORITY".to_string(), "high".to_string());
+            }
+            "efficiency" => {
+                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "adaptive".to_string());
+                env.insert("BOLT_POWER_EFFICIENT_MODE".to_string(), "enabled".to_string());
+            }
+            _ => {}
+        }
+
+        // WSL2-specific Bolt gaming optimizations
+        if Wsl2Manager::detect_wsl2() {
+            env.insert("BOLT_WSL2_GAMING_MODE".to_string(), "enabled".to_string());
+            env.insert("WSLG_USE_DXCORE".to_string(), "1".to_string());
+            env.insert("LIBGL_ALWAYS_INDIRECT".to_string(), "0".to_string());
+        }
+
         // Vulkan optimizations
         env.insert("VK_LAYER_PATH".to_string(), "".to_string()); // Disable validation layers for performance
         env.insert("RADV_PERFTEST".to_string(), "gpl".to_string()); // Enable graphics pipeline library
