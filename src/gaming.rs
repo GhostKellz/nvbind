@@ -1,10 +1,8 @@
 //! Gaming-specific optimizations for nvbind
 //! Provides Wayland, Wine, Proton, and gaming performance optimizations
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::{debug, info};
 
 /// Gaming runtime configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

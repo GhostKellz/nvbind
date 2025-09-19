@@ -5,10 +5,9 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::info;
 
 /// Runtime adapter trait that all container runtime plugins must implement
 #[async_trait]

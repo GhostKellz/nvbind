@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// GPU state snapshot containing all recoverable GPU context
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -243,112 +243,232 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
     let driver_info = crate::gpu::get_driver_info().await?;
 
     let mut devices = Vec::new();
+    let mut env_vars = vec![
+        "NVIDIA_DRIVER_CAPABILITIES=all".to_string(),
+        format!("NVIDIA_DRIVER_VERSION={}", driver_info.version),
+    ];
+
+    // Add CUDA version if available
+    if let Some(cuda_version) = &driver_info.cuda_version {
+        env_vars.push(format!("CUDA_VERSION={}", cuda_version));
+        env_vars.push(format!("NVIDIA_REQUIRE_CUDA=cuda>={}", cuda_version));
+    }
+
+    // Add driver type information
+    env_vars.push(format!("NVIDIA_DRIVER_TYPE={:?}", driver_info.driver_type));
+
     let mut container_edits = ContainerEdits {
-        env: Some(vec![
-            "NVIDIA_DRIVER_CAPABILITIES=all".to_string(),
-            format!("NVIDIA_DRIVER_VERSION={}", driver_info.version),
-        ]),
+        env: Some(env_vars),
         device_nodes: Some(Vec::new()),
         mounts: Some(Vec::new()),
         hooks: None,
     };
 
-    // Add control devices to container edits
+    // Add control devices to container edits with error handling
     let control_devices = vec!["/dev/nvidiactl", "/dev/nvidia-uvm", "/dev/nvidia-modeset"];
     for device_path in control_devices {
         if Path::new(device_path).exists() {
-            if let Some(device_nodes) = &mut container_edits.device_nodes {
-                device_nodes.push(create_device_node(device_path)?);
+            match create_device_node(device_path) {
+                Ok(device_node) => {
+                    if let Some(device_nodes) = &mut container_edits.device_nodes {
+                        device_nodes.push(device_node);
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to create device node for {}: {}", device_path, e);
+                    // Continue with other devices instead of failing completely
+                }
             }
+        } else {
+            debug!("Control device not found: {}", device_path);
         }
     }
 
-    // Add library mounts to container edits
+    // Add library mounts to container edits with validation
     for lib_path in &driver_info.libraries {
-        if let Some(mounts) = &mut container_edits.mounts {
-            mounts.push(Mount {
-                host_path: lib_path.clone(),
-                container_path: lib_path.clone(),
-                options: Some(vec!["ro".to_string(), "nosuid".to_string(), "nodev".to_string()]),
-            });
+        // Validate library path exists and is readable
+        if Path::new(lib_path).exists() {
+            if let Some(mounts) = &mut container_edits.mounts {
+                mounts.push(Mount {
+                    host_path: lib_path.clone(),
+                    container_path: lib_path.clone(),
+                    options: Some(vec!["ro".to_string(), "nosuid".to_string(), "nodev".to_string()]),
+                });
+            }
+        } else {
+            warn!("Library path does not exist: {}", lib_path);
         }
     }
 
-    // Create individual GPU devices
+    // Create individual GPU devices with error handling
     for gpu in &gpus {
-        let mut device_edits = ContainerEdits {
-            env: Some(vec![
-                format!("NVIDIA_VISIBLE_DEVICES={}", gpu.id),
-                format!("GPU_DEVICE_ORDINAL={}", gpu.id),
-            ]),
-            device_nodes: Some(vec![create_device_node(&gpu.device_path)?]),
-            mounts: None,
-            hooks: None,
-        };
+        match create_device_node(&gpu.device_path) {
+            Ok(device_node) => {
+                let mut device_edits = ContainerEdits {
+                    env: Some(vec![
+                        format!("NVIDIA_VISIBLE_DEVICES={}", gpu.id),
+                        format!("GPU_DEVICE_ORDINAL={}", gpu.id),
+                        format!("GPU_NAME={}", gpu.name),
+                        format!("GPU_PCI_ADDRESS={}", gpu.pci_address),
+                    ]),
+                    device_nodes: Some(vec![device_node]),
+                    mounts: None,
+                    hooks: None,
+                };
 
-        // Add GPU-specific environment variables
-        if let Some(memory) = gpu.memory {
-            if let Some(env) = &mut device_edits.env {
-                env.push(format!("GPU_MEMORY_SIZE={}", memory));
+                // Add GPU-specific environment variables
+                if let Some(memory) = gpu.memory {
+                    if let Some(env) = &mut device_edits.env {
+                        env.push(format!("GPU_MEMORY_SIZE={}", memory));
+                        env.push(format!("GPU_MEMORY_SIZE_MB={}", memory / 1024 / 1024));
+                    }
+                }
+
+                if let Some(driver_version) = &gpu.driver_version {
+                    if let Some(env) = &mut device_edits.env {
+                        env.push(format!("GPU_DRIVER_VERSION={}", driver_version));
+                    }
+                }
+
+                devices.push(CdiDevice {
+                    name: format!("gpu{}", gpu.id),
+                    container_edits: device_edits,
+                });
+            }
+            Err(e) => {
+                warn!("Failed to create device node for GPU {}: {}", gpu.id, e);
+                // Continue with other GPUs
             }
         }
-
-        devices.push(CdiDevice {
-            name: format!("gpu{}", gpu.id),
-            container_edits: device_edits,
-        });
     }
 
-    // Create an "all" device that includes all GPUs
+    // Create an "all" device that includes all GPUs with proper error handling
     if !gpus.is_empty() {
-        let _all_gpu_ids: Vec<String> = gpus.iter().map(|gpu| gpu.id.clone()).collect();
+        let all_gpu_ids: Vec<String> = gpus.iter().map(|gpu| gpu.id.clone()).collect();
         let mut all_device_edits = ContainerEdits {
             env: Some(vec![
                 "NVIDIA_VISIBLE_DEVICES=all".to_string(),
                 format!("GPU_COUNT={}", gpus.len()),
+                format!("GPU_IDS={}", all_gpu_ids.join(",")),
             ]),
             device_nodes: Some(Vec::new()),
             mounts: None,
             hooks: None,
         };
 
-        // Add all GPU device nodes
+        // Add all GPU device nodes with error handling
         for gpu in &gpus {
-            if let Some(device_nodes) = &mut all_device_edits.device_nodes {
-                device_nodes.push(create_device_node(&gpu.device_path)?);
+            match create_device_node(&gpu.device_path) {
+                Ok(device_node) => {
+                    if let Some(device_nodes) = &mut all_device_edits.device_nodes {
+                        device_nodes.push(device_node);
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to add GPU {} to 'all' device: {}", gpu.id, e);
+                    // Continue with other GPUs for the 'all' device
+                }
             }
         }
 
-        devices.push(CdiDevice {
-            name: "all".to_string(),
-            container_edits: all_device_edits,
-        });
+        // Only create "all" device if we have at least one valid GPU device
+        if let Some(device_nodes) = &all_device_edits.device_nodes {
+            if !device_nodes.is_empty() {
+                devices.push(CdiDevice {
+                    name: "all".to_string(),
+                    container_edits: all_device_edits,
+                });
+            } else {
+                warn!("No valid GPU devices found for 'all' device");
+            }
+        }
     }
 
-    Ok(CdiSpec {
+    let spec = CdiSpec {
         cdi_version: CDI_VERSION.to_string(),
         kind: "nvidia.com/gpu".to_string(),
         container_edits,
         devices,
-    })
+    };
+
+    // Validate the generated spec before returning
+    validate_cdi_spec(&spec)?;
+
+    info!("Generated CDI spec with {} devices", spec.devices.len());
+    Ok(spec)
+}
+
+/// Validate a CDI specification for correctness
+fn validate_cdi_spec(spec: &CdiSpec) -> Result<()> {
+    // Check CDI version
+    if spec.cdi_version != CDI_VERSION {
+        warn!("CDI version mismatch: spec={}, expected={}", spec.cdi_version, CDI_VERSION);
+    }
+
+    // Check kind format
+    if !spec.kind.contains('/') {
+        return Err(anyhow::anyhow!("Invalid CDI kind format: {}", spec.kind));
+    }
+
+    // Validate devices
+    if spec.devices.is_empty() {
+        return Err(anyhow::anyhow!("CDI spec must contain at least one device"));
+    }
+
+    // Check for duplicate device names
+    let mut device_names = std::collections::HashSet::new();
+    for device in &spec.devices {
+        if device.name.is_empty() {
+            return Err(anyhow::anyhow!("Device name cannot be empty"));
+        }
+        if !device_names.insert(&device.name) {
+            return Err(anyhow::anyhow!("Duplicate device name: {}", device.name));
+        }
+    }
+
+    // Validate device nodes
+    for device in &spec.devices {
+        if let Some(device_nodes) = &device.container_edits.device_nodes {
+            for node in device_nodes {
+                if !node.path.starts_with("/dev/") {
+                    return Err(anyhow::anyhow!("Invalid device node path: {}", node.path));
+                }
+            }
+        }
+    }
+
+    info!("CDI spec validation passed");
+    Ok(())
 }
 
 /// Create a device node specification from a device path
 fn create_device_node(device_path: &str) -> Result<DeviceNode> {
     let path = Path::new(device_path);
 
+    // Validate device path for security
+    if !device_path.starts_with("/dev/") {
+        return Err(anyhow::anyhow!("Invalid device path: {}", device_path));
+    }
+
+    // Check if device exists before getting metadata
+    if !path.exists() {
+        warn!("Device does not exist: {}", device_path);
+        return Err(anyhow::anyhow!("Device does not exist: {}", device_path));
+    }
+
     // Get device information using stat
     let metadata = fs::metadata(path)
         .context(format!("Failed to get metadata for device: {}", device_path))?;
 
-    // Extract device numbers on Unix systems
+    // Extract device numbers on Unix systems with correct calculation
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
 
         let dev = metadata.rdev();
-        let major = ((dev >> 8) & 0xfff) | ((dev >> 32) & !0xfff);
-        let minor = (dev & 0xff) | ((dev >> 12) & !0xff);
+        // Use correct Linux device number extraction
+        let major = (dev >> 8) & 0xff;
+        let minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
 
         Ok(DeviceNode {
             path: device_path.to_string(),

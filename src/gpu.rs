@@ -1,9 +1,9 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use tracing::debug;
+use tracing::{debug, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuDevice {
@@ -25,6 +25,21 @@ pub enum DriverType {
     Nouveau,
 }
 
+/// GPU driver errors for better error handling
+#[derive(Debug, thiserror::Error)]
+pub enum GpuDriverError {
+    #[error("NVIDIA driver not found - no GPU driver modules are loaded")]
+    NoDriverFound,
+    #[error("NVIDIA driver found but no GPUs detected - driver may be incompatible")]
+    NoGpusDetected,
+    #[error("NVIDIA driver permissions issue - try running with appropriate privileges")]
+    PermissionDenied,
+    #[error("Incompatible driver version: {version} - minimum CUDA {min_cuda} required")]
+    IncompatibleVersion { version: String, min_cuda: String },
+    #[error("Hardware not supported: {details}")]
+    HardwareNotSupported { details: String },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriverInfo {
     pub version: String,
@@ -34,11 +49,14 @@ pub struct DriverInfo {
 }
 
 pub async fn info() -> Result<()> {
-    // Check for NVIDIA driver availability first
-    if !is_nvidia_driver_available() {
-        return Err(anyhow::anyhow!(
-            "NVIDIA driver not found. Please ensure NVIDIA drivers are installed and loaded."
-        ));
+    // Enhanced driver availability check with diagnostics
+    match check_nvidia_driver_status() {
+        Ok(_) => {},
+        Err(e) => {
+            warn!("GPU driver issue detected: {}", e);
+            print_driver_diagnostics();
+            return Err(e.into());
+        }
     }
 
     let gpus = discover_gpus().await?;
@@ -450,7 +468,12 @@ pub fn get_required_libraries() -> Result<Vec<String>> {
 }
 
 pub fn is_nvidia_driver_available() -> bool {
-    // Check for any NVIDIA-compatible driver (NVIDIA proprietary, open, or Nouveau)
+    check_nvidia_driver_status().is_ok()
+}
+
+/// Enhanced NVIDIA driver status check with detailed error reporting
+pub fn check_nvidia_driver_status() -> Result<(), GpuDriverError> {
+    // Check for NVIDIA drivers (proprietary or open)
     let nvidia_paths = [
         "/proc/driver/nvidia/version",
         "/dev/nvidiactl",
@@ -459,27 +482,64 @@ pub fn is_nvidia_driver_available() -> bool {
 
     let nouveau_paths = [
         "/sys/module/nouveau",
-        "/dev/dri", // DRM interface used by Nouveau
+        "/dev/dri",
     ];
 
-    // Check for NVIDIA drivers (proprietary or open)
-    if nvidia_paths
-        .iter()
-        .any(|path| std::path::Path::new(path).exists())
-    {
-        return true;
+    // Check NVIDIA proprietary/open drivers first
+    if nvidia_paths.iter().any(|path| Path::new(path).exists()) {
+        // Driver exists, check if devices are accessible
+        if !Path::new("/dev/nvidiactl").exists() {
+            return Err(GpuDriverError::PermissionDenied);
+        }
+        return Ok(());
     }
 
-    // Check for Nouveau driver
-    if nouveau_paths
-        .iter()
-        .any(|path| std::path::Path::new(path).exists())
-    {
-        return true;
+    // Check Nouveau driver
+    if nouveau_paths.iter().any(|path| Path::new(path).exists()) {
+        warn!("Nouveau driver detected - performance may be limited");
+        return Ok(());
     }
 
-    false
+    Err(GpuDriverError::NoDriverFound)
 }
+
+/// Print detailed driver diagnostics to help users troubleshoot
+pub fn print_driver_diagnostics() {
+    println!("\n=== GPU Driver Diagnostics ===");
+
+    // Check for common NVIDIA driver files
+    let checks = [
+        ("/proc/driver/nvidia/version", "NVIDIA driver version info"),
+        ("/dev/nvidiactl", "NVIDIA control device"),
+        ("/dev/nvidia-uvm", "NVIDIA unified memory"),
+        ("/sys/module/nvidia", "NVIDIA kernel module"),
+        ("/sys/module/nouveau", "Nouveau (open) driver"),
+        ("/usr/bin/nvidia-smi", "nvidia-smi utility"),
+    ];
+
+    for (path, description) in &checks {
+        let status = if Path::new(path).exists() { "✅ Found" } else { "❌ Missing" };
+        println!("  {}: {}", description, status);
+    }
+
+    // Check if nvidia-smi works
+    if Path::new("/usr/bin/nvidia-smi").exists() {
+        if let Ok(output) = std::process::Command::new("nvidia-smi").output() {
+            if output.status.success() {
+                println!("  nvidia-smi: ✅ Working");
+            } else {
+                println!("  nvidia-smi: ❌ Failed to execute");
+            }
+        }
+    }
+
+    println!("\nTroubleshooting:");
+    println!("  • Install NVIDIA drivers: sudo apt install nvidia-driver-xxx");
+    println!("  • Load NVIDIA module: sudo modprobe nvidia");
+    println!("  • Check driver status: sudo nvidia-smi");
+    println!("  • For permissions: sudo usermod -a -G video $USER");
+}
+
 
 pub fn check_nvidia_requirements() -> Result<()> {
     if !is_nvidia_driver_available() {
@@ -650,5 +710,85 @@ mod tests {
             assert!(!gpu.id.is_empty());
             assert!(!gpu.device_path.is_empty());
         }
+    }
+
+    // Tests for enhanced error handling features
+    #[test]
+    fn test_gpu_driver_error_types() {
+        let no_driver = GpuDriverError::NoDriverFound;
+        let permission_error = GpuDriverError::PermissionDenied;
+        let version_error = GpuDriverError::IncompatibleVersion {
+            version: "450.00".to_string(),
+            min_cuda: "11.0".to_string(),
+        };
+
+        // Test error messages contain expected content
+        assert!(no_driver.to_string().contains("driver not found"));
+        assert!(permission_error.to_string().contains("permission"));
+        assert!(version_error.to_string().contains("450.00"));
+        assert!(version_error.to_string().contains("11.0"));
+    }
+
+    #[test]
+    fn test_enhanced_driver_status_check() {
+        let result = check_nvidia_driver_status();
+        // Function should not panic regardless of result
+        match result {
+            Ok(_) => {
+                // Driver available
+                assert!(is_nvidia_driver_available());
+            }
+            Err(error) => {
+                // Test specific error conditions
+                match error {
+                    GpuDriverError::NoDriverFound => {
+                        assert!(!is_nvidia_driver_available());
+                    }
+                    GpuDriverError::PermissionDenied => {
+                        // Permission issue - driver exists but not accessible
+                    }
+                    _ => {
+                        // Other errors
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_print_driver_diagnostics_no_panic() {
+        // Test that diagnostics printing doesn't panic
+        print_driver_diagnostics();
+        // If we reach here, the function completed without panicking
+    }
+
+    #[tokio::test]
+    async fn test_enhanced_info_function() {
+        // Test the enhanced info function with better error handling
+        let result = info().await;
+
+        // Should either succeed or fail gracefully with helpful error
+        match result {
+            Ok(_) => {
+                // Success case - driver available and working
+            }
+            Err(e) => {
+                // Error case - should have helpful error message
+                let error_msg = e.to_string();
+                assert!(
+                    error_msg.contains("driver") ||
+                    error_msg.contains("GPU") ||
+                    error_msg.contains("NVIDIA")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_driver_error_from_anyhow() {
+        // Test that our custom errors can be converted to anyhow::Error
+        let gpu_error = GpuDriverError::NoDriverFound;
+        let anyhow_error: anyhow::Error = gpu_error.into();
+        assert!(anyhow_error.to_string().contains("driver not found"));
     }
 }

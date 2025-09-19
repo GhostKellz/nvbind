@@ -228,6 +228,7 @@ impl OllamaConfig {
     }
 
     /// Generate nvbind configuration for this Ollama setup
+    #[cfg(feature = "bolt")]
     pub fn to_nvbind_config(&self) -> crate::config::BoltAiMlGpuConfig {
         crate::config::BoltAiMlGpuConfig {
             cuda_cache_size: self.cuda_cache_size,
@@ -364,7 +365,7 @@ impl OllamaLauncher {
     ) -> Result<()> {
         info!("Hot-swapping from {} to {}", old_model, new_model);
 
-        let new_config = self.registry.get_config(new_model);
+        let _new_config = self.registry.get_config(new_model);
 
         // TODO: Implement graceful model swapping
         // 1. Pre-load new model in memory

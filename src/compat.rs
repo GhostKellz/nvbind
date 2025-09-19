@@ -2,7 +2,6 @@
 //! Makes nvbind a drop-in replacement for existing GPU container workflows
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Command;
 use tracing::{debug, info, warn};
