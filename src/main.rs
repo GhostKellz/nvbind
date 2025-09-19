@@ -34,7 +34,7 @@ enum Commands {
     },
     /// Run a container with GPU passthrough
     Run {
-        /// Container runtime to use (podman, docker)
+        /// Container runtime to use (podman, docker, bolt)
         #[arg(long)]
         runtime: Option<String>,
         /// GPU selection (all, none, or device ID)
