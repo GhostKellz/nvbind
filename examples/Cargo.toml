@@ -1,0 +1,23 @@
+[package]
+name = "nvbind-examples"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "basic_gpu_discovery"
+path = "basic_gpu_discovery.rs"
+
+[[bin]]
+name = "container_gpu"
+path = "container_gpu.rs"
+
+[[bin]]
+name = "rbac_demo"
+path = "rbac_demo.rs"
+
+[dependencies]
+nvbind = { path = ".." }
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"

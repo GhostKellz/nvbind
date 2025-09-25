@@ -241,19 +241,35 @@ fn get_driver_version_and_type() -> Result<(String, DriverType)> {
     // First, try to determine driver type from kernel modules
     let driver_type = detect_driver_type();
 
-    // Get version based on driver type
+    // Get version based on driver type with enhanced methods
     let version = match driver_type {
         DriverType::Nouveau => get_nouveau_version(),
-        _ => get_nvidia_version(), // Both open and proprietary use same methods
+        DriverType::NvidiaOpen => {
+            // Try generic NVIDIA methods first, then fallback to Open-specific
+            get_nvidia_version().or_else(|_| {
+                debug!("Generic NVIDIA version detection failed for Open driver, trying alternatives");
+                validate_proprietary_driver() // This works for both Open and Proprietary
+            })
+        },
+        DriverType::NvidiaProprietary => {
+            // Try proprietary-specific methods first, then generic NVIDIA methods
+            validate_proprietary_driver().or_else(|_| {
+                debug!("Proprietary-specific detection failed, trying generic NVIDIA methods");
+                get_nvidia_version()
+            })
+        }
     };
 
     match version {
         Ok(v) => Ok((v, driver_type)),
-        Err(e) => Err(e),
+        Err(e) => {
+            debug!("Failed to get driver version for {:?}: {}", driver_type, e);
+            Err(e)
+        }
     }
 }
 
-fn detect_driver_type() -> DriverType {
+pub fn detect_driver_type() -> DriverType {
     // Check loaded kernel modules
     if let Ok(modules) = fs::read_to_string("/proc/modules") {
         if modules.contains("nouveau") {
@@ -286,25 +302,75 @@ fn detect_driver_type() -> DriverType {
 }
 
 fn is_nvidia_open_driver() -> bool {
-    // Check for NVIDIA Open GPU Kernel Modules indicators
-    // The open driver has different module names and paths
+    // Enhanced NVIDIA Open GPU Kernel Modules detection
+    // Specifically validate for version 580+ open driver support
 
-    // Check for nvidia-drm module parameters that indicate open source
-    if let Ok(content) = fs::read_to_string("/sys/module/nvidia_drm/parameters/modeset") {
-        if content.trim() == "Y" {
-            // Open driver typically has modeset enabled by default
-            if Path::new("/proc/driver/nvidia/version").exists() {
-                if let Ok(version_content) = fs::read_to_string("/proc/driver/nvidia/version") {
-                    // Open driver mentions "Open Kernel Modules"
-                    return version_content.contains("Open Kernel")
-                        || version_content.contains("open-gpu-kernel-modules");
+    // Method 1: Check /proc/driver/nvidia/version for open kernel indicators
+    if let Ok(version_content) = fs::read_to_string("/proc/driver/nvidia/version") {
+        // Open driver versions 515+ mention "Open Kernel Modules" or similar
+        if version_content.contains("Open Kernel")
+            || version_content.contains("open-gpu-kernel-modules")
+            || version_content.contains("GSP") {
+
+            debug!("Detected NVIDIA Open driver via version string: {}", version_content.lines().next().unwrap_or(""));
+
+            // Extract version number to validate 580+
+            if let Some(version_line) = version_content.lines().next() {
+                if let Some(version_match) = Regex::new(r"(\d{3}\.\d+)")
+                    .ok()
+                    .and_then(|re| re.captures(version_line)) {
+                    if let Ok(version_num) = version_match[1].parse::<f32>() {
+                        debug!("Detected NVIDIA driver version: {}", version_num);
+                        // Open driver is fully supported from 515+, excellent from 580+
+                        return version_num >= 515.0;
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
+    // Method 2: Check for GSP (GPU System Processor) firmware - primary indicator for open driver
+    if let Ok(gsp_content) = fs::read_to_string("/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware") {
+        if gsp_content.trim() == "1" {
+            debug!("Detected NVIDIA Open driver via GSP firmware enablement");
+            return true;
+        }
+    }
+
+    // Method 3: Check nvidia-drm modeset parameter (open driver defaults to Y)
+    if let Ok(modeset_content) = fs::read_to_string("/sys/module/nvidia_drm/parameters/modeset") {
+        if modeset_content.trim() == "Y" {
+            // Additional validation - check for open driver specific paths
+            if Path::new("/sys/module/nvidia").exists() {
+                // Check for open driver specific parameters
+                if Path::new("/sys/module/nvidia/parameters/NVreg_OpenRmEnableUnsupportedGpus").exists() {
+                    debug!("Detected NVIDIA Open driver via open RM parameters");
+                    return true;
                 }
             }
         }
     }
 
-    // Check for GSP firmware which is used by open driver
-    if Path::new("/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware").exists() {
+    // Method 4: Check loaded modules for open driver indicators
+    if let Ok(modules_content) = fs::read_to_string("/proc/modules") {
+        // Open driver has specific module signatures
+        let open_indicators = ["nvidia_drm", "nvidia_modeset", "nvidia_uvm"];
+        let open_count = open_indicators.iter()
+            .filter(|&indicator| modules_content.contains(indicator))
+            .count();
+
+        if open_count >= 2 && modules_content.contains("nvidia ") {
+            // Likely open driver with multiple components loaded
+            debug!("Detected NVIDIA Open driver via module analysis");
+            return true;
+        }
+    }
+
+    // Method 5: Check driver capabilities - open driver supports new features
+    if Path::new("/dev/nvidia-caps").exists() {
+        // nvidia-caps device is more common with open driver
+        debug!("Detected NVIDIA Open driver via capabilities device");
         return true;
     }
 
@@ -323,6 +389,193 @@ fn is_nvidia_open_driver() -> bool {
     false
 }
 
+/// Enhanced NVIDIA Proprietary driver validation
+/// Comprehensive detection for traditional NVIDIA drivers
+fn validate_proprietary_driver() -> Result<String> {
+    // Method 1: Check /proc/driver/nvidia/version (primary method for proprietary)
+    if let Ok(version_content) = fs::read_to_string("/proc/driver/nvidia/version") {
+        // Proprietary driver has specific version format
+        if let Some(version_line) = version_content.lines().next() {
+            debug!("Found NVIDIA version info: {}", version_line);
+
+            // Extract version from proprietary driver format
+            if let Some(version_match) = Regex::new(r"NVIDIA UNIX x86_64 Kernel Module\s+(\d+\.\d+)")
+                .ok()
+                .and_then(|re| re.captures(version_line)) {
+                let version = version_match[1].to_string();
+                debug!("Detected NVIDIA Proprietary driver version: {}", version);
+                return Ok(version);
+            }
+
+            // Alternative version extraction for different formats
+            if let Some(version_match) = Regex::new(r"(\d{3}\.\d+)")
+                .ok()
+                .and_then(|re| re.captures(version_line)) {
+                let version = version_match[1].to_string();
+                debug!("Detected NVIDIA driver version (alt format): {}", version);
+                return Ok(version);
+            }
+        }
+    }
+
+    // Method 2: Try nvidia-smi for version detection
+    if let Ok(output) = std::process::Command::new("nvidia-smi")
+        .args(&["--query-gpu=driver_version", "--format=csv,noheader,nounits"])
+        .output() {
+        if output.status.success() {
+            let version_str = String::from_utf8_lossy(&output.stdout);
+            if !version_str.trim().is_empty() {
+                let version = version_str.trim().to_string();
+                debug!("Detected NVIDIA Proprietary driver via nvidia-smi: {}", version);
+                return Ok(version);
+            }
+        }
+    }
+
+    // Method 3: Check modinfo for proprietary driver information
+    if let Ok(output) = std::process::Command::new("modinfo").arg("nvidia").output() {
+        if output.status.success() {
+            let modinfo_str = String::from_utf8_lossy(&output.stdout);
+            if let Some(version_match) = Regex::new(r"version:\s*([^\s]+)")
+                .ok()
+                .and_then(|re| re.captures(&modinfo_str)) {
+                let version = version_match[1].to_string();
+                debug!("Detected NVIDIA Proprietary driver via modinfo: {}", version);
+                return Ok(version);
+            }
+        }
+    }
+
+    // Method 4: Check nvidia-ml library version
+    if let Ok(output) = std::process::Command::new("nvidia-ml-py3")
+        .args(&["-c", "import pynvml; pynvml.nvmlInit(); print(pynvml.nvmlSystemGetDriverVersion())"])
+        .output() {
+        if output.status.success() {
+            let version_str = String::from_utf8_lossy(&output.stdout);
+            if !version_str.trim().is_empty() {
+                let version = version_str.trim().to_string();
+                debug!("Detected NVIDIA Proprietary driver via nvidia-ml: {}", version);
+                return Ok(version);
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!("Could not determine NVIDIA Proprietary driver version"))
+}
+
+/// Check if the proprietary driver supports container operations
+fn validate_proprietary_container_support() -> bool {
+    // Check for essential proprietary driver container features
+    let essential_features = [
+        "/dev/nvidiactl",           // Primary control device
+        "/dev/nvidia-uvm",          // Unified Virtual Memory
+        "/dev/nvidia-modeset",      // Mode setting (if available)
+        "/proc/driver/nvidia",      // Driver proc interface
+    ];
+
+    let mut supported_features = 0;
+    for feature_path in &essential_features {
+        if std::path::Path::new(feature_path).exists() {
+            supported_features += 1;
+            debug!("Proprietary driver feature available: {}", feature_path);
+        }
+    }
+
+    // Need at least nvidiactl and nvidia-uvm for container support
+    if supported_features >= 2 {
+        debug!("Proprietary driver has sufficient container support features");
+        return true;
+    }
+
+    // Check for CUDA runtime support
+    if let Ok(_) = std::process::Command::new("nvidia-smi").arg("--list-gpus").output() {
+        debug!("nvidia-smi available, proprietary driver has basic GPU management");
+        return true;
+    }
+
+    // Check for libnvidia-ml (management library)
+    let nvidia_ml_paths = [
+        "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1",
+        "/usr/lib64/libnvidia-ml.so.1",
+        "/usr/lib/libnvidia-ml.so.1",
+    ];
+
+    for lib_path in &nvidia_ml_paths {
+        if std::path::Path::new(lib_path).exists() {
+            debug!("NVIDIA-ML library found: {}", lib_path);
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Get proprietary driver specific information
+fn get_proprietary_driver_libraries() -> Vec<String> {
+    let mut libraries = Vec::new();
+
+    // Essential proprietary driver libraries
+    let essential_libs = [
+        "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1",
+        "/usr/lib/x86_64-linux-gnu/libcuda.so.1",
+        "/usr/lib/x86_64-linux-gnu/libnvcuvid.so.1",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-encode.so.1",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-decode.so.1",
+    ];
+
+    // Alternative paths for different distributions
+    let alt_lib_paths = [
+        "/usr/lib64",
+        "/usr/lib",
+        "/lib/x86_64-linux-gnu",
+        "/lib64",
+    ];
+
+    for lib in &essential_libs {
+        if std::path::Path::new(lib).exists() {
+            libraries.push(lib.to_string());
+        } else {
+            // Check alternative paths
+            let lib_name = std::path::Path::new(lib)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_else(|| {
+                    warn!("Invalid library path: {}", lib);
+                    "unknown"
+                });
+            for alt_path in &alt_lib_paths {
+                let full_path = format!("{}/{}", alt_path, lib_name);
+                if std::path::Path::new(&full_path).exists() {
+                    libraries.push(full_path);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Check for additional proprietary libraries
+    let additional_libs = [
+        "libnvidia-cfg.so.1",
+        "libnvidia-compiler.so.1",
+        "libnvidia-opencl.so.1",
+        "libnvidia-ptxjitcompiler.so.1",
+    ];
+
+    for lib_name in &additional_libs {
+        for alt_path in &alt_lib_paths {
+            let full_path = format!("{}/{}", alt_path, lib_name);
+            if std::path::Path::new(&full_path).exists() {
+                libraries.push(full_path);
+                break;
+            }
+        }
+    }
+
+    libraries.sort();
+    libraries.dedup();
+    libraries
+}
+
 fn get_nvidia_version() -> Result<String> {
     // Try reading from /proc/driver/nvidia/version
     if let Ok(content) = fs::read_to_string("/proc/driver/nvidia/version") {
@@ -331,7 +584,7 @@ fn get_nvidia_version() -> Result<String> {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if let Some(version) = parts
                     .iter()
-                    .find(|&s| s.contains('.') && s.chars().next().unwrap().is_ascii_digit())
+                    .find(|&s| s.contains('.') && s.chars().next().map_or(false, |c| c.is_ascii_digit()))
                 {
                     return Ok(version.to_string());
                 }
@@ -694,7 +947,7 @@ mod tests {
         let result = get_required_libraries();
         assert!(result.is_ok());
         // Libraries list could be empty on systems without NVIDIA
-        let libraries = result.unwrap();
+        let libraries = result.expect("Library detection should work in tests");
         for lib in &libraries {
             assert!(lib.contains("nvidia") || lib.contains("cuda"));
         }
@@ -704,7 +957,7 @@ mod tests {
     async fn test_discover_gpus() {
         let result = discover_gpus().await;
         assert!(result.is_ok());
-        let gpus = result.unwrap();
+        let gpus = result.expect("GPU discovery should work in tests");
         // GPUs list could be empty on systems without NVIDIA GPUs
         for gpu in &gpus {
             assert!(!gpu.id.is_empty());

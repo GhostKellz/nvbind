@@ -1,0 +1,64 @@
+# Cross-compilation configuration for nvbind
+# Optimized for Arch Linux with support for major distros
+
+[build]
+# Default optimizations without aggressive flags
+# rustflags can be overridden per target or via RUSTFLAGS environment variable
+
+[target.x86_64-unknown-linux-gnu]
+# Standard Linux optimizations
+# Use RUSTFLAGS environment variable for more aggressive optimizations
+
+[target.x86_64-unknown-linux-musl]
+# Static linking for universal compatibility
+rustflags = [
+    "-C", "target-cpu=x86-64-v2",  # Baseline for modern x86_64
+    "-C", "opt-level=3",
+    "-C", "lto=fat",
+    "-C", "codegen-units=1",
+    "-C", "link-arg=-static",
+]
+
+[target.aarch64-unknown-linux-gnu]
+# ARM64 support for modern ARM systems
+rustflags = [
+    "-C", "opt-level=3",
+    "-C", "lto=thin",
+]
+
+[target.aarch64-unknown-linux-musl]
+# ARM64 static linking
+rustflags = [
+    "-C", "opt-level=3",
+    "-C", "lto=fat",
+    "-C", "link-arg=-static",
+]
+
+# Distro-specific optimizations
+[alias]
+# Arch Linux native build (highest performance)
+arch = "build --release --target x86_64-unknown-linux-gnu"
+
+# Ubuntu/Debian compatible build
+debian = "build --release --target x86_64-unknown-linux-gnu --config 'target.x86_64-unknown-linux-gnu.rustflags=[\"-C\", \"target-cpu=x86-64-v2\", \"-C\", \"opt-level=3\"]'"
+
+# Fedora/RHEL compatible build
+fedora = "build --release --target x86_64-unknown-linux-gnu --config 'target.x86_64-unknown-linux-gnu.rustflags=[\"-C\", \"target-cpu=x86-64-v2\", \"-C\", \"opt-level=3\"]'"
+
+# PopOS compatible build (Ubuntu-based)
+popos = "build --release --target x86_64-unknown-linux-gnu --config 'target.x86_64-unknown-linux-gnu.rustflags=[\"-C\", \"target-cpu=x86-64-v2\", \"-C\", \"opt-level=3\"]'"
+
+# Universal static binary (maximum compatibility)
+universal = "build --release --target x86_64-unknown-linux-musl"
+
+# ARM64 builds
+arch-arm = "build --release --target aarch64-unknown-linux-gnu"
+universal-arm = "build --release --target aarch64-unknown-linux-musl"
+
+[env]
+# Optimization flags for linking
+RUSTFLAGS = "-C target-cpu=native -C opt-level=3"
+
+# GPU-related environment optimization
+NVIDIA_DRIVER_PATH = "/usr/lib/x86_64-linux-gnu"
+CUDA_PATH = "/opt/cuda"

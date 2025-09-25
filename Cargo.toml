@@ -30,6 +30,14 @@ async-trait = "0.1"
 
 # Additional dependencies for new modules
 chrono = { version = "0.4", features = ["serde"] }
+prometheus = "0.13"
+
+# CLI enhancement dependencies
+colored = "2.0"
+dialoguer = "0.11"
+indicatif = "0.17"
+prettytable-rs = "0.10"
+serde_yaml = "0.9"
 
 [features]
 default = []

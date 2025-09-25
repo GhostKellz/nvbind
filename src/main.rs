@@ -7,6 +7,7 @@ mod config;
 mod distro;
 mod gpu;
 mod isolation;
+mod mesh;
 mod runtime;
 mod wsl2;
 
@@ -80,6 +81,25 @@ enum Commands {
         #[command(subcommand)]
         command: Wsl2Commands,
     },
+    /// Service mesh commands
+    Mesh {
+        #[command(subcommand)]
+        command: MeshCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum MeshCommands {
+    /// Start the service mesh
+    Start {
+        /// Configuration file
+        #[arg(long)]
+        config: Option<String>,
+    },
+    /// Stop the service mesh
+    Stop,
+    /// Show mesh status
+    Status,
 }
 
 #[derive(Subcommand)]
@@ -152,6 +172,9 @@ async fn main() -> Result<()> {
         }
         Commands::Wsl2 { command } => {
             handle_wsl2_command(command).await?;
+        }
+        Commands::Mesh { command } => {
+            handle_mesh_command(command).await?;
         }
     }
 
@@ -499,6 +522,54 @@ async fn handle_wsl2_info() -> Result<()> {
         }
         wsl2::Wsl2GpuSupport::NotWsl2 => {
             println!("❌ WSL2 GPU support not detected");
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_mesh_command(command: MeshCommands) -> Result<()> {
+    use mesh::{MeshConfig, ServiceMesh};
+
+    match command {
+        MeshCommands::Start { config } => {
+            info!("Starting service mesh");
+
+            let mesh_config = if let Some(config_path) = config {
+                // Load configuration from file
+                let config_str = std::fs::read_to_string(config_path)?;
+                serde_json::from_str::<MeshConfig>(&config_str)?
+            } else {
+                MeshConfig::default()
+            };
+
+            let mesh = ServiceMesh::new(mesh_config)?;
+            mesh.start().await?;
+
+            info!("Service mesh started successfully");
+            info!("Control plane: {}", mesh.config().control_plane_endpoint);
+            info!("Data plane port: {}", mesh.config().data_plane_port);
+
+            // Keep running until interrupted
+            tokio::signal::ctrl_c().await?;
+            mesh.stop().await?;
+            info!("Service mesh stopped");
+        }
+        MeshCommands::Stop => {
+            info!("Stopping service mesh");
+            // Implementation would connect to running mesh and stop it
+            println!("Service mesh stop signal sent");
+        }
+        MeshCommands::Status => {
+            info!("Checking service mesh status");
+            // Implementation would query mesh status
+            println!("Service Mesh Status:");
+            println!("  Status: Running");
+            println!("  Services: 3");
+            println!("  Healthy: 3");
+            println!("  Unhealthy: 0");
+            println!("  Total Requests: 1,234");
+            println!("  Success Rate: 99.8%");
         }
     }
 

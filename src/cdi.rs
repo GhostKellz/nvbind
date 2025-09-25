@@ -557,8 +557,8 @@ mod tests {
             }],
         };
 
-        let json = serde_json::to_string_pretty(&spec).unwrap();
-        let parsed: CdiSpec = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string_pretty(&spec).expect("Serialization should work in tests");
+        let parsed: CdiSpec = serde_json::from_str(&json).expect("Deserialization should work in tests");
 
         assert_eq!(spec.cdi_version, parsed.cdi_version);
         assert_eq!(spec.kind, parsed.kind);
@@ -589,7 +589,7 @@ mod tests {
             }],
         };
 
-        registry.register_spec(spec).unwrap();
+        registry.register_spec(spec).expect("Spec registration should work in tests");
 
         let devices = registry.list_devices();
         assert_eq!(devices.len(), 1);
@@ -597,14 +597,14 @@ mod tests {
 
         let device = registry.get_device("test.com/gpu=test-device");
         assert!(device.is_some());
-        assert_eq!(device.unwrap().name, "test-device");
+        assert_eq!(device.expect("Device should be found").name, "test-device");
     }
 
     #[test]
     fn test_device_node_creation() {
         // Test with /dev/null as it should exist on most systems
         if Path::new("/dev/null").exists() {
-            let device_node = create_device_node("/dev/null").unwrap();
+            let device_node = create_device_node("/dev/null").expect("Device node creation should work");
             assert_eq!(device_node.path, "/dev/null");
             assert_eq!(device_node.device_type, Some("c".to_string()));
         }
@@ -612,7 +612,7 @@ mod tests {
 
     #[test]
     fn test_cdi_spec_save_load() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Temp dir creation should work");
         let mut registry = CdiRegistry::new();
 
         let spec = CdiSpec {
@@ -628,11 +628,11 @@ mod tests {
         };
 
         // Save the spec
-        let spec_path = registry.save_spec(&spec, Some(temp_dir.path())).unwrap();
+        let spec_path = registry.save_spec(&spec, Some(temp_dir.path())).expect("Spec saving should work");
         assert!(spec_path.exists());
 
         // Load it back
-        let loaded_spec = registry.load_spec_file(&spec_path).unwrap();
+        let loaded_spec = registry.load_spec_file(&spec_path).expect("Spec loading should work");
         assert_eq!(spec.kind, loaded_spec.kind);
         assert_eq!(spec.cdi_version, loaded_spec.cdi_version);
     }

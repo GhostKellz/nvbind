@@ -1,0 +1,155 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "nvbind API",
+    "description": "REST API for nvbind GPU container runtime",
+    "version": "0.1.0",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/gpus": {
+      "get": {
+        "summary": "List all GPUs",
+        "description": "Get information about all available GPUs",
+        "responses": {
+          "200": {
+            "description": "List of GPU devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GpuDevice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/containers": {
+      "post": {
+        "summary": "Create container with GPU",
+        "description": "Create and run a container with GPU access",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContainerSpec"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Container created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GpuDevice": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "GPU index"
+          },
+          "name": {
+            "type": "string",
+            "description": "GPU model name"
+          },
+          "memory_mb": {
+            "type": "integer",
+            "description": "GPU memory in megabytes"
+          },
+          "uuid": {
+            "type": "string",
+            "description": "Unique GPU identifier"
+          }
+        }
+      },
+      "ContainerSpec": {
+        "type": "object",
+        "required": ["image"],
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Container image name"
+          },
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command to run in container"
+          },
+          "gpu_request": {
+            "$ref": "#/components/schemas/GpuRequest"
+          }
+        }
+      },
+      "GpuRequest": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of GPUs requested"
+          },
+          "memory_mb": {
+            "type": "integer",
+            "description": "GPU memory requirement in MB"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Required GPU capabilities"
+          }
+        }
+      },
+      "ContainerResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Container ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Container status"
+          },
+          "stdout": {
+            "type": "string",
+            "description": "Container output"
+          },
+          "stderr": {
+            "type": "string",
+            "description": "Container errors"
+          }
+        }
+      }
+    }
+  }
+}

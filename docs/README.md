@@ -1,71 +1,55 @@
 # nvbind Documentation
 
-Welcome to the comprehensive documentation for **nvbind** - the lightning-fast, Rust-based alternative to NVIDIA Container Toolkit.
+Welcome to the nvbind documentation! This guide will help you get started with using nvbind, a lightweight Rust-based alternative to NVIDIA Container Toolkit.
 
-## 📚 Documentation Structure
+## Quick Links
 
-### 🚀 [Installation](installation/)
-- **[Quick Install](installation/quick-install.md)** - Get started in minutes
-- **[System Requirements](installation/requirements.md)** - Hardware and software prerequisites
-- **[Distribution Guides](installation/distros.md)** - Installation for specific Linux distributions
-- **[WSL2 Setup](installation/wsl2.md)** - Windows Subsystem for Linux 2 configuration
+- [Installation Guide](guides/getting_started.md#installation)
+- [API Reference](api/)
+- [Code Examples](examples/)
+- [Advanced Configuration](guides/advanced_configuration.md)
 
-### 🛠️ [Container Runtimes](runtimes/)
-- **[Bolt Integration](runtimes/bolt.md)** - Native Bolt runtime support with GPU acceleration
-- **[Docker Usage](runtimes/docker.md)** - Drop-in replacement for Docker GPU workflow
-- **[Podman Usage](runtimes/podman.md)** - Enhanced Podman GPU container support
+## API Reference
 
-### 🎯 [Examples](examples/)
-- **[Gaming Containers](examples/gaming.md)** - Steam, Lutris, Wine/Proton gaming
-- **[AI/ML Workloads](examples/ai-ml.md)** - PyTorch, TensorFlow, Ollama training
-- **[Development Setup](examples/development.md)** - CUDA development containers
+- [GPU Management](api/gpu.md) - Core GPU discovery and management functionality
+- [Role-Based Access Control](api/rbac.md) - User and group permission management for GPU resources
+- [Container Runtime](api/runtime.md) - Container orchestration with GPU support
+- [Advanced GPU Features](api/gpu_advanced.md) - MIG, scheduling, and enterprise features
+- [Performance Optimization](api/performance.md) - System tuning and optimization
+- [Kubernetes Integration](api/k8s.md) - Kubernetes and orchestration platform integration
+- [Monitoring](api/monitoring.md) - Performance monitoring and metrics collection
 
-### 🔧 [Troubleshooting](troubleshooting/)
-- **[Common Issues](troubleshooting/common.md)** - Frequently encountered problems
-- **[GPU Detection](troubleshooting/gpu-detection.md)** - Driver and hardware issues
-- **[Performance](troubleshooting/performance.md)** - Optimization and benchmarking
+## Examples
 
-### 📖 [API Reference](api/)
-- **[CLI Commands](api/cli.md)** - Complete command reference
-- **[Configuration](api/configuration.md)** - TOML configuration options
-- **[CDI Specifications](api/cdi.md)** - Container Device Interface details
+### GPU
+- [Basic GPU Discovery](examples/basic_gpu_discovery.md) - Discover and list all available GPUs
+- [GPU Monitoring](examples/gpu_monitoring.md) - Monitor GPU usage and performance
 
-## ⚡ Quick Start
+### RBAC
+- [RBAC Setup](examples/rbac_setup.md) - Set up role-based access control
+- [Permission Checking](examples/permission_checking.md) - Check user permissions
 
-```bash
-# Install nvbind
-curl -sSL https://raw.githubusercontent.com/ghostkellz/nvbind/main/install.sh | sudo bash
+### CONTAINER
+- [Container with GPU](examples/container_with_gpu.md) - Run a container with GPU access
 
-# Check GPU detection
-nvbind info
+### GPU_ADVANCED
+- [MIG Configuration](examples/mig_configuration.md) - Configure Multi-Instance GPU (MIG)
 
-# Run your first GPU container
-nvbind run --runtime bolt --gpu all --profile gaming steam:latest
-```
+## User Guides
 
-## 🎮 Why nvbind?
+- [Getting Started with nvbind](guides/getting_started.md) - Complete guide to installing and using nvbind (🟢 Beginner)
+- [Advanced Configuration](guides/advanced_configuration.md) - Detailed guide for advanced nvbind configuration (🔴 Advanced)
 
-| Feature | nvbind | NVIDIA Container Toolkit |
-|---------|--------|-------------------------|
-| **Performance** | ⚡ Sub-microsecond GPU passthrough | 🐌 ~10ms overhead |
-| **Gaming** | 🎮 99%+ native performance | 📉 85-90% performance |
-| **Runtimes** | 🚀 Bolt, Docker, Podman | 🐳 Docker-only |
-| **Memory Safety** | 🦀 Rust - zero buffer overflows | ❌ C++ memory vulnerabilities |
-| **Driver Support** | 🌐 NVIDIA Open, Proprietary, Nouveau | 🔒 NVIDIA proprietary only |
+## System Requirements
 
-## 🔗 Quick Links
+- Linux (Arch, Ubuntu, Debian, Fedora, PopOS)
+- NVIDIA GPU with CUDA support
+- NVIDIA Driver (Open or Proprietary)
+- Container runtime (Docker, Podman, or Containerd)
+- Rust 1.70+ (for building from source)
 
-- **[GitHub Repository](https://github.com/ghostkellz/nvbind)**
-- **[Issue Tracker](https://github.com/ghostkellz/nvbind/issues)**
-- **[Performance Benchmarks](https://github.com/ghostkellz/nvbind/wiki/benchmarks)**
-- **[Community Discord](https://discord.gg/nvbind)** *(coming soon)*
+## Support
 
-## 💡 Need Help?
-
-1. **Check the [troubleshooting guide](troubleshooting/common.md)**
-2. **Run diagnostics**: `nvbind doctor`
-3. **Open an issue**: [GitHub Issues](https://github.com/ghostkellz/nvbind/issues)
-
----
-
-**Ready to revolutionize your GPU container workflow? Let's get started! 🚀**
+- **Issues:** [GitHub Issues](https://github.com/ghostkellz/nvbind/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/ghostkellz/nvbind/discussions)
+- **Documentation:** This site

@@ -11,6 +11,7 @@ use async_trait::async_trait;
 #[cfg(feature = "bolt")]
 use crate::{config::BoltConfig, cdi::bolt::BoltCapsuleConfig};
 
+
 /// Core trait that Bolt implements to integrate with nvbind
 #[cfg(feature = "bolt")]
 #[async_trait]
