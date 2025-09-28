@@ -1029,7 +1029,19 @@ impl PerformanceProfiler {
             id: session_id,
             start_time: SystemTime::now(),
             duration,
-            profile_types: vec![ProfileType::CPU, ProfileType::Memory, ProfileType::GPU],
+            profile_types: {
+                let mut types = Vec::new();
+                if self.config.cpu_profiling {
+                    types.push(ProfileType::CPU);
+                }
+                if self.config.memory_profiling {
+                    types.push(ProfileType::Memory);
+                }
+                if self.config.gpu_profiling {
+                    types.push(ProfileType::GPU);
+                }
+                types
+            },
             output_path: format!(
                 "{}/profile_{}.data",
                 self.config.output_directory, session_id
