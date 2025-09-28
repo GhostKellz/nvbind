@@ -4,6 +4,7 @@
 
 This guide helps you migrate from Docker/Podman to nvbind for **100x faster GPU performance** and **superior gaming compatibility**.
 
+
 ## 🎯 Why Migrate?
 
 | Feature | Docker + NVIDIA Toolkit | nvbind + Bolt | **Improvement** |
