@@ -128,6 +128,14 @@ impl IsolationManager {
             self.setup_namespaces()?;
         }
 
+        // Check if we're in WSL2 and setup GPU passthrough
+        if std::env::var("WSL_DISTRO_NAME").is_ok() {
+            info!("WSL2 environment detected, setting up GPU passthrough");
+            if let Err(e) = Self::setup_wsl2_gpu_passthrough() {
+                warn!("Failed to setup WSL2 GPU passthrough: {}", e);
+            }
+        }
+
         info!("GPU isolation initialized successfully");
         Ok(())
     }
@@ -302,13 +310,25 @@ impl IsolationManager {
             self.config.profiles.get("shared").unwrap().clone()
         };
 
+        // Create namespace IDs if namespace isolation is enabled
+        let pid_namespace = if self.config.enable_namespaces {
+            Some(std::process::id())
+        } else {
+            None
+        };
+        let mount_namespace = if self.config.enable_namespaces {
+            Some(std::process::id() + 1000)
+        } else {
+            None
+        };
+
         let container = IsolatedContainer {
             id: container_id.to_string(),
             profile,
             gpu_devices,
             cgroup_path: self.get_container_cgroup_path(container_id),
-            pid_namespace: None,
-            mount_namespace: None,
+            pid_namespace,
+            mount_namespace,
         };
 
         // Setup container-specific cgroup
@@ -505,6 +525,41 @@ impl IsolationManager {
 
         Ok(())
     }
+
+    /// Stop and cleanup a container
+    pub fn stop_container(&self, container_id: &str) -> Result<()> {
+        info!("Stopping container: {}", container_id);
+
+        // Cleanup isolation resources
+        self.cleanup_container(container_id)?;
+
+        Ok(())
+    }
+
+    /// Setup WSL2-specific GPU passthrough
+    pub fn setup_wsl2_gpu_passthrough() -> Result<()> {
+        info!("Setting up WSL2 GPU passthrough");
+
+        // Check for Windows GPU drivers in WSL2
+        let wsl_gpu_path = "/usr/lib/wsl/drivers";
+        if Path::new(wsl_gpu_path).exists() {
+            info!("WSL2 GPU drivers found at: {}", wsl_gpu_path);
+        } else {
+            warn!("WSL2 GPU drivers not found. Install Windows GPU drivers with WSL2 support");
+        }
+
+        // Check for D3D12 support
+        if Path::new("/usr/lib/x86_64-linux-gnu/libdxcore.so").exists() {
+            info!("DirectX 12 support available");
+        }
+
+        // Check for OpenGL/Vulkan support
+        if Path::new("/usr/lib/x86_64-linux-gnu/libGL.so").exists() {
+            info!("OpenGL support available");
+        }
+
+        Ok(())
+    }
 }
 
 /// Device information structure
@@ -582,31 +637,6 @@ pub mod wsl2 {
         );
 
         Ok(config)
-    }
-
-    /// Setup WSL2-specific GPU passthrough
-    pub fn setup_wsl2_gpu_passthrough() -> Result<()> {
-        info!("Setting up WSL2 GPU passthrough");
-
-        // Check for Windows GPU drivers in WSL2
-        let wsl_gpu_path = "/usr/lib/wsl/drivers";
-        if Path::new(wsl_gpu_path).exists() {
-            info!("WSL2 GPU drivers found at: {}", wsl_gpu_path);
-        } else {
-            warn!("WSL2 GPU drivers not found. Install Windows GPU drivers with WSL2 support");
-        }
-
-        // Check for D3D12 support
-        if Path::new("/usr/lib/x86_64-linux-gnu/libdxcore.so").exists() {
-            info!("DirectX 12 support available");
-        }
-
-        // Check for OpenGL/Vulkan support
-        if Path::new("/usr/lib/x86_64-linux-gnu/libGL.so").exists() {
-            info!("OpenGL support available");
-        }
-
-        Ok(())
     }
 }
 

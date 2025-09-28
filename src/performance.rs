@@ -6,7 +6,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -120,7 +119,7 @@ pub struct IoOptimization {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum IoScheduler {
-    Mq_deadline,
+    MqDeadline,
     Kyber,
     Bfq,
     None,
@@ -249,7 +248,7 @@ impl Default for PerformanceConfig {
             },
             io_optimization: IoOptimization {
                 enabled: true,
-                scheduler: IoScheduler::Mq_deadline,
+                scheduler: IoScheduler::MqDeadline,
                 readahead_kb: Some(128),
                 queue_depth: Some(32),
             },
@@ -577,7 +576,7 @@ impl PerformanceOptimizer {
 pub struct PerformanceProfiler {
     enabled: bool,
     start_time: Option<Instant>,
-    sample_interval: Duration,
+    _sample_interval: Duration,
 }
 
 impl PerformanceProfiler {
@@ -585,7 +584,7 @@ impl PerformanceProfiler {
         Self {
             enabled,
             start_time: None,
-            sample_interval: Duration::from_secs(1),
+            _sample_interval: Duration::from_secs(1),
         }
     }
 
@@ -707,7 +706,7 @@ impl PerformanceProfiler {
     async fn get_io_wait(&self) -> Result<f64> {
         // Read from /proc/stat for iowait
         let stat = tokio::fs::read_to_string("/proc/stat").await?;
-        let cpu_line = stat
+        let _cpu_line = stat
             .lines()
             .next()
             .ok_or_else(|| anyhow::anyhow!("Cannot read CPU stats"))?;
@@ -962,7 +961,7 @@ impl SystemTuner {
 
     async fn set_io_scheduler(&self, scheduler: IoScheduler) -> Result<()> {
         let sched_name = match scheduler {
-            IoScheduler::Mq_deadline => "mq-deadline",
+            IoScheduler::MqDeadline => "mq-deadline",
             IoScheduler::Kyber => "kyber",
             IoScheduler::Bfq => "bfq",
             IoScheduler::None => "none",

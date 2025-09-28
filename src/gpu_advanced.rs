@@ -3,15 +3,13 @@
 //! Provides support for Multi-Instance GPU (MIG), GPU scheduling,
 //! advanced memory management, and enterprise GPU features.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::process::Command;
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 /// Advanced GPU manager
@@ -334,7 +332,7 @@ impl MigManager {
         Ok(profiles)
     }
 
-    fn parse_profile_line(&self, line: &str) -> Result<MigProfile> {
+    fn parse_profile_line(&self, _line: &str) -> Result<MigProfile> {
         // Simplified parser
         Ok(MigProfile {
             name: "1g.5gb".to_string(),
@@ -592,7 +590,7 @@ impl GpuScheduler {
         }
 
         let mut scheduled: Vec<GpuAssignment> = Vec::new();
-        let mut rejected: Vec<Uuid> = Vec::new();
+        let rejected: Vec<Uuid> = Vec::new();
 
         // Try to schedule workloads
         let mut i = 0;

@@ -27,6 +27,7 @@ pub mod rbac;
 pub mod runtime;
 pub mod security;
 pub mod snapshot;
+pub mod user_error;
 pub mod wine;
 pub mod wsl2;
 

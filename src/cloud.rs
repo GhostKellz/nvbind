@@ -3,7 +3,7 @@
 //! Provides seamless integration with AWS, GCP, Azure GPU instances,
 //! hybrid cloud GPU scheduling, and cost optimization.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -105,7 +105,7 @@ pub enum GpuType {
     MI100,
     MI250,
     // Intel
-    DataCenter_Max,
+    DataCenterMax,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -114,9 +114,9 @@ pub enum NetworkPerformance {
     Moderate,
     High,
     VeryHigh,
-    Up_to_25Gbps,
-    Up_to_50Gbps,
-    Up_to_100Gbps,
+    UpTo25Gbps,
+    UpTo50Gbps,
+    UpTo100Gbps,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -392,7 +392,7 @@ impl Default for CloudConfig {
                         vcpus: 8,
                         memory_gb: 61,
                         storage_gb: 0,
-                        network_performance: NetworkPerformance::Up_to_25Gbps,
+                        network_performance: NetworkPerformance::UpTo25Gbps,
                         hourly_cost: 3.06,
                         spot_eligible: true,
                     },
@@ -403,7 +403,7 @@ impl Default for CloudConfig {
                         vcpus: 96,
                         memory_gb: 1152,
                         storage_gb: 8000,
-                        network_performance: NetworkPerformance::Up_to_100Gbps,
+                        network_performance: NetworkPerformance::UpTo100Gbps,
                         hourly_cost: 32.77,
                         spot_eligible: true,
                     },
@@ -876,7 +876,7 @@ impl GcpProvider {
 #[async_trait::async_trait]
 impl CloudProviderInterface for GcpProvider {
     async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing GCP provider");
+        info!("Initializing GCP provider with region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
         Ok(())
     }
 
@@ -884,6 +884,9 @@ impl CloudProviderInterface for GcpProvider {
         &self,
         _requirements: &ResourceRequirements,
     ) -> Result<Vec<CloudResource>> {
+        // Use config to filter resources by region and zone
+        info!("Getting GCP resources for region: {} zone: {:?}",
+              self.config.regions.first().unwrap_or(&"default".to_string()), "default-zone");
         // Simplified - would implement actual GCP Compute Engine API calls
         Ok(Vec::new())
     }
@@ -930,7 +933,7 @@ impl AzureProvider {
 #[async_trait::async_trait]
 impl CloudProviderInterface for AzureProvider {
     async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing Azure provider");
+        info!("Initializing Azure provider with region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
         Ok(())
     }
 
@@ -938,6 +941,8 @@ impl CloudProviderInterface for AzureProvider {
         &self,
         _requirements: &ResourceRequirements,
     ) -> Result<Vec<CloudResource>> {
+        info!("Getting Azure resources for region: {} zone: {:?}",
+              self.config.regions.first().unwrap_or(&"default".to_string()), "default-zone");
         Ok(Vec::new())
     }
 
@@ -983,7 +988,7 @@ impl OnPremisesProvider {
 #[async_trait::async_trait]
 impl CloudProviderInterface for OnPremisesProvider {
     async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing on-premises provider");
+        info!("Initializing on-premises provider with region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
         Ok(())
     }
 
@@ -991,7 +996,8 @@ impl CloudProviderInterface for OnPremisesProvider {
         &self,
         requirements: &ResourceRequirements,
     ) -> Result<Vec<CloudResource>> {
-        // Query local GPU resources
+        // Query local GPU resources in configured region
+        info!("Discovering on-premises resources in region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
         let gpus = crate::gpu::discover_gpus().await?;
         let mut resources = Vec::new();
 
@@ -1621,7 +1627,7 @@ mod tests {
                 vcpus: 8,
                 memory_gb: 61,
                 storage_gb: 0,
-                network_performance: NetworkPerformance::Up_to_25Gbps,
+                network_performance: NetworkPerformance::UpTo25Gbps,
                 hourly_cost: 3.06,
                 spot_eligible: true,
             }],

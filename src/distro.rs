@@ -700,24 +700,34 @@ impl DistroManager {
 
     /// Generate installation guide for current distribution
     pub fn generate_install_guide(&self) -> Vec<String> {
-        self.config.get_install_instructions()
+        let mut guide = self.config.get_install_instructions();
+
+        // Add container modifications info
+        let container_mods = self.config.get_container_modifications();
+        if !container_mods.is_empty() {
+            guide.push("Container modifications needed:".to_string());
+            guide.extend(container_mods);
+        }
+
+        guide
     }
 
     /// Check system compatibility
     pub fn check_compatibility(&self) -> Result<CompatibilityReport> {
+        let distro_config = self.config();
         info!(
             "Checking system compatibility for {}",
-            self.config.distribution.name()
+            distro_config.distribution.name()
         );
 
-        let package_status = self.config.check_nvidia_packages()?;
+        let package_status = distro_config.check_nvidia_packages()?;
         let kernel_modules = self.check_kernel_modules()?;
         let library_paths = self.check_library_paths();
         let container_runtime = self.check_container_runtime();
 
         Ok(CompatibilityReport {
-            distribution: self.config.distribution.clone(),
-            version: self.config.version.clone(),
+            distribution: distro_config.distribution.clone(),
+            version: distro_config.version.clone(),
             packages_installed: package_status,
             kernel_modules_loaded: kernel_modules,
             library_paths_available: library_paths,

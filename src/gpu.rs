@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -25,8 +25,19 @@ pub enum DriverType {
     Nouveau,
 }
 
+impl DriverType {
+    pub fn name(&self) -> &'static str {
+        match self {
+            DriverType::NvidiaOpen => "NVIDIA Open",
+            DriverType::NvidiaProprietary => "NVIDIA Proprietary",
+            DriverType::Nouveau => "Nouveau",
+        }
+    }
+}
+
 /// GPU driver errors for better error handling
 #[derive(Debug, thiserror::Error)]
+#[allow(dead_code)]
 pub enum GpuDriverError {
     #[error("NVIDIA driver not found - no GPU driver modules are loaded")]
     NoDriverFound,
@@ -227,7 +238,15 @@ fn get_gpu_memory(index: usize) -> Result<Option<u64>> {
 pub async fn get_driver_info() -> Result<DriverInfo> {
     let (version, driver_type) = get_driver_version_and_type()?;
     let cuda_version = get_cuda_version().ok();
-    let libraries = find_nvidia_libraries()?;
+    let mut libraries = find_nvidia_libraries()?;
+
+    // Add proprietary driver libraries if available
+    if matches!(driver_type, DriverType::NvidiaProprietary | DriverType::NvidiaOpen) {
+        if validate_proprietary_container_support() {
+            let prop_libraries = get_proprietary_driver_libraries();
+            libraries.extend(prop_libraries);
+        }
+    }
 
     Ok(DriverInfo {
         version,

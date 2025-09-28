@@ -2,14 +2,13 @@
 //!
 //! Provides comprehensive validation, migration tools, and schema management
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use toml::Value as TomlValue;
-use tracing::{debug, info, warn};
+use tracing::info;
 
 /// Schema version for configuration
 const SCHEMA_VERSION: &str = "1.0.0";

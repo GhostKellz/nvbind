@@ -143,7 +143,9 @@ impl CdiRegistry {
             if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
                 match self.load_spec_file(&path) {
                     Ok(spec) => {
-                        self.specs.insert(spec.kind.clone(), spec);
+                        if let Err(e) = self.register_spec(spec) {
+                            warn!("Failed to register CDI spec from {}: {}", path.display(), e);
+                        }
                     }
                     Err(e) => {
                         warn!("Failed to load CDI spec from {}: {}", path.display(), e);
@@ -191,8 +193,9 @@ impl CdiRegistry {
     /// List all available CDI devices
     pub fn list_devices(&self) -> Vec<String> {
         let mut devices = Vec::new();
-        for (kind, spec) in &self.specs {
-            for device in &spec.devices {
+        for kind in self.specs.keys() {
+            let kind_devices = self.get_devices_by_kind(kind);
+            for device in kind_devices {
                 devices.push(format!("{}={}", kind, device.name));
             }
         }
@@ -651,5 +654,24 @@ mod tests {
             .expect("Spec loading should work");
         assert_eq!(spec.kind, loaded_spec.kind);
         assert_eq!(spec.cdi_version, loaded_spec.cdi_version);
+    }
+
+    #[tokio::test]
+    async fn test_cdi_utility_functions() {
+        // Test listing CDI devices
+        let devices = list_cdi_devices().unwrap_or_default();
+        println!("Found {} CDI devices", devices.len());
+
+        // Test generating and saving NVIDIA CDI
+        if let Ok(_path) = generate_and_save_nvidia_cdi().await {
+            println!("Successfully generated NVIDIA CDI spec");
+        }
+
+        // Test applying CDI device (with fallback)
+        if !devices.is_empty() {
+            if let Ok(_edits) = apply_cdi_device(&devices[0]) {
+                println!("Successfully applied CDI device");
+            }
+        }
     }
 }

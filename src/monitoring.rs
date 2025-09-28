@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tokio::time::interval;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 /// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,8 +168,8 @@ pub struct MetricsCollector {
 
     container_cpu: GaugeVec,
     container_memory: GaugeVec,
-    container_network_rx: CounterVec,
-    container_network_tx: CounterVec,
+    _container_network_rx: CounterVec,
+    _container_network_tx: CounterVec,
 
     operation_duration: HistogramVec,
     operation_count: CounterVec,
@@ -257,8 +257,8 @@ impl MetricsCollector {
             gpu_power,
             container_cpu,
             container_memory,
-            container_network_rx,
-            container_network_tx,
+            _container_network_rx: container_network_rx,
+            _container_network_tx: container_network_tx,
             operation_duration,
             operation_count,
             error_count,
@@ -391,7 +391,7 @@ impl MetricsCollector {
         let mut metrics = SystemMetrics::default();
 
         // CPU usage
-        if let Ok(content) = std::fs::read_to_string("/proc/stat") {
+        if let Ok(_content) = std::fs::read_to_string("/proc/stat") {
             // Parse CPU stats (simplified)
             metrics.cpu_usage = 25.0; // Placeholder
         }
@@ -577,7 +577,7 @@ pub enum CheckStatus {
 /// Perform health checks
 pub async fn perform_health_checks() -> HealthStatus {
     let mut checks = Vec::new();
-    let start = Instant::now();
+    let _start = Instant::now();
 
     // GPU driver check
     let gpu_start = Instant::now();

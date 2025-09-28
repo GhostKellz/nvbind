@@ -203,6 +203,7 @@ struct CircuitBreakerState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 enum CircuitBreakerStatus {
     Closed,
     Open,
@@ -211,7 +212,7 @@ enum CircuitBreakerStatus {
 
 /// Traffic router for advanced routing policies
 pub struct TrafficRouter {
-    routing_rules: Arc<RwLock<Vec<RoutingRule>>>,
+    _routing_rules: Arc<RwLock<Vec<RoutingRule>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -251,8 +252,8 @@ pub enum RoutingAction {
 
 /// Health checker for service instances
 pub struct HealthChecker {
-    config: ServiceDiscoveryConfig,
-    health_checks: Arc<RwLock<HashMap<Uuid, HealthCheck>>>,
+    _config: ServiceDiscoveryConfig,
+    _health_checks: Arc<RwLock<HashMap<Uuid, HealthCheck>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -377,7 +378,7 @@ impl ServiceMesh {
         // Apply load balancing
         let selected = self.load_balancer.select_instance(&instances, context);
 
-        if let Some(ref instance) = selected {
+        if let Some(ref _instance) = selected {
             self.metrics_collector
                 .record_request(&context.destination_service)
                 .await;
@@ -547,12 +548,12 @@ impl CircuitBreaker {
 impl TrafficRouter {
     pub fn new() -> Self {
         TrafficRouter {
-            routing_rules: Arc::new(RwLock::new(Vec::new())),
+            _routing_rules: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
     pub async fn add_rule(&self, rule: RoutingRule) -> Result<()> {
-        let mut rules = self.routing_rules.write().await;
+        let mut rules = self._routing_rules.write().await;
         rules.push(rule);
         rules.sort_by_key(|r| r.priority);
         Ok(())
@@ -571,8 +572,8 @@ impl TrafficRouter {
 impl HealthChecker {
     pub fn new(config: ServiceDiscoveryConfig) -> Self {
         HealthChecker {
-            config,
-            health_checks: Arc::new(RwLock::new(HashMap::new())),
+            _config: config,
+            _health_checks: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -636,13 +637,13 @@ impl MeshMetricsCollector {
 
 // Load balancing strategies
 pub struct RoundRobinStrategy {
-    counter: Arc<RwLock<usize>>,
+    _counter: Arc<RwLock<usize>>,
 }
 
 impl RoundRobinStrategy {
     pub fn new() -> Self {
         RoundRobinStrategy {
-            counter: Arc::new(RwLock::new(0)),
+            _counter: Arc::new(RwLock::new(0)),
         }
     }
 }

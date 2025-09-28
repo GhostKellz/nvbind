@@ -3,14 +3,13 @@
 //! Comprehensive security framework with SELinux/AppArmor integration,
 //! encrypted communication, certificate management, and compliance reporting.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, SystemTime};
 use tokio::fs;
-use tracing::{debug, error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 /// Enterprise security manager
@@ -65,18 +64,18 @@ pub struct KeyManagementConfig {
 pub enum KeyProvider {
     Internal,
     Vault,
-    AWS_KMS,
-    Azure_KeyVault,
-    GCP_KMS,
+    AwsKms,
+    AzureKeyVault,
+    GcpKms,
     HSM,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum EncryptionAlgorithm {
-    AES256_GCM,
-    ChaCha20_Poly1305,
-    RSA_4096,
-    ECDSA_P256,
+    Aes256Gcm,
+    ChaCha20Poly1305,
+    Rsa4096,
+    EcdsaP256,
     Ed25519,
 }
 
@@ -112,11 +111,11 @@ pub struct ComplianceConfig {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ComplianceFramework {
     SOC2,
-    FIPS_140_2,
-    Common_Criteria,
-    ISO_27001,
+    Fips140_2,
+    CommonCriteria,
+    Iso27001,
     NIST,
-    PCI_DSS,
+    PciDss,
     HIPAA,
     GDPR,
 }
@@ -350,7 +349,7 @@ impl Default for SecurityConfig {
                 key_management: KeyManagementConfig {
                     provider: KeyProvider::Internal,
                     key_length: 256,
-                    algorithm: EncryptionAlgorithm::AES256_GCM,
+                    algorithm: EncryptionAlgorithm::Aes256Gcm,
                     hardware_security_module: false,
                 },
             },
@@ -365,7 +364,7 @@ impl Default for SecurityConfig {
                 san_entries: vec!["localhost".to_string(), "127.0.0.1".to_string()],
             },
             compliance: ComplianceConfig {
-                frameworks: vec![ComplianceFramework::SOC2, ComplianceFramework::ISO_27001],
+                frameworks: vec![ComplianceFramework::SOC2, ComplianceFramework::Iso27001],
                 reporting_enabled: true,
                 report_interval: Duration::from_secs(24 * 3600), // Daily
                 output_directory: PathBuf::from("/var/log/nvbind/compliance"),
@@ -767,13 +766,13 @@ impl SecurityManager {
                     category: "Data Protection".to_string(),
                 },
             ],
-            ComplianceFramework::ISO_27001 => vec![ComplianceControl {
+            ComplianceFramework::Iso27001 => vec![ComplianceControl {
                 id: "A.9.1.2".to_string(),
                 name: "Access to networks and network services".to_string(),
                 description: "Network access controls are implemented".to_string(),
                 category: "Access Control".to_string(),
             }],
-            ComplianceFramework::FIPS_140_2 => vec![ComplianceControl {
+            ComplianceFramework::Fips140_2 => vec![ComplianceControl {
                 id: "4.1".to_string(),
                 name: "Cryptographic Module Specification".to_string(),
                 description: "Cryptographic modules meet FIPS requirements".to_string(),
@@ -796,7 +795,7 @@ impl SecurityManager {
             "A.9.1.2" => self.config.security_policies.network_policies.default_deny,
             "4.1" => matches!(
                 self.config.encryption.key_management.algorithm,
-                EncryptionAlgorithm::AES256_GCM
+                EncryptionAlgorithm::Aes256Gcm
             ),
             _ => false,
         };
@@ -1357,8 +1356,8 @@ mod tests {
     fn test_compliance_frameworks() {
         let frameworks = vec![
             ComplianceFramework::SOC2,
-            ComplianceFramework::FIPS_140_2,
-            ComplianceFramework::ISO_27001,
+            ComplianceFramework::Fips140_2,
+            ComplianceFramework::Iso27001,
         ];
 
         assert_eq!(frameworks.len(), 3);
@@ -1388,7 +1387,7 @@ mod tests {
             key_management: KeyManagementConfig {
                 provider: KeyProvider::Vault,
                 key_length: 256,
-                algorithm: EncryptionAlgorithm::AES256_GCM,
+                algorithm: EncryptionAlgorithm::Aes256Gcm,
                 hardware_security_module: true,
             },
         };

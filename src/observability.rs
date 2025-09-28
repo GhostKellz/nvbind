@@ -3,13 +3,13 @@
 //! Comprehensive observability solution with distributed tracing,
 //! custom metrics, performance profiling, and real-time dashboards.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::RwLock;
-use tracing::{Span, debug, error, info, warn};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 /// Observability manager with OpenTelemetry integration
@@ -690,14 +690,14 @@ impl ObservabilityManager {
 /// Tracing manager with OpenTelemetry
 pub struct TracingManager {
     config: TracingConfig,
-    active_spans: Arc<RwLock<HashMap<Uuid, ObservabilitySpan>>>,
+    _active_spans: Arc<RwLock<HashMap<Uuid, ObservabilitySpan>>>,
 }
 
 impl TracingManager {
     fn new(config: TracingConfig) -> Self {
         Self {
             config,
-            active_spans: Arc::new(RwLock::new(HashMap::new())),
+            _active_spans: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -1004,7 +1004,7 @@ impl PerformanceProfiler {
                     tokio::time::sleep(config_clone.profile_duration).await;
 
                     let mut sessions = active_sessions_clone.write().await;
-                    if let Some(mut session) = sessions.get_mut(&session_id) {
+                    if let Some(session) = sessions.get_mut(&session_id) {
                         session.status = ProfilingStatus::Completed;
 
                         if config_clone.flame_graphs {

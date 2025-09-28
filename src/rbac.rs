@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{debug, info, warn};
+use tracing::debug;
 
 /// RBAC configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,7 +59,7 @@ impl User {
 
         // Get supplementary groups
         let mut groups = vec![gid];
-        let mut ngroups = 32;
+        let ngroups = 32;
         let mut group_list = vec![0u32; ngroups as usize];
 
         unsafe {
@@ -384,7 +384,7 @@ impl RbacManager {
         resource: &str,
         action: &str,
         permissions: &HashSet<Permission>,
-        limits: &ResourceLimits,
+        _limits: &ResourceLimits,
     ) -> Result<PolicyDecision> {
         // Check GPU access
         if resource.starts_with("gpu:") {
@@ -558,7 +558,7 @@ struct ResourceUsage {
     gpu_count: u32,
     gpu_memory: u64,
     container_count: u32,
-    gpu_hours: f64,
+    _gpu_hours: f64,
 }
 
 /// Audit log entry

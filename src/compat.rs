@@ -8,12 +8,12 @@ use tracing::{debug, info, warn};
 
 /// Docker command compatibility layer
 pub struct DockerCompat {
-    nvbind_config: crate::config::Config,
+    _nvbind_config: crate::config::Config,
 }
 
 /// Podman command compatibility layer
 pub struct PodmanCompat {
-    nvbind_config: crate::config::Config,
+    _nvbind_config: crate::config::Config,
 }
 
 /// Parsed Docker/Podman command arguments
@@ -65,7 +65,7 @@ pub struct PortMapping {
 impl DockerCompat {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            nvbind_config: crate::config::Config::load()?,
+            _nvbind_config: crate::config::Config::load()?,
         })
     }
 
@@ -205,7 +205,7 @@ impl DockerCompat {
         };
 
         // Create enhanced config with Docker compatibility
-        let mut config = self.nvbind_config.clone();
+        let mut config = self._nvbind_config.clone();
 
         // Add environment variables
         for (key, value) in &args.environment {
@@ -338,7 +338,7 @@ impl DockerCompat {
 impl PodmanCompat {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            nvbind_config: crate::config::Config::load()?,
+            _nvbind_config: crate::config::Config::load()?,
         })
     }
 

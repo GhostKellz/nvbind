@@ -3,13 +3,13 @@
 //! Provides seamless integration with Kubernetes, OpenShift, and other
 //! container orchestration platforms for GPU resource management.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use tokio::fs;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Kubernetes integration manager
 pub struct KubernetesIntegration {
@@ -254,16 +254,16 @@ impl KubernetesIntegration {
 
 /// Kubernetes device plugin implementation
 pub struct DevicePlugin {
-    socket_path: PathBuf,
-    devices: Vec<Device>,
+    _socket_path: PathBuf,
+    _devices: Vec<Device>,
     server: Option<DevicePluginServer>,
 }
 
 impl DevicePlugin {
     fn new(socket_path: PathBuf) -> Self {
         Self {
-            socket_path,
-            devices: Vec::new(),
+            _socket_path: socket_path,
+            _devices: Vec::new(),
             server: None,
         }
     }
@@ -276,7 +276,7 @@ impl DevicePlugin {
         let gpus = crate::gpu::discover_gpus().await?;
 
         // Convert to device plugin format
-        self.devices = gpus
+        self._devices = gpus
             .into_iter()
             .enumerate()
             .map(|(i, gpu)| Device {
@@ -289,22 +289,22 @@ impl DevicePlugin {
 
         info!(
             "Discovered {} GPU devices for device plugin",
-            self.devices.len()
+            self._devices.len()
         );
         Ok(())
     }
 
     /// Start device plugin server
     async fn start(&mut self) -> Result<()> {
-        info!("Starting device plugin server at {:?}", self.socket_path);
+        info!("Starting device plugin server at {:?}", self._socket_path);
 
         // Clean up existing socket
-        if self.socket_path.exists() {
-            fs::remove_file(&self.socket_path).await?;
+        if self._socket_path.exists() {
+            fs::remove_file(&self._socket_path).await?;
         }
 
         // Create server
-        let server = DevicePluginServer::new(self.socket_path.clone(), self.devices.clone());
+        let server = DevicePluginServer::new(self._socket_path.clone(), self._devices.clone());
 
         self.server = Some(server);
 
@@ -319,10 +319,10 @@ impl DevicePlugin {
     async fn register_with_kubelet(&self) -> Result<()> {
         info!("Registering device plugin with kubelet");
 
-        let registration_request = RegistrationRequest {
+        let _registration_request = RegistrationRequest {
             version: "v1beta1".to_string(),
             endpoint: self
-                .socket_path
+                ._socket_path
                 .file_name()
                 .unwrap()
                 .to_string_lossy()
@@ -334,7 +334,7 @@ impl DevicePlugin {
         };
 
         // Connect to kubelet registration socket
-        let kubelet_socket = PathBuf::from("/var/lib/kubelet/device-plugins/kubelet.sock");
+        let _kubelet_socket = PathBuf::from("/var/lib/kubelet/device-plugins/kubelet.sock");
         // Implementation would use gRPC to communicate with kubelet
         // For now, we'll simulate the registration
 
@@ -365,15 +365,15 @@ pub struct Topology {
 
 #[derive(Debug)]
 struct DevicePluginServer {
-    socket_path: PathBuf,
-    devices: Vec<Device>,
+    _socket_path: PathBuf,
+    _devices: Vec<Device>,
 }
 
 impl DevicePluginServer {
     fn new(socket_path: PathBuf, devices: Vec<Device>) -> Self {
         Self {
-            socket_path,
-            devices,
+            _socket_path: socket_path,
+            _devices: devices,
         }
     }
 
@@ -421,7 +421,7 @@ impl CdiManager {
         info!("Creating Kubernetes CDI specification");
 
         let gpus = crate::gpu::discover_gpus().await?;
-        let driver_info = crate::gpu::get_driver_info().await?;
+        let _driver_info = crate::gpu::get_driver_info().await?;
 
         let spec = CdiSpecification {
             cdi_version: "0.6.0".to_string(),
@@ -781,7 +781,7 @@ impl OpenShiftIntegration {
 
         info!("Creating Security Context Constraint: {}", scc_name);
 
-        let scc_yaml = format!(
+        let _scc_yaml = format!(
             r#"
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
