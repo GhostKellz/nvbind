@@ -36,12 +36,12 @@ jobs:
 
     - name: Create GitHub Release
       id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.get_version.outputs.version }}
-        release_name: nvbind ${{ steps.get_version.outputs.version }}
+        name: nvbind ${{ steps.get_version.outputs.version }}
         body: |
           ## nvbind ${{ steps.get_version.outputs.version }}
 
@@ -90,31 +90,22 @@ jobs:
         cargo build --release --target ${{ matrix.target }} --all-features
         strip target/${{ matrix.target }}/release/${{ matrix.binary_name }}
 
-    - name: Create tarball
+    - name: Create tarball and prepare release assets
       run: |
         cd target/${{ matrix.target }}/release
         tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.binary_name }}
         mv ${{ matrix.asset_name }}.tar.gz ../../../
+        cp ${{ matrix.binary_name }} ../../../${{ matrix.asset_name }}
 
-    - name: Upload Release Binary
-      uses: actions/upload-release-asset@v1
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./${{ matrix.asset_name }}.tar.gz
-        asset_name: ${{ matrix.asset_name }}.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload standalone binary
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./target/${{ matrix.target }}/release/${{ matrix.binary_name }}
-        asset_name: ${{ matrix.asset_name }}
-        asset_content_type: application/octet-stream
+        tag_name: ${{ needs.create-release.outputs.version }}
+        files: |
+          ${{ matrix.asset_name }}.tar.gz
+          ${{ matrix.asset_name }}
 
   test-release:
     name: Test Release Binary
