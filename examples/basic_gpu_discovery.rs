@@ -9,7 +9,7 @@ use nvbind::gpu;
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging
-    tracing_subscriber::init();
+    tracing_subscriber::fmt::init();
 
     println!("🔍 Discovering NVIDIA GPUs...\n");
 
@@ -32,18 +32,12 @@ async fn main() -> Result<()> {
         println!("   Name: {}", gpu.name);
         println!(
             "   Memory: {} MB ({:.1} GB)",
-            gpu.memory_mb,
-            gpu.memory_mb as f64 / 1024.0
+            gpu.memory.unwrap_or(0),
+            gpu.memory.unwrap_or(0) as f64 / 1024.0 / 1024.0 / 1024.0
         );
-        println!("   UUID: {}", gpu.uuid);
-        println!("   PCI Bus ID: {}", gpu.pci_bus_id);
-
-        if gpu.compute_capability.is_some() {
-            println!(
-                "   Compute Capability: {}",
-                gpu.compute_capability.as_ref().unwrap()
-            );
-        }
+        println!("   PCI Address: {}", gpu.pci_address);
+        println!("   Driver Version: {}", gpu.driver_version.as_deref().unwrap_or("Unknown"));
+        println!("   Device Path: {}", gpu.device_path);
 
         println!();
     }
