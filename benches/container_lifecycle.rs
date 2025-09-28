@@ -1,7 +1,7 @@
-use criterion::{Criterion, criterion_group, criterion_main, BatchSize};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use nvbind::cdi::{CdiRegistry, generate_nvidia_cdi_spec};
 use nvbind::config::Config;
-use nvbind::gpu::{is_nvidia_driver_available, discover_gpus};
+use nvbind::gpu::{discover_gpus, is_nvidia_driver_available};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -45,22 +45,22 @@ fn bench_high_frequency_container_lifecycle(c: &mut Criterion) {
     // Test 2: Concurrent container access patterns
     group.bench_function("concurrent_container_simulation", |b| {
         b.iter_batched(
-            || {
-                Arc::new(CdiRegistry::new())
-            },
+            || Arc::new(CdiRegistry::new()),
             |registry| {
                 let start = Instant::now();
 
                 // Simulate concurrent container requests
-                let handles: Vec<_> = (0..10).map(|i| {
-                    let registry_clone = Arc::clone(&registry);
-                    std::thread::spawn(move || {
-                        for j in 0..10 {
-                            let _device = registry_clone.get_device("nvidia.com/gpu=all");
-                            let _container_id = format!("concurrent-{}-{}", i, j);
-                        }
+                let handles: Vec<_> = (0..10)
+                    .map(|i| {
+                        let registry_clone = Arc::clone(&registry);
+                        std::thread::spawn(move || {
+                            for j in 0..10 {
+                                let _device = registry_clone.get_device("nvidia.com/gpu=all");
+                                let _container_id = format!("concurrent-{}-{}", i, j);
+                            }
+                        })
                     })
-                }).collect();
+                    .collect();
 
                 // Wait for all threads
                 for handle in handles {
@@ -206,13 +206,15 @@ fn bench_memory_leak_detection(c: &mut Criterion) {
         b.iter(|| {
             let start = Instant::now();
 
-            let registries: Vec<_> = (0..1000).map(|_| {
-                let registry = CdiRegistry::new();
-                let _device_names: Vec<String> = (0..10)
-                    .map(|i| format!("nvidia.com/gpu=gpu{}", i))
-                    .collect();
-                registry
-            }).collect();
+            let registries: Vec<_> = (0..1000)
+                .map(|_| {
+                    let registry = CdiRegistry::new();
+                    let _device_names: Vec<String> = (0..10)
+                        .map(|i| format!("nvidia.com/gpu=gpu{}", i))
+                        .collect();
+                    registry
+                })
+                .collect();
 
             let creation_time = start.elapsed();
             drop(registries);
@@ -236,22 +238,22 @@ fn bench_multi_gpu_concurrent_access(c: &mut Criterion) {
     // Test 1: Concurrent access to different GPU devices
     group.bench_function("concurrent_multi_gpu_access", |b| {
         b.iter_batched(
-            || {
-                Arc::new(CdiRegistry::new())
-            },
+            || Arc::new(CdiRegistry::new()),
             |registry| {
                 let start = Instant::now();
 
                 // Simulate concurrent access to multiple GPUs
-                let handles: Vec<_> = (0..8).map(|gpu_id| {
-                    let registry_clone = Arc::clone(&registry);
-                    std::thread::spawn(move || {
-                        for _ in 0..100 {
-                            let device_name = format!("nvidia.com/gpu=gpu{}", gpu_id);
-                            let _device = registry_clone.get_device(&device_name);
-                        }
+                let handles: Vec<_> = (0..8)
+                    .map(|gpu_id| {
+                        let registry_clone = Arc::clone(&registry);
+                        std::thread::spawn(move || {
+                            for _ in 0..100 {
+                                let device_name = format!("nvidia.com/gpu=gpu{}", gpu_id);
+                                let _device = registry_clone.get_device(&device_name);
+                            }
+                        })
                     })
-                }).collect();
+                    .collect();
 
                 for handle in handles {
                     let _ = handle.join();
@@ -266,21 +268,21 @@ fn bench_multi_gpu_concurrent_access(c: &mut Criterion) {
     // Test 2: GPU contention simulation
     group.bench_function("gpu_contention_simulation", |b| {
         b.iter_batched(
-            || {
-                Arc::new(CdiRegistry::new())
-            },
+            || Arc::new(CdiRegistry::new()),
             |registry| {
                 let start = Instant::now();
 
                 // Multiple threads trying to access the same GPU
-                let handles: Vec<_> = (0..16).map(|_| {
-                    let registry_clone = Arc::clone(&registry);
-                    std::thread::spawn(move || {
-                        for _ in 0..50 {
-                            let _device = registry_clone.get_device("nvidia.com/gpu=all");
-                        }
+                let handles: Vec<_> = (0..16)
+                    .map(|_| {
+                        let registry_clone = Arc::clone(&registry);
+                        std::thread::spawn(move || {
+                            for _ in 0..50 {
+                                let _device = registry_clone.get_device("nvidia.com/gpu=all");
+                            }
+                        })
                     })
-                }).collect();
+                    .collect();
 
                 for handle in handles {
                     let _ = handle.join();

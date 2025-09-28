@@ -136,7 +136,7 @@ pub enum MemoryPolicy {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum IoPriority {
-    RealTime(u8), // 0-7
+    RealTime(u8),   // 0-7
     BestEffort(u8), // 0-7
     Idle,
 }
@@ -145,8 +145,8 @@ pub enum IoPriority {
 pub enum SchedulingPolicy {
     Normal,
     Batch,
-    Fifo(u8),   // 1-99
-    RR(u8),     // 1-99
+    Fifo(u8), // 1-99
+    RR(u8),   // 1-99
     Deadline,
 }
 
@@ -163,52 +163,61 @@ impl Default for PerformanceConfig {
         let mut workload_profiles = HashMap::new();
 
         // ML/AI workload profile
-        workload_profiles.insert("ml".to_string(), WorkloadProfile {
-            name: "Machine Learning".to_string(),
-            description: "Optimized for ML/AI training and inference".to_string(),
-            cpu_affinity: None,
-            memory_policy: MemoryPolicy::Bind,
-            gpu_settings: GpuSettings {
-                power_limit_watts: None,
-                memory_clock_offset: Some(1000),
-                graphics_clock_offset: Some(200),
-                fan_speed_percent: Some(80),
+        workload_profiles.insert(
+            "ml".to_string(),
+            WorkloadProfile {
+                name: "Machine Learning".to_string(),
+                description: "Optimized for ML/AI training and inference".to_string(),
+                cpu_affinity: None,
+                memory_policy: MemoryPolicy::Bind,
+                gpu_settings: GpuSettings {
+                    power_limit_watts: None,
+                    memory_clock_offset: Some(1000),
+                    graphics_clock_offset: Some(200),
+                    fan_speed_percent: Some(80),
+                },
+                io_priority: IoPriority::BestEffort(1),
+                scheduling_policy: SchedulingPolicy::Normal,
             },
-            io_priority: IoPriority::BestEffort(1),
-            scheduling_policy: SchedulingPolicy::Normal,
-        });
+        );
 
         // Gaming workload profile
-        workload_profiles.insert("gaming".to_string(), WorkloadProfile {
-            name: "Gaming".to_string(),
-            description: "Optimized for gaming workloads".to_string(),
-            cpu_affinity: None,
-            memory_policy: MemoryPolicy::Default,
-            gpu_settings: GpuSettings {
-                power_limit_watts: None,
-                memory_clock_offset: Some(500),
-                graphics_clock_offset: Some(100),
-                fan_speed_percent: Some(60),
+        workload_profiles.insert(
+            "gaming".to_string(),
+            WorkloadProfile {
+                name: "Gaming".to_string(),
+                description: "Optimized for gaming workloads".to_string(),
+                cpu_affinity: None,
+                memory_policy: MemoryPolicy::Default,
+                gpu_settings: GpuSettings {
+                    power_limit_watts: None,
+                    memory_clock_offset: Some(500),
+                    graphics_clock_offset: Some(100),
+                    fan_speed_percent: Some(60),
+                },
+                io_priority: IoPriority::RealTime(1),
+                scheduling_policy: SchedulingPolicy::Normal,
             },
-            io_priority: IoPriority::RealTime(1),
-            scheduling_policy: SchedulingPolicy::Normal,
-        });
+        );
 
         // Compute workload profile
-        workload_profiles.insert("compute".to_string(), WorkloadProfile {
-            name: "High Performance Computing".to_string(),
-            description: "Optimized for compute-intensive workloads".to_string(),
-            cpu_affinity: None,
-            memory_policy: MemoryPolicy::Interleave,
-            gpu_settings: GpuSettings {
-                power_limit_watts: None,
-                memory_clock_offset: Some(1500),
-                graphics_clock_offset: Some(300),
-                fan_speed_percent: Some(100),
+        workload_profiles.insert(
+            "compute".to_string(),
+            WorkloadProfile {
+                name: "High Performance Computing".to_string(),
+                description: "Optimized for compute-intensive workloads".to_string(),
+                cpu_affinity: None,
+                memory_policy: MemoryPolicy::Interleave,
+                gpu_settings: GpuSettings {
+                    power_limit_watts: None,
+                    memory_clock_offset: Some(1500),
+                    graphics_clock_offset: Some(300),
+                    fan_speed_percent: Some(100),
+                },
+                io_priority: IoPriority::BestEffort(0),
+                scheduling_policy: SchedulingPolicy::Batch,
             },
-            io_priority: IoPriority::BestEffort(0),
-            scheduling_policy: SchedulingPolicy::Batch,
-        });
+        );
 
         Self {
             enabled: true,
@@ -282,7 +291,9 @@ impl PerformanceOptimizer {
 
     /// Apply workload-specific optimizations
     pub async fn optimize_for_workload(&self, workload_name: &str) -> Result<()> {
-        let profile = self.config.workload_profiles
+        let profile = self
+            .config
+            .workload_profiles
             .get(workload_name)
             .ok_or_else(|| anyhow::anyhow!("Unknown workload profile: {}", workload_name))?;
 
@@ -303,7 +314,9 @@ impl PerformanceOptimizer {
         self.tuner.set_io_priority(profile.io_priority).await?;
 
         // Apply scheduling policy
-        self.tuner.set_scheduling_policy(profile.scheduling_policy).await?;
+        self.tuner
+            .set_scheduling_policy(profile.scheduling_policy)
+            .await?;
 
         info!("Workload optimizations applied successfully");
         Ok(())
@@ -347,7 +360,10 @@ impl PerformanceOptimizer {
     }
 
     /// Analyze performance and generate recommendations
-    async fn analyze_performance(&self, metrics: &PerformanceMetrics) -> Result<Vec<Recommendation>> {
+    async fn analyze_performance(
+        &self,
+        metrics: &PerformanceMetrics,
+    ) -> Result<Vec<Recommendation>> {
         let mut recommendations = Vec::new();
 
         // CPU analysis
@@ -379,7 +395,8 @@ impl PerformanceOptimizer {
                     category: RecommendationCategory::Gpu,
                     priority: Priority::Medium,
                     description: "GPU underutilized while CPU is busy".to_string(),
-                    suggestion: "Review workload distribution and consider CPU-GPU load balancing".to_string(),
+                    suggestion: "Review workload distribution and consider CPU-GPU load balancing"
+                        .to_string(),
                     impact_score: 0.6,
                 });
             }
@@ -438,21 +455,24 @@ impl PerformanceOptimizer {
     }
 
     fn analyze_cpu_pattern(&self, history: &[PerformanceMetrics]) -> PatternAnalysis {
-        let avg_usage: f64 = history.iter().map(|m| m.cpu_usage).sum::<f64>() / history.len() as f64;
+        let avg_usage: f64 =
+            history.iter().map(|m| m.cpu_usage).sum::<f64>() / history.len() as f64;
         let variance = self.calculate_variance(history.iter().map(|m| m.cpu_usage).collect());
 
         PatternAnalysis {
             average: avg_usage,
             variance,
             trend: self.calculate_trend(history.iter().map(|m| m.cpu_usage).collect()),
-            stability: if variance < 10.0 { Stability::Stable } else { Stability::Variable },
+            stability: if variance < 10.0 {
+                Stability::Stable
+            } else {
+                Stability::Variable
+            },
         }
     }
 
     fn analyze_gpu_pattern(&self, history: &[PerformanceMetrics]) -> Option<PatternAnalysis> {
-        let gpu_values: Vec<f64> = history.iter()
-            .filter_map(|m| m.gpu_usage)
-            .collect();
+        let gpu_values: Vec<f64> = history.iter().filter_map(|m| m.gpu_usage).collect();
 
         if gpu_values.is_empty() {
             return None;
@@ -465,19 +485,28 @@ impl PerformanceOptimizer {
             average: avg_usage,
             variance,
             trend: self.calculate_trend(gpu_values),
-            stability: if variance < 15.0 { Stability::Stable } else { Stability::Variable },
+            stability: if variance < 15.0 {
+                Stability::Stable
+            } else {
+                Stability::Variable
+            },
         })
     }
 
     fn analyze_memory_pattern(&self, history: &[PerformanceMetrics]) -> PatternAnalysis {
-        let avg_usage: f64 = history.iter().map(|m| m.memory_usage).sum::<f64>() / history.len() as f64;
+        let avg_usage: f64 =
+            history.iter().map(|m| m.memory_usage).sum::<f64>() / history.len() as f64;
         let variance = self.calculate_variance(history.iter().map(|m| m.memory_usage).collect());
 
         PatternAnalysis {
             average: avg_usage,
             variance,
             trend: self.calculate_trend(history.iter().map(|m| m.memory_usage).collect()),
-            stability: if variance < 5.0 { Stability::Stable } else { Stability::Variable },
+            stability: if variance < 5.0 {
+                Stability::Stable
+            } else {
+                Stability::Variable
+            },
         }
     }
 
@@ -487,9 +516,8 @@ impl PerformanceOptimizer {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
 
         variance
     }
@@ -499,8 +527,10 @@ impl PerformanceOptimizer {
             return Trend::Stable;
         }
 
-        let first_half_avg = values[..values.len()/2].iter().sum::<f64>() / (values.len()/2) as f64;
-        let second_half_avg = values[values.len()/2..].iter().sum::<f64>() / (values.len() - values.len()/2) as f64;
+        let first_half_avg =
+            values[..values.len() / 2].iter().sum::<f64>() / (values.len() / 2) as f64;
+        let second_half_avg = values[values.len() / 2..].iter().sum::<f64>()
+            / (values.len() - values.len() / 2) as f64;
 
         let difference = second_half_avg - first_half_avg;
 
@@ -518,7 +548,10 @@ impl PerformanceOptimizer {
         vec![9, 10, 11, 14, 15, 16] // Typical work hours
     }
 
-    fn calculate_resource_correlation(&self, history: &[PerformanceMetrics]) -> HashMap<String, f64> {
+    fn calculate_resource_correlation(
+        &self,
+        history: &[PerformanceMetrics],
+    ) -> HashMap<String, f64> {
         let mut correlations = HashMap::new();
 
         if !history.is_empty() {
@@ -607,7 +640,9 @@ impl PerformanceProfiler {
     async fn get_cpu_usage(&self) -> Result<f64> {
         // Read from /proc/stat
         let stat = tokio::fs::read_to_string("/proc/stat").await?;
-        let cpu_line = stat.lines().next()
+        let cpu_line = stat
+            .lines()
+            .next()
             .ok_or_else(|| anyhow::anyhow!("Cannot read CPU stats"))?;
 
         // Parse CPU times (simplified)
@@ -628,11 +663,15 @@ impl PerformanceProfiler {
 
         for line in meminfo.lines() {
             if line.starts_with("MemTotal:") {
-                total = line.split_whitespace().nth(1)
+                total = line
+                    .split_whitespace()
+                    .nth(1)
                     .ok_or_else(|| anyhow::anyhow!("Cannot parse MemTotal"))?
                     .parse()?;
             } else if line.starts_with("MemAvailable:") {
-                available = line.split_whitespace().nth(1)
+                available = line
+                    .split_whitespace()
+                    .nth(1)
                     .ok_or_else(|| anyhow::anyhow!("Cannot parse MemAvailable"))?
                     .parse()?;
             }
@@ -668,7 +707,9 @@ impl PerformanceProfiler {
     async fn get_io_wait(&self) -> Result<f64> {
         // Read from /proc/stat for iowait
         let stat = tokio::fs::read_to_string("/proc/stat").await?;
-        let cpu_line = stat.lines().next()
+        let cpu_line = stat
+            .lines()
+            .next()
             .ok_or_else(|| anyhow::anyhow!("Cannot read CPU stats"))?;
 
         // Parse iowait field (simplified)
@@ -684,11 +725,7 @@ impl PerformanceProfiler {
             return Err(anyhow::anyhow!("Cannot parse load average"));
         }
 
-        Ok((
-            fields[0].parse()?,
-            fields[1].parse()?,
-            fields[2].parse()?,
-        ))
+        Ok((fields[0].parse()?, fields[1].parse()?, fields[2].parse()?))
     }
 
     async fn calculate_throughput(&self) -> Result<f64> {
@@ -734,7 +771,8 @@ impl SystemTuner {
         info!("Applying CPU optimizations");
 
         // Set CPU governor
-        self.set_cpu_governor(self.config.cpu_optimization.governor).await?;
+        self.set_cpu_governor(self.config.cpu_optimization.governor)
+            .await?;
 
         // Configure NUMA balancing
         if self.config.cpu_optimization.numa_balancing {
@@ -779,7 +817,8 @@ impl SystemTuner {
         }
 
         // Set compute mode
-        self.set_gpu_compute_mode(self.config.gpu_optimization.compute_mode).await?;
+        self.set_gpu_compute_mode(self.config.gpu_optimization.compute_mode)
+            .await?;
 
         Ok(())
     }
@@ -788,7 +827,8 @@ impl SystemTuner {
         info!("Applying I/O optimizations");
 
         // Set I/O scheduler
-        self.set_io_scheduler(self.config.io_optimization.scheduler).await?;
+        self.set_io_scheduler(self.config.io_optimization.scheduler)
+            .await?;
 
         // Configure readahead
         if let Some(readahead) = self.config.io_optimization.readahead_kb {
@@ -812,7 +852,10 @@ impl SystemTuner {
         // Set governor for all CPUs
         let cpus = self.get_cpu_count().await?;
         for cpu in 0..cpus {
-            let path = format!("/sys/devices/system/cpu/cpu{}/cpufreq/scaling_governor", cpu);
+            let path = format!(
+                "/sys/devices/system/cpu/cpu{}/cpufreq/scaling_governor",
+                cpu
+            );
             if let Err(e) = tokio::fs::write(&path, gov_name).await {
                 warn!("Failed to set governor for CPU {}: {}", cpu, e);
             }
@@ -827,7 +870,8 @@ impl SystemTuner {
 
     async fn enable_numa_balancing(&self) -> Result<()> {
         debug!("Enabling NUMA balancing");
-        tokio::fs::write("/proc/sys/kernel/numa_balancing", "1").await
+        tokio::fs::write("/proc/sys/kernel/numa_balancing", "1")
+            .await
             .context("Failed to enable NUMA balancing")?;
         Ok(())
     }
@@ -840,7 +884,8 @@ impl SystemTuner {
         };
 
         debug!("Setting transparent hugepage policy to: {}", policy);
-        tokio::fs::write("/sys/kernel/mm/transparent_hugepage/enabled", policy).await
+        tokio::fs::write("/sys/kernel/mm/transparent_hugepage/enabled", policy)
+            .await
             .context("Failed to set transparent hugepage policy")?;
 
         Ok(())
@@ -849,21 +894,24 @@ impl SystemTuner {
     async fn optimize_swap(&self) -> Result<()> {
         debug!("Optimizing swap settings");
         // Set swappiness to 10 for better performance
-        tokio::fs::write("/proc/sys/vm/swappiness", "10").await
+        tokio::fs::write("/proc/sys/vm/swappiness", "10")
+            .await
             .context("Failed to set swappiness")?;
         Ok(())
     }
 
     async fn enable_memory_compaction(&self) -> Result<()> {
         debug!("Enabling memory compaction");
-        tokio::fs::write("/proc/sys/vm/compact_memory", "1").await
+        tokio::fs::write("/proc/sys/vm/compact_memory", "1")
+            .await
             .context("Failed to trigger memory compaction")?;
         Ok(())
     }
 
     async fn enable_ksm(&self) -> Result<()> {
         debug!("Enabling KSM");
-        tokio::fs::write("/sys/kernel/mm/ksm/run", "1").await
+        tokio::fs::write("/sys/kernel/mm/ksm/run", "1")
+            .await
             .context("Failed to enable KSM")?;
         Ok(())
     }

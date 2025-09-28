@@ -63,19 +63,19 @@ pub struct VirtualizationConfig {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum PassthroughMode {
-    Full,      // Complete GPU passthrough
-    Mediated,  // Mediated passthrough (mdev)
-    None,      // No passthrough
+    Full,     // Complete GPU passthrough
+    Mediated, // Mediated passthrough (mdev)
+    None,     // No passthrough
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum SchedulingPolicy {
-    FIFO,           // First In, First Out
-    RoundRobin,     // Round Robin
-    Priority,       // Priority-based
-    Fair,           // Fair share
-    LoadBalanced,   // Load-balanced
-    Custom,         // Custom policy
+    FIFO,         // First In, First Out
+    RoundRobin,   // Round Robin
+    Priority,     // Priority-based
+    Fair,         // Fair share
+    LoadBalanced, // Load-balanced
+    Custom,       // Custom policy
 }
 
 impl Default for AdvancedGpuConfig {
@@ -349,10 +349,7 @@ impl MigManager {
     async fn discover_mig_instances(&self) -> Result<()> {
         debug!("Discovering MIG instances");
 
-        let output = Command::new("nvidia-smi")
-            .arg("mig")
-            .arg("-lgi")
-            .output()?;
+        let output = Command::new("nvidia-smi").arg("mig").arg("-lgi").output()?;
 
         if !output.status.success() {
             return Err(anyhow::anyhow!(
@@ -369,7 +366,10 @@ impl MigManager {
             *instances_lock = instances;
         }
 
-        info!("Discovered {} MIG instances", self.instances.read().await.len());
+        info!(
+            "Discovered {} MIG instances",
+            self.instances.read().await.len()
+        );
         Ok(())
     }
 
@@ -551,7 +551,10 @@ impl GpuScheduler {
     }
 
     async fn schedule_workload(&self, mut workload: GpuWorkload) -> Result<SchedulingResult> {
-        info!("Scheduling workload: {} (priority: {})", workload.name, workload.priority);
+        info!(
+            "Scheduling workload: {} (priority: {})",
+            workload.name, workload.priority
+        );
 
         // Add to queue
         workload.status = WorkloadStatus::Queued;
@@ -624,7 +627,8 @@ impl GpuScheduler {
         let gpus = crate::gpu::discover_gpus().await?;
 
         for gpu in gpus {
-            if gpu.memory.unwrap_or(0) >= (workload.gpu_requirements.memory_gb * 1024 * 1024 * 1024) {
+            if gpu.memory.unwrap_or(0) >= (workload.gpu_requirements.memory_gb * 1024 * 1024 * 1024)
+            {
                 return Ok(true);
             }
         }
@@ -632,7 +636,11 @@ impl GpuScheduler {
         Ok(false)
     }
 
-    async fn assign_gpu_resources(&self, workload: &GpuWorkload, state: &mut SchedulerState) -> Result<GpuAssignment> {
+    async fn assign_gpu_resources(
+        &self,
+        workload: &GpuWorkload,
+        state: &mut SchedulerState,
+    ) -> Result<GpuAssignment> {
         let gpus = crate::gpu::discover_gpus().await?;
 
         match self.policy {
@@ -649,14 +657,18 @@ impl GpuScheduler {
             }
             SchedulingPolicy::LoadBalanced => {
                 // Find least loaded GPU
-                let least_loaded_gpu = state.load_balance_stats
+                let least_loaded_gpu = state
+                    .load_balance_stats
                     .iter()
                     .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                     .map(|(gpu_id, _)| *gpu_id)
                     .unwrap_or(0);
 
                 // Update load statistics
-                *state.load_balance_stats.entry(least_loaded_gpu).or_insert(0.0) += 1.0;
+                *state
+                    .load_balance_stats
+                    .entry(least_loaded_gpu)
+                    .or_insert(0.0) += 1.0;
 
                 Ok(GpuAssignment {
                     workload_id: workload.id,
@@ -686,7 +698,7 @@ impl GpuScheduler {
             active_workloads: active.len() as u32,
             total_scheduled: 0, // Would track historical data
             average_wait_time: std::time::Duration::from_secs(0), // Would calculate from data
-            throughput: 0.0, // Would calculate workloads per second
+            throughput: 0.0,    // Would calculate workloads per second
         })
     }
 }
@@ -735,10 +747,10 @@ pub struct MemoryPool {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum MemoryPoolType {
-    Device,    // GPU device memory
-    Host,      // Host memory
-    Unified,   // Unified memory
-    Shared,    // Shared memory
+    Device,  // GPU device memory
+    Host,    // Host memory
+    Unified, // Unified memory
+    Shared,  // Shared memory
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -850,7 +862,10 @@ impl GpuMemoryManager {
         let allocations = self.allocations.read().await;
 
         let total_memory = pools.iter().map(|p| p.total_size_bytes).sum();
-        let used_memory = pools.iter().map(|p| p.total_size_bytes - p.available_size_bytes).sum();
+        let used_memory = pools
+            .iter()
+            .map(|p| p.total_size_bytes - p.available_size_bytes)
+            .sum();
         let utilization = (used_memory as f64 / total_memory as f64) * 100.0;
 
         Ok(MemoryMetrics {
@@ -961,10 +976,7 @@ impl TopologyManager {
         info!("Discovering GPU topology");
 
         // Use nvidia-ml-py equivalent or nvidia-smi to discover topology
-        let output = Command::new("nvidia-smi")
-            .arg("topo")
-            .arg("-m")
-            .output()?;
+        let output = Command::new("nvidia-smi").arg("topo").arg("-m").output()?;
 
         if !output.status.success() {
             return Err(anyhow::anyhow!(
@@ -975,34 +987,30 @@ impl TopologyManager {
 
         // Parse topology (simplified)
         let topology = GpuTopology {
-            nodes: vec![
-                TopologyNode {
-                    id: 0,
-                    node_type: NodeType::GPU,
-                    properties: [
-                        ("name".to_string(), "GPU0".to_string()),
-                        ("pci_bus_id".to_string(), "0000:01:00.0".to_string()),
-                    ].into_iter().collect(),
-                    connections: vec![1],
-                },
-            ],
-            links: vec![
-                TopologyLink {
-                    source: 0,
-                    target: 1,
-                    link_type: LinkType::PCIe,
-                    bandwidth_gbps: 16.0,
-                    latency_ns: 500.0,
-                },
-            ],
-            numa_nodes: vec![
-                NumaNode {
-                    id: 0,
-                    cpus: vec![0, 1, 2, 3],
-                    memory_gb: 32,
-                    gpus: vec![0],
-                },
-            ],
+            nodes: vec![TopologyNode {
+                id: 0,
+                node_type: NodeType::GPU,
+                properties: [
+                    ("name".to_string(), "GPU0".to_string()),
+                    ("pci_bus_id".to_string(), "0000:01:00.0".to_string()),
+                ]
+                .into_iter()
+                .collect(),
+                connections: vec![1],
+            }],
+            links: vec![TopologyLink {
+                source: 0,
+                target: 1,
+                link_type: LinkType::PCIe,
+                bandwidth_gbps: 16.0,
+                latency_ns: 500.0,
+            }],
+            numa_nodes: vec![NumaNode {
+                id: 0,
+                cpus: vec![0, 1, 2, 3],
+                memory_gb: 32,
+                gpus: vec![0],
+            }],
         };
 
         Ok(topology)
@@ -1010,21 +1018,31 @@ impl TopologyManager {
 
     async fn get_topology(&self) -> Result<GpuTopology> {
         let topology_lock = self.topology.read().await;
-        topology_lock.as_ref()
+        topology_lock
+            .as_ref()
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("Topology not initialized"))
     }
 
     async fn get_metrics(&self) -> Result<TopologyMetrics> {
         let topology_lock = self.topology.read().await;
-        let topology = topology_lock.as_ref()
+        let topology = topology_lock
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Topology not initialized"))?;
 
         Ok(TopologyMetrics {
             total_nodes: topology.nodes.len() as u32,
-            gpu_nodes: topology.nodes.iter().filter(|n| matches!(n.node_type, NodeType::GPU)).count() as u32,
+            gpu_nodes: topology
+                .nodes
+                .iter()
+                .filter(|n| matches!(n.node_type, NodeType::GPU))
+                .count() as u32,
             total_links: topology.links.len() as u32,
-            nvlink_count: topology.links.iter().filter(|l| matches!(l.link_type, LinkType::NVLink)).count() as u32,
+            nvlink_count: topology
+                .links
+                .iter()
+                .filter(|l| matches!(l.link_type, LinkType::NVLink))
+                .count() as u32,
             numa_nodes: topology.numa_nodes.len() as u32,
         })
     }
@@ -1169,7 +1187,9 @@ mod tests {
         let node = TopologyNode {
             id: 0,
             node_type: NodeType::GPU,
-            properties: [("name".to_string(), "GPU0".to_string())].into_iter().collect(),
+            properties: [("name".to_string(), "GPU0".to_string())]
+                .into_iter()
+                .collect(),
             connections: vec![1, 2],
         };
 

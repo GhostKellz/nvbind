@@ -70,7 +70,11 @@ impl Default for Wsl2Config {
         Self {
             enable_wsl2_optimizations: true,
             driver_path: PathBuf::from("/usr/lib/wsl/drivers"),
-            preferred_apis: vec!["cuda".to_string(), "opencl".to_string(), "vulkan".to_string()],
+            preferred_apis: vec![
+                "cuda".to_string(),
+                "opencl".to_string(),
+                "vulkan".to_string(),
+            ],
             dx12_config: Dx12Config {
                 enabled: true,
                 debug_layer: false,
@@ -94,9 +98,7 @@ impl Default for Wsl2Config {
                     "VK_KHR_surface".to_string(),
                     "VK_KHR_win32_surface".to_string(),
                 ],
-                device_extensions: vec![
-                    "VK_KHR_swapchain".to_string(),
-                ],
+                device_extensions: vec!["VK_KHR_swapchain".to_string()],
             },
             environment,
         }
@@ -235,7 +237,10 @@ impl Wsl2Manager {
 
         // Check for DirectX support
         if self.check_directx_support()? {
-            if let Wsl2GpuSupport::Available { ref mut directx, .. } = support {
+            if let Wsl2GpuSupport::Available {
+                ref mut directx, ..
+            } = support
+            {
                 *directx = true;
             }
         }
@@ -373,7 +378,10 @@ impl Wsl2Manager {
 
         // DirectX 12 environment
         if self.config.dx12_config.enabled {
-            env.insert("D3D12_ENABLE_EXPERIMENTAL_FEATURES".to_string(), "1".to_string());
+            env.insert(
+                "D3D12_ENABLE_EXPERIMENTAL_FEATURES".to_string(),
+                "1".to_string(),
+            );
 
             if self.config.dx12_config.debug_layer {
                 env.insert("D3D12_DEBUG".to_string(), "1".to_string());
@@ -405,19 +413,32 @@ impl Wsl2Manager {
 
             env.insert(
                 "MESA_OPTIMIZATION_LEVEL".to_string(),
-                self.config.opengl_config.mesa_config.optimization_level.to_string(),
+                self.config
+                    .opengl_config
+                    .mesa_config
+                    .optimization_level
+                    .to_string(),
             );
         }
 
         // Vulkan environment
         if self.config.vulkan_config.enabled {
             if self.config.vulkan_config.validation_layers {
-                env.insert("VK_LAYER_PATH".to_string(), "/usr/share/vulkan/explicit_layer.d".to_string());
-                env.insert("VK_INSTANCE_LAYERS".to_string(), "VK_LAYER_KHRONOS_validation".to_string());
+                env.insert(
+                    "VK_LAYER_PATH".to_string(),
+                    "/usr/share/vulkan/explicit_layer.d".to_string(),
+                );
+                env.insert(
+                    "VK_INSTANCE_LAYERS".to_string(),
+                    "VK_LAYER_KHRONOS_validation".to_string(),
+                );
             }
 
             if self.config.vulkan_config.api_dump {
-                env.insert("VK_LAYER_ENABLES".to_string(), "VK_VALIDATION_FEATURE_ENABLE_API_PARAMETERS_EXT".to_string());
+                env.insert(
+                    "VK_LAYER_ENABLES".to_string(),
+                    "VK_VALIDATION_FEATURE_ENABLE_API_PARAMETERS_EXT".to_string(),
+                );
             }
         }
 
@@ -428,7 +449,10 @@ impl Wsl2Manager {
             env.insert("GALLIUM_DRIVER".to_string(), "d3d12".to_string());
 
             // Enable hardware acceleration
-            env.insert("MESA_D3D12_DEFAULT_ADAPTER_NAME".to_string(), "NVIDIA".to_string());
+            env.insert(
+                "MESA_D3D12_DEFAULT_ADAPTER_NAME".to_string(),
+                "NVIDIA".to_string(),
+            );
 
             // WSL2 GPU scheduling optimizations
             env.insert("WSL_GPU_SCHEDULING".to_string(), "1".to_string());
@@ -448,7 +472,10 @@ impl Wsl2Manager {
         // Mount WSL drivers directory
         if self.config.driver_path.exists() {
             args.push("--volume".to_string());
-            args.push(format!("{}:/usr/lib/wsl/drivers:ro", self.config.driver_path.display()));
+            args.push(format!(
+                "{}:/usr/lib/wsl/drivers:ro",
+                self.config.driver_path.display()
+            ));
         }
 
         // Mount DRI devices for hardware acceleration
@@ -561,7 +588,10 @@ pub mod gaming {
         let mut env = HashMap::new();
 
         // DirectX 12 optimizations for gaming
-        env.insert("D3D12_ENABLE_EXPERIMENTAL_FEATURES".to_string(), "1".to_string());
+        env.insert(
+            "D3D12_ENABLE_EXPERIMENTAL_FEATURES".to_string(),
+            "1".to_string(),
+        );
         env.insert("D3D12_GPU_VALIDATION".to_string(), "0".to_string()); // Disable for performance
         env.insert("D3D12_DEBUG".to_string(), "0".to_string()); // Disable for performance
 
@@ -585,25 +615,40 @@ pub mod gaming {
 
         match profile {
             "performance" => {
-                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "performance".to_string());
+                env.insert(
+                    "NVIDIA_POWER_MANAGEMENT".to_string(),
+                    "performance".to_string(),
+                );
                 env.insert("__GL_SYNC_TO_VBLANK".to_string(), "0".to_string());
                 env.insert("BOLT_CAPSULE_PRIORITY".to_string(), "realtime".to_string());
                 env.insert("NVIDIA_DLSS_ENABLE".to_string(), "1".to_string());
             }
             "ultra-low-latency" => {
-                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "performance".to_string());
+                env.insert(
+                    "NVIDIA_POWER_MANAGEMENT".to_string(),
+                    "performance".to_string(),
+                );
                 env.insert("__GL_SYNC_TO_VBLANK".to_string(), "0".to_string());
                 env.insert("NVIDIA_LOW_LATENCY_MODE".to_string(), "ultra".to_string());
                 env.insert("BOLT_CAPSULE_PRIORITY".to_string(), "realtime".to_string());
                 env.insert("BOLT_QUIC_ACCELERATION".to_string(), "ultra".to_string());
             }
             "balanced" => {
-                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "adaptive".to_string());
+                env.insert(
+                    "NVIDIA_POWER_MANAGEMENT".to_string(),
+                    "adaptive".to_string(),
+                );
                 env.insert("BOLT_CAPSULE_PRIORITY".to_string(), "high".to_string());
             }
             "efficiency" => {
-                env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), "adaptive".to_string());
-                env.insert("BOLT_POWER_EFFICIENT_MODE".to_string(), "enabled".to_string());
+                env.insert(
+                    "NVIDIA_POWER_MANAGEMENT".to_string(),
+                    "adaptive".to_string(),
+                );
+                env.insert(
+                    "BOLT_POWER_EFFICIENT_MODE".to_string(),
+                    "enabled".to_string(),
+                );
             }
             _ => {}
         }
@@ -663,15 +708,24 @@ pub mod ai_ml {
 
         // Memory management for large models
         env.insert("CUDA_LAUNCH_BLOCKING".to_string(), "0".to_string()); // Async execution
-        env.insert("PYTORCH_CUDA_ALLOC_CONF".to_string(), "max_split_size_mb:512".to_string());
+        env.insert(
+            "PYTORCH_CUDA_ALLOC_CONF".to_string(),
+            "max_split_size_mb:512".to_string(),
+        );
 
         // TensorFlow optimizations
-        env.insert("TF_GPU_ALLOCATOR".to_string(), "cuda_malloc_async".to_string());
+        env.insert(
+            "TF_GPU_ALLOCATOR".to_string(),
+            "cuda_malloc_async".to_string(),
+        );
         env.insert("TF_FORCE_GPU_ALLOW_GROWTH".to_string(), "true".to_string());
         env.insert("TF_ENABLE_ONEDNN_OPTS".to_string(), "1".to_string());
 
         // OpenCL for alternative compute
-        env.insert("OPENCL_VENDOR_PATH".to_string(), "/etc/OpenCL/vendors".to_string());
+        env.insert(
+            "OPENCL_VENDOR_PATH".to_string(),
+            "/etc/OpenCL/vendors".to_string(),
+        );
 
         // DirectML for Windows ML integration
         env.insert("DIRECTML_DEBUG".to_string(), "0".to_string());

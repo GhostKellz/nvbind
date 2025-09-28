@@ -7,7 +7,7 @@ use crate::error::NvbindError;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::{warn, info};
+use tracing::{info, warn};
 
 /// Degradation strategies available for different scenarios
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,10 +45,22 @@ impl Default for DegradationConfig {
     fn default() -> Self {
         let mut strategies = HashMap::new();
         strategies.insert("gpu_missing".to_string(), DegradationStrategy::CpuFallback);
-        strategies.insert("driver_unavailable".to_string(), DegradationStrategy::SoftwareRendering);
-        strategies.insert("runtime_failed".to_string(), DegradationStrategy::AlternativeRuntime);
-        strategies.insert("insufficient_memory".to_string(), DegradationStrategy::PerformanceReduction);
-        strategies.insert("security_violation".to_string(), DegradationStrategy::FailFast);
+        strategies.insert(
+            "driver_unavailable".to_string(),
+            DegradationStrategy::SoftwareRendering,
+        );
+        strategies.insert(
+            "runtime_failed".to_string(),
+            DegradationStrategy::AlternativeRuntime,
+        );
+        strategies.insert(
+            "insufficient_memory".to_string(),
+            DegradationStrategy::PerformanceReduction,
+        );
+        strategies.insert(
+            "security_violation".to_string(),
+            DegradationStrategy::FailFast,
+        );
 
         Self {
             enabled: true,
@@ -77,9 +89,15 @@ pub struct SystemCapabilities {
 
 #[derive(Debug, Clone)]
 pub enum DriverAvailability {
-    Available { version: String, driver_type: String },
+    Available {
+        version: String,
+        driver_type: String,
+    },
     Unavailable,
-    Incompatible { version: String, required: String },
+    Incompatible {
+        version: String,
+        required: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -109,10 +127,9 @@ impl GracefulDegradationManager {
     pub async fn new(config: DegradationConfig) -> Result<Self> {
         let capabilities = Self::detect_system_capabilities().await?;
 
-        info!("Graceful degradation initialized - GPU: {}, Driver: {:?}, Runtimes: {:?}",
-            capabilities.gpu_available,
-            capabilities.driver_status,
-            capabilities.available_runtimes
+        info!(
+            "Graceful degradation initialized - GPU: {}, Driver: {:?}, Runtimes: {:?}",
+            capabilities.gpu_available, capabilities.driver_status, capabilities.available_runtimes
         );
 
         Ok(Self {
@@ -138,7 +155,10 @@ impl GracefulDegradationManager {
         let current_attempts = self.attempt_history.get(operation).copied().unwrap_or(0) + 1;
 
         if current_attempts > self.config.max_attempts {
-            warn!("Maximum degradation attempts exceeded for operation: {}", operation);
+            warn!(
+                "Maximum degradation attempts exceeded for operation: {}",
+                operation
+            );
             return Ok(DegradationResult::MaxAttemptsExceeded);
         }
 
@@ -146,36 +166,35 @@ impl GracefulDegradationManager {
         let strategy = self.determine_strategy(error, context);
 
         // Update attempt history after borrowing
-        self.attempt_history.insert(operation.to_string(), current_attempts);
+        self.attempt_history
+            .insert(operation.to_string(), current_attempts);
 
-        info!("Attempting degradation for '{}' using strategy: {:?} (attempt {}/{})",
-            operation, strategy, current_attempts, self.config.max_attempts);
+        info!(
+            "Attempting degradation for '{}' using strategy: {:?} (attempt {}/{})",
+            operation, strategy, current_attempts, self.config.max_attempts
+        );
 
         // Apply degradation strategy
         match strategy {
-            DegradationStrategy::CpuFallback => {
-                self.apply_cpu_fallback(context).await
-            }
-            DegradationStrategy::SoftwareRendering => {
-                self.apply_software_rendering(context).await
-            }
+            DegradationStrategy::CpuFallback => self.apply_cpu_fallback(context).await,
+            DegradationStrategy::SoftwareRendering => self.apply_software_rendering(context).await,
             DegradationStrategy::AlternativeRuntime => {
                 self.apply_alternative_runtime(context).await
             }
-            DegradationStrategy::FeatureReduction => {
-                self.apply_feature_reduction(context).await
-            }
+            DegradationStrategy::FeatureReduction => self.apply_feature_reduction(context).await,
             DegradationStrategy::PerformanceReduction => {
                 self.apply_performance_reduction(context).await
             }
-            DegradationStrategy::FailFast => {
-                Ok(DegradationResult::FailureAccepted)
-            }
+            DegradationStrategy::FailFast => Ok(DegradationResult::FailureAccepted),
         }
     }
 
     /// Determine appropriate degradation strategy based on error type and context
-    fn determine_strategy(&self, error: &NvbindError, context: &OperationContext) -> DegradationStrategy {
+    fn determine_strategy(
+        &self,
+        error: &NvbindError,
+        context: &OperationContext,
+    ) -> DegradationStrategy {
         // Check for context-specific strategy first
         if let Some(strategy) = context.preferred_strategy {
             return strategy;
@@ -196,7 +215,8 @@ impl GracefulDegradationManager {
             _ => "default",
         };
 
-        self.config.strategies
+        self.config
+            .strategies
             .get(strategy_key)
             .copied()
             .unwrap_or(self.config.default_strategy)
@@ -226,16 +246,19 @@ impl GracefulDegradationManager {
             strategy: DegradationStrategy::CpuFallback,
             modifications,
             performance_impact: Some(PerformanceImpact {
-                expected_slowdown: 5.0, // 5x slower
+                expected_slowdown: 5.0,    // 5x slower
                 memory_usage_change: -0.5, // 50% less GPU memory usage
-                cpu_usage_change: 2.0, // 2x more CPU usage
+                cpu_usage_change: 2.0,     // 2x more CPU usage
             }),
             new_container_config: Some(container_config),
         })
     }
 
     /// Apply software rendering fallback
-    async fn apply_software_rendering(&self, context: &OperationContext) -> Result<DegradationResult> {
+    async fn apply_software_rendering(
+        &self,
+        context: &OperationContext,
+    ) -> Result<DegradationResult> {
         if !self.capabilities.rendering_capabilities.software_rendering {
             return Ok(DegradationResult::NotApplicable);
         }
@@ -254,27 +277,39 @@ impl GracefulDegradationManager {
             strategy: DegradationStrategy::SoftwareRendering,
             modifications,
             performance_impact: Some(PerformanceImpact {
-                expected_slowdown: 10.0, // 10x slower for graphics
+                expected_slowdown: 10.0,  // 10x slower for graphics
                 memory_usage_change: 0.1, // Slightly more CPU memory
-                cpu_usage_change: 3.0, // 3x more CPU usage
+                cpu_usage_change: 3.0,    // 3x more CPU usage
             }),
             new_container_config: Some(container_config),
         })
     }
 
     /// Apply alternative container runtime
-    async fn apply_alternative_runtime(&self, context: &OperationContext) -> Result<DegradationResult> {
+    async fn apply_alternative_runtime(
+        &self,
+        context: &OperationContext,
+    ) -> Result<DegradationResult> {
         // Find alternative runtime
         let current_runtime = &context.runtime;
-        let alternative = self.capabilities.available_runtimes.iter()
+        let alternative = self
+            .capabilities
+            .available_runtimes
+            .iter()
             .find(|&rt| rt != current_runtime)
             .cloned();
 
         if let Some(alt_runtime) = alternative {
-            warn!("Switching from {} to {} runtime", current_runtime, alt_runtime);
+            warn!(
+                "Switching from {} to {} runtime",
+                current_runtime, alt_runtime
+            );
 
             let modifications = vec![
-                format!("Switch container runtime from {} to {}", current_runtime, alt_runtime),
+                format!(
+                    "Switch container runtime from {} to {}",
+                    current_runtime, alt_runtime
+                ),
                 "Update runtime-specific configuration".to_string(),
             ];
 
@@ -297,7 +332,10 @@ impl GracefulDegradationManager {
     }
 
     /// Apply feature reduction
-    async fn apply_feature_reduction(&self, context: &OperationContext) -> Result<DegradationResult> {
+    async fn apply_feature_reduction(
+        &self,
+        context: &OperationContext,
+    ) -> Result<DegradationResult> {
         warn!("Reducing feature set for compatibility");
 
         let modifications = vec![
@@ -324,7 +362,10 @@ impl GracefulDegradationManager {
     }
 
     /// Apply performance reduction
-    async fn apply_performance_reduction(&self, context: &OperationContext) -> Result<DegradationResult> {
+    async fn apply_performance_reduction(
+        &self,
+        context: &OperationContext,
+    ) -> Result<DegradationResult> {
         warn!("Reducing performance expectations");
 
         let modifications = vec![
@@ -449,8 +490,8 @@ impl GracefulDegradationManager {
     }
 
     fn detect_vulkan_support() -> bool {
-        std::path::Path::new("/usr/lib/libvulkan.so").exists() ||
-        std::path::Path::new("/usr/lib/x86_64-linux-gnu/libvulkan.so").exists()
+        std::path::Path::new("/usr/lib/libvulkan.so").exists()
+            || std::path::Path::new("/usr/lib/x86_64-linux-gnu/libvulkan.so").exists()
     }
 
     /// Reset attempt history for successful operations
@@ -481,10 +522,10 @@ pub struct OperationContext {
 /// Operation criticality levels
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OperationCriticality {
-    Critical,   // Must succeed, try all strategies
-    High,       // Important, try multiple strategies
-    Medium,     // Normal, try reasonable strategies
-    Low,        // Optional, minimal degradation attempts
+    Critical, // Must succeed, try all strategies
+    High,     // Important, try multiple strategies
+    Medium,   // Normal, try reasonable strategies
+    Low,      // Optional, minimal degradation attempts
 }
 
 /// Result of degradation attempt
@@ -551,6 +592,9 @@ mod tests {
         };
 
         assert_eq!(context.runtime, "podman");
-        assert_eq!(context.preferred_strategy, Some(DegradationStrategy::CpuFallback));
+        assert_eq!(
+            context.preferred_strategy,
+            Some(DegradationStrategy::CpuFallback)
+        );
     }
 }

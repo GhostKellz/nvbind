@@ -157,14 +157,17 @@ impl DocGenerator {
                     description: "Discover all available NVIDIA GPUs on the system".to_string(),
                     parameters: vec![],
                     returns: "Result<Vec<GpuDevice>>".to_string(),
-                    example: Some(r#"
+                    example: Some(
+                        r#"
 use nvbind::gpu;
 
 let gpus = gpu::discover_gpus().await?;
 for gpu in gpus {
     println!("Found GPU: {} ({}MB)", gpu.name, gpu.memory_mb);
 }
-                    "#.to_string()),
+                    "#
+                        .to_string(),
+                    ),
                     errors: vec![
                         "No NVIDIA GPUs found".to_string(),
                         "NVIDIA driver not available".to_string(),
@@ -175,60 +178,67 @@ for gpu in gpus {
                     description: "Get NVIDIA driver information and version".to_string(),
                     parameters: vec![],
                     returns: "Result<DriverInfo>".to_string(),
-                    example: Some(r#"
+                    example: Some(
+                        r#"
 use nvbind::gpu;
 
 let driver = gpu::get_driver_info().await?;
 println!("Driver: {} ({})", driver.version, driver.driver_type);
-                    "#.to_string()),
+                    "#
+                        .to_string(),
+                    ),
                     errors: vec!["Driver information unavailable".to_string()],
                 },
             ],
-            structs: vec![
-                StructDoc {
-                    name: "GpuDevice".to_string(),
-                    description: "Represents a single GPU device".to_string(),
-                    fields: vec![
-                        FieldDoc {
-                            name: "index".to_string(),
-                            field_type: "u32".to_string(),
-                            description: "GPU index (0-based)".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                        FieldDoc {
-                            name: "name".to_string(),
-                            field_type: "String".to_string(),
-                            description: "GPU model name".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                        FieldDoc {
-                            name: "memory_mb".to_string(),
-                            field_type: "u64".to_string(),
-                            description: "GPU memory in megabytes".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                        FieldDoc {
-                            name: "uuid".to_string(),
-                            field_type: "String".to_string(),
-                            description: "Unique GPU identifier".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                    ],
-                    example: Some(r#"
+            structs: vec![StructDoc {
+                name: "GpuDevice".to_string(),
+                description: "Represents a single GPU device".to_string(),
+                fields: vec![
+                    FieldDoc {
+                        name: "index".to_string(),
+                        field_type: "u32".to_string(),
+                        description: "GPU index (0-based)".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                    FieldDoc {
+                        name: "name".to_string(),
+                        field_type: "String".to_string(),
+                        description: "GPU model name".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                    FieldDoc {
+                        name: "memory_mb".to_string(),
+                        field_type: "u64".to_string(),
+                        description: "GPU memory in megabytes".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                    FieldDoc {
+                        name: "uuid".to_string(),
+                        field_type: "String".to_string(),
+                        description: "Unique GPU identifier".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                ],
+                example: Some(
+                    r#"
 {
     "index": 0,
     "name": "NVIDIA GeForce RTX 4090",
     "memory_mb": 24576,
     "uuid": "GPU-12345678-1234-1234-1234-123456789abc"
 }
-                    "#.to_string()),
-                },
+                    "#
+                    .to_string(),
+                ),
+            }],
+            examples: vec![
+                "basic_gpu_discovery".to_string(),
+                "gpu_monitoring".to_string(),
             ],
-            examples: vec!["basic_gpu_discovery".to_string(), "gpu_monitoring".to_string()],
         });
 
         // RBAC Module Documentation
@@ -236,60 +246,60 @@ println!("Driver: {} ({})", driver.version, driver.driver_type);
             module: "rbac".to_string(),
             name: "Role-Based Access Control".to_string(),
             description: "User and group permission management for GPU resources".to_string(),
-            functions: vec![
-                FunctionDoc {
-                    name: "check_permission".to_string(),
-                    description: "Check if user has permission for specific action".to_string(),
-                    parameters: vec![
-                        Parameter {
-                            name: "user".to_string(),
-                            param_type: "User".to_string(),
-                            description: "User to check permissions for".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                        Parameter {
-                            name: "action".to_string(),
-                            param_type: "String".to_string(),
-                            description: "Action to check (e.g., 'gpu.use', 'container.create')".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                    ],
-                    returns: "Result<bool>".to_string(),
-                    example: Some(r#"
+            functions: vec![FunctionDoc {
+                name: "check_permission".to_string(),
+                description: "Check if user has permission for specific action".to_string(),
+                parameters: vec![
+                    Parameter {
+                        name: "user".to_string(),
+                        param_type: "User".to_string(),
+                        description: "User to check permissions for".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                    Parameter {
+                        name: "action".to_string(),
+                        param_type: "String".to_string(),
+                        description: "Action to check (e.g., 'gpu.use', 'container.create')"
+                            .to_string(),
+                        required: true,
+                        default: None,
+                    },
+                ],
+                returns: "Result<bool>".to_string(),
+                example: Some(
+                    r#"
 use nvbind::rbac::{RbacManager, User};
 
 let rbac = RbacManager::new(config);
 let user = User::from_uid(1000)?;
 let has_permission = rbac.check_permission(user, "gpu.use").await?;
-                    "#.to_string()),
-                    errors: vec!["User not found".to_string(), "Invalid action".to_string()],
-                },
-            ],
-            structs: vec![
-                StructDoc {
-                    name: "User".to_string(),
-                    description: "Represents a system user".to_string(),
-                    fields: vec![
-                        FieldDoc {
-                            name: "uid".to_string(),
-                            field_type: "u32".to_string(),
-                            description: "User ID".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                        FieldDoc {
-                            name: "username".to_string(),
-                            field_type: "String".to_string(),
-                            description: "Username".to_string(),
-                            required: true,
-                            default: None,
-                        },
-                    ],
-                    example: None,
-                },
-            ],
+                    "#
+                    .to_string(),
+                ),
+                errors: vec!["User not found".to_string(), "Invalid action".to_string()],
+            }],
+            structs: vec![StructDoc {
+                name: "User".to_string(),
+                description: "Represents a system user".to_string(),
+                fields: vec![
+                    FieldDoc {
+                        name: "uid".to_string(),
+                        field_type: "u32".to_string(),
+                        description: "User ID".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                    FieldDoc {
+                        name: "username".to_string(),
+                        field_type: "String".to_string(),
+                        description: "Username".to_string(),
+                        required: true,
+                        default: None,
+                    },
+                ],
+                example: None,
+            }],
             examples: vec!["rbac_setup".to_string(), "permission_checking".to_string()],
         });
 
@@ -335,7 +345,10 @@ let has_permission = rbac.check_permission(user, "gpu.use").await?;
         if !doc.examples.is_empty() {
             content.push_str("## Examples\n\n");
             for example_name in &doc.examples {
-                content.push_str(&format!("- [{}](../examples/{}.md)\n", example_name, example_name));
+                content.push_str(&format!(
+                    "- [{}](../examples/{}.md)\n",
+                    example_name, example_name
+                ));
             }
         }
 
@@ -352,9 +365,15 @@ let has_permission = rbac.check_permission(user, "gpu.use").await?;
         if !func.parameters.is_empty() {
             content.push_str("**Parameters:**\n\n");
             for param in &func.parameters {
-                let required = if param.required { " (required)" } else { " (optional)" };
-                content.push_str(&format!("- `{}`: `{}` - {}{}\n",
-                    param.name, param.param_type, param.description, required));
+                let required = if param.required {
+                    " (required)"
+                } else {
+                    " (optional)"
+                };
+                content.push_str(&format!(
+                    "- `{}`: `{}` - {}{}\n",
+                    param.name, param.param_type, param.description, required
+                ));
                 if let Some(default) = &param.default {
                     content.push_str(&format!("  - Default: `{}`\n", default));
                 }
@@ -395,9 +414,15 @@ let has_permission = rbac.check_permission(user, "gpu.use").await?;
         if !struct_doc.fields.is_empty() {
             content.push_str("**Fields:**\n\n");
             for field in &struct_doc.fields {
-                let required = if field.required { " (required)" } else { " (optional)" };
-                content.push_str(&format!("- `{}`: `{}` - {}{}\n",
-                    field.name, field.field_type, field.description, required));
+                let required = if field.required {
+                    " (required)"
+                } else {
+                    " (optional)"
+                };
+                content.push_str(&format!(
+                    "- `{}`: `{}` - {}{}\n",
+                    field.name, field.field_type, field.description, required
+                ));
                 if let Some(default) = &field.default {
                     content.push_str(&format!("  - Default: `{}`\n", default));
                 }
@@ -445,12 +470,16 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}"#.to_string(),
-            output: Some(r#"Found 1 GPU(s):
+}"#
+            .to_string(),
+            output: Some(
+                r#"Found 1 GPU(s):
   GPU 0: NVIDIA GeForce RTX 4090
     Memory: 24576 MB
     UUID: GPU-12345678-1234-1234-1234-123456789abc
-    PCI Bus ID: 0000:01:00.0"#.to_string()),
+    PCI Bus ID: 0000:01:00.0"#
+                    .to_string(),
+            ),
         });
 
         // Container Runtime Example
@@ -486,8 +515,10 @@ async fn main() -> Result<()> {
     println!("Container output:\n{}", result.stdout);
 
     Ok(())
-}"#.to_string(),
-            output: Some(r#"Container output:
+}"#
+            .to_string(),
+            output: Some(
+                r#"Container output:
 Wed Sep 25 10:30:00 2024
 +---------------------------------------------------------------------------------------+
 | NVIDIA-SMI 580.42                 Driver Version: 580.42         CUDA Version: 12.0 |
@@ -499,7 +530,9 @@ Wed Sep 25 10:30:00 2024
 |   0  NVIDIA GeForce RTX 4090  Off  | 00000000:01:00.0  On |                  N/A |
 | 30%   35C    P8    25W / 450W |      0MiB / 24576MiB |      0%      Default    |
 |                               |                      |                  N/A     |
-+---------------------------------------------------------------------------------------+"#.to_string()),
++---------------------------------------------------------------------------------------+"#
+                    .to_string(),
+            ),
         });
 
         // RBAC Example
@@ -556,7 +589,8 @@ async fn main() -> Result<()> {
     println!("User can use GPU: {}", can_use_gpu);
 
     Ok(())
-}"#.to_string(),
+}"#
+            .to_string(),
             output: Some("User can use GPU: true".to_string()),
         });
 
@@ -612,7 +646,8 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}"#.to_string(),
+}"#
+            .to_string(),
             output: Some("MIG Instances: 7 active / 7 total".to_string()),
         });
 
@@ -629,7 +664,10 @@ async fn main() -> Result<()> {
     fn generate_example_content(&self, example: &Example) -> Result<String> {
         let mut content = String::new();
 
-        content.push_str(&format!("# {}\n\n", example.name.replace("_", " ").to_uppercase()));
+        content.push_str(&format!(
+            "# {}\n\n",
+            example.name.replace("_", " ").to_uppercase()
+        ));
         content.push_str(&format!("{}\n\n", example.description));
         content.push_str(&format!("**Category:** {}\n\n", example.category));
 
@@ -697,7 +735,8 @@ sudo apt-get install nvbind
 ```bash
 sudo dnf copr enable ghostkellz/nvbind
 sudo dnf install nvbind
-```"#.to_string(),
+```"#
+                        .to_string(),
                     code_examples: vec!["cargo install nvbind".to_string()],
                 },
                 GuideSection {
@@ -725,8 +764,12 @@ This will check for:
 nvbind setup
 ```
 
-This launches an interactive wizard to configure nvbind for your system."#.to_string(),
-                    code_examples: vec!["nvbind --version".to_string(), "nvbind diagnose".to_string()],
+This launches an interactive wizard to configure nvbind for your system."#
+                        .to_string(),
+                    code_examples: vec![
+                        "nvbind --version".to_string(),
+                        "nvbind diagnose".to_string(),
+                    ],
                 },
             ],
         });
@@ -739,7 +782,8 @@ This launches an interactive wizard to configure nvbind for your system."#.to_st
             sections: vec![
                 GuideSection {
                     title: "Configuration File Structure".to_string(),
-                    content: r#"The main configuration file is located at `/etc/nvbind/config.toml`:
+                    content:
+                        r#"The main configuration file is located at `/etc/nvbind/config.toml`:
 
 ```toml
 schema_version = "1.0.0"
@@ -768,7 +812,8 @@ format = "json"
 [cdi]
 spec_dir = "/etc/cdi"
 auto_generate = true
-```"#.to_string(),
+```"#
+                            .to_string(),
                     code_examples: vec!["/etc/nvbind/config.toml".to_string()],
                 },
                 GuideSection {
@@ -804,8 +849,11 @@ max_memory_gb = 32
 ```bash
 nvbind rbac assign-role --user alice --role gpu_user
 nvbind rbac assign-role --user bob --role ml_researcher
-```"#.to_string(),
-                    code_examples: vec!["nvbind rbac assign-role --user alice --role gpu_user".to_string()],
+```"#
+                        .to_string(),
+                    code_examples: vec![
+                        "nvbind rbac assign-role --user alice --role gpu_user".to_string(),
+                    ],
                 },
             ],
         });
@@ -813,8 +861,11 @@ nvbind rbac assign-role --user bob --role ml_researcher
         // Write guides to files
         for guide in &self.guides {
             let content = self.generate_guide_content(guide)?;
-            let filename = format!("{}/guides/{}.md", self.output_dir,
-                                   guide.title.to_lowercase().replace(" ", "_"));
+            let filename = format!(
+                "{}/guides/{}.md",
+                self.output_dir,
+                guide.title.to_lowercase().replace(" ", "_")
+            );
             fs::write(filename, content)?;
         }
 
@@ -834,8 +885,12 @@ nvbind rbac assign-role --user bob --role ml_researcher
         // Table of contents
         content.push_str("## Table of Contents\n\n");
         for (i, section) in guide.sections.iter().enumerate() {
-            content.push_str(&format!("{}. [{}](#{})\n", i + 1, section.title,
-                                     section.title.to_lowercase().replace(" ", "-")));
+            content.push_str(&format!(
+                "{}. [{}](#{})\n",
+                i + 1,
+                section.title,
+                section.title.to_lowercase().replace(" ", "-")
+            ));
         }
         content.push_str("\n");
 
@@ -857,7 +912,9 @@ nvbind rbac assign-role --user bob --role ml_researcher
 
         // Quick Links
         content.push_str("## Quick Links\n\n");
-        content.push_str("- [Installation Guide](guides/getting_started_with_nvbind.md#installation)\n");
+        content.push_str(
+            "- [Installation Guide](guides/getting_started_with_nvbind.md#installation)\n",
+        );
         content.push_str("- [API Reference](api/)\n");
         content.push_str("- [Code Examples](examples/)\n");
         content.push_str("- [Advanced Configuration](guides/advanced_configuration.md)\n\n");
@@ -865,8 +922,10 @@ nvbind rbac assign-role --user bob --role ml_researcher
         // API Reference
         content.push_str("## API Reference\n\n");
         for api_doc in &self.api_docs {
-            content.push_str(&format!("- [{}](api/{}.md) - {}\n",
-                                     api_doc.name, api_doc.module, api_doc.description));
+            content.push_str(&format!(
+                "- [{}](api/{}.md) - {}\n",
+                api_doc.name, api_doc.module, api_doc.description
+            ));
         }
         content.push_str("\n");
 
@@ -874,16 +933,21 @@ nvbind rbac assign-role --user bob --role ml_researcher
         content.push_str("## Examples\n\n");
         let mut examples_by_category: HashMap<String, Vec<&Example>> = HashMap::new();
         for example in &self.examples {
-            examples_by_category.entry(example.category.clone()).or_default().push(example);
+            examples_by_category
+                .entry(example.category.clone())
+                .or_default()
+                .push(example);
         }
 
         for (category, examples) in examples_by_category {
             content.push_str(&format!("### {}\n\n", category.to_uppercase()));
             for example in examples {
-                content.push_str(&format!("- [{}](examples/{}.md) - {}\n",
-                                         example.name.replace("_", " "),
-                                         example.name,
-                                         example.description));
+                content.push_str(&format!(
+                    "- [{}](examples/{}.md) - {}\n",
+                    example.name.replace("_", " "),
+                    example.name,
+                    example.description
+                ));
             }
             content.push_str("\n");
         }
@@ -896,11 +960,13 @@ nvbind rbac assign-role --user bob --role ml_researcher
                 Difficulty::Intermediate => "🟡 Intermediate",
                 Difficulty::Advanced => "🔴 Advanced",
             };
-            content.push_str(&format!("- [{}](guides/{}.md) - {} ({})\n",
-                                     guide.title,
-                                     guide.title.to_lowercase().replace(" ", "_"),
-                                     guide.description,
-                                     difficulty_badge));
+            content.push_str(&format!(
+                "- [{}](guides/{}.md) - {} ({})\n",
+                guide.title,
+                guide.title.to_lowercase().replace(" ", "_"),
+                guide.description,
+                difficulty_badge
+            ));
         }
         content.push_str("\n");
 
@@ -914,7 +980,9 @@ nvbind rbac assign-role --user bob --role ml_researcher
 
         // Support
         content.push_str("## Support\n\n");
-        content.push_str("- **Issues:** [GitHub Issues](https://github.com/ghostkellz/nvbind/issues)\n");
+        content.push_str(
+            "- **Issues:** [GitHub Issues](https://github.com/ghostkellz/nvbind/issues)\n",
+        );
         content.push_str("- **Discussions:** [GitHub Discussions](https://github.com/ghostkellz/nvbind/discussions)\n");
         content.push_str("- **Documentation:** This site\n\n");
 
@@ -1266,36 +1334,45 @@ impl HelpSystem {
 
     fn initialize_topics(&mut self) {
         // GPU Management
-        self.topics.insert("gpu".to_string(), HelpTopic {
-            title: "GPU Management".to_string(),
-            content: r#"nvbind provides comprehensive GPU management capabilities:
+        self.topics.insert(
+            "gpu".to_string(),
+            HelpTopic {
+                title: "GPU Management".to_string(),
+                content: r#"nvbind provides comprehensive GPU management capabilities:
 
 - Automatic GPU discovery
 - Driver compatibility checking
 - Memory usage monitoring
 - Multi-Instance GPU (MIG) support
-- Performance optimization"#.to_string(),
-            examples: vec![
-                "nvbind diagnose --gpu-details".to_string(),
-                "nvbind tune --profile ml".to_string(),
-            ],
-            related: vec!["mig".to_string(), "performance".to_string()],
-        });
+- Performance optimization"#
+                    .to_string(),
+                examples: vec![
+                    "nvbind diagnose --gpu-details".to_string(),
+                    "nvbind tune --profile ml".to_string(),
+                ],
+                related: vec!["mig".to_string(), "performance".to_string()],
+            },
+        );
 
         // Container Management
-        self.topics.insert("containers".to_string(), HelpTopic {
-            title: "Container Management".to_string(),
-            content: r#"Run containers with GPU access:
+        self.topics.insert(
+            "containers".to_string(),
+            HelpTopic {
+                title: "Container Management".to_string(),
+                content: r#"Run containers with GPU access:
 
 - Support for Docker, Podman, Containerd
 - Automatic CDI specification generation
 - Resource isolation and limits
-- Security controls"#.to_string(),
-            examples: vec![
-                "podman run --device nvidia.com/gpu=all nvidia/cuda:12.0-runtime nvidia-smi".to_string(),
-            ],
-            related: vec!["cdi".to_string(), "security".to_string()],
-        });
+- Security controls"#
+                    .to_string(),
+                examples: vec![
+                    "podman run --device nvidia.com/gpu=all nvidia/cuda:12.0-runtime nvidia-smi"
+                        .to_string(),
+                ],
+                related: vec!["cdi".to_string(), "security".to_string()],
+            },
+        );
 
         // More topics...
     }

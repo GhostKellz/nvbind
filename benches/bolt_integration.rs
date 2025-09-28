@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use nvbind::gpu::discover_gpus;
 use std::time::Instant;
 use tokio::runtime::Runtime;
@@ -31,7 +31,9 @@ fn benchmark_bolt_cdi_generation(c: &mut Criterion) {
 
                 #[cfg(feature = "bolt")]
                 {
-                    use nvbind::cdi::bolt::{generate_bolt_gaming_cdi_spec, BoltCapsuleConfig, BoltGpuIsolation};
+                    use nvbind::cdi::bolt::{
+                        BoltCapsuleConfig, BoltGpuIsolation, generate_bolt_gaming_cdi_spec,
+                    };
                     let _spec = generate_bolt_gaming_cdi_spec().await.unwrap_or_default();
                 }
 
@@ -98,7 +100,10 @@ fn benchmark_performance_comparison(c: &mut Criterion) {
                 {
                     use nvbind::bolt::NvbindGpuManager;
                     let manager = NvbindGpuManager::with_defaults();
-                    let _compat = manager.check_bolt_gpu_compatibility().await.unwrap_or_default();
+                    let _compat = manager
+                        .check_bolt_gpu_compatibility()
+                        .await
+                        .unwrap_or_default();
                 }
 
                 let duration = start.elapsed();

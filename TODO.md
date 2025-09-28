@@ -1,326 +1,335 @@
-# nvbind Development TODO
-
-> **Mission**: Continue development of nvbind as a production-ready GPU passthrough runtime with sub-microsecond performance and enterprise reliability.
-
----
-
-## 📊 Current Status
-
-### ✅ **Recently Completed (Fixed)**
-- **Compilation Issues** - All critical compilation errors resolved
-- **Plugin Architecture** - Async trait compatibility fixed with `async-trait` proc macro
-- **Enhanced Error Handling** - Comprehensive GPU driver diagnostics and error recovery
-- **Performance Benchmarks** - Basic benchmark suite with sub-microsecond validation
-- **Unit Tests** - Core GPU discovery tests with enhanced error handling validation
-- **CDI Bug Fixes** - Improved device node creation, validation, and error handling
-- **Code Quality** - Cleaned up unused imports and warnings
-
-### ✅ **Core Features (Stable)**
-- **GPU Discovery Engine** - Comprehensive NVIDIA GPU detection and cataloging
-- **Multi-Runtime Support** - Docker, Podman, and Bolt container runtime integration
-- **CDI v0.6.0 Compliance** - Full Container Device Interface specification support
-- **Driver Intelligence** - Auto-detection of NVIDIA Open, Proprietary, and Nouveau drivers
-- **CLI Interface** - Comprehensive command-line tool with info, run, config, doctor, wsl2 commands
-- **Gaming Optimizations** - Specialized CDI specs for gaming workloads
-
-### 🚧 **Partially Implemented**
-- **WSL2 Support** - Module exists but needs validation and testing
-- **Wine/Proton Integration** - Hooks present but need full gaming workflow validation
-- **Metrics Collection** - Basic structure exists but needs comprehensive telemetry
-- **Security Isolation** - Framework present but needs hardening and validation
+# nvbind Development Roadmap
+> **Mission**: Production-ready GPU passthrough runtime powering Bolt container runtime and GhostForge gaming platform
 
 ---
 
-## 🎯 Phase 1: Production Readiness (Priority P0)
+## 🎯 MVP (Minimum Viable Product)
+*Target: 2-3 weeks - Core functionality for Bolt integration*
 
-### **1.1 Performance Validation & Benchmarking**
-- [ ] **Sub-microsecond Claims Validation**
-  - Expand benchmark suite vs nvidia-docker2
-  - Measure GPU passthrough latency with microsecond precision
-  - Document performance characteristics across different workloads
-  - Validate memory overhead and CPU impact
+### Core MVP Features
+- [x] GPU Discovery Engine - NVIDIA GPU detection
+- [x] Multi-Runtime Support - Docker, Podman, Bolt integration
+- [x] CDI v0.6.0 Compliance - Container Device Interface
+- [x] CLI Interface - Basic commands (info, run, config, doctor)
+- [x] Basic CI/CD - Build, test, security audit pipeline
 
-- [ ] **Stress Testing**
-  - Multi-GPU concurrent access testing
-  - High-frequency container creation/destruction cycles
-  - Memory leak detection under sustained load
-  - Resource contention scenarios
+### MVP Remaining Tasks
+- [ ] **Bolt Runtime Integration Testing**
+  - [ ] Validate BoltRuntime trait implementation
+  - [ ] Test GPU capsule setup with real Bolt runtime
+  - [ ] Verify CDI device application in Bolt containers
+  - [ ] Gaming optimization hooks validation
 
-- [ ] **Performance Dashboard**
-  - Real-time metrics collection and reporting
-  - Integration with Prometheus/Grafana
-  - Performance regression detection
-  - Automated performance CI gates
+- [ ] **Performance Validation**
+  - [ ] Sub-microsecond latency benchmarks vs nvidia-docker
+  - [ ] Memory overhead measurements
+  - [ ] Multi-GPU stress testing
+  - [ ] Container lifecycle performance tests
 
-### **1.2 Robust Error Handling & Logging**
-- [ ] **Comprehensive Error Recovery**
-  - Graceful degradation when GPU unavailable
-  - Driver mismatch detection and user guidance
-  - Container runtime failure handling
-  - Resource cleanup on abnormal termination
+- [ ] **Basic Error Handling**
+  - [ ] GPU driver mismatch detection
+  - [ ] Graceful degradation without GPU
+  - [ ] Container runtime failure recovery
+  - [ ] Resource cleanup on termination
 
 - [ ] **Production Logging**
-  - Structured logging with tracing spans
-  - Configurable log levels and outputs
-  - Security-aware logging (no sensitive data)
-  - Integration with enterprise log aggregation
-
-- [ ] **Health Monitoring**
-  - GPU health checks and monitoring
-  - Runtime connectivity validation
-  - Resource utilization tracking
-  - Automatic recovery mechanisms
-
-### **1.3 Security Hardening**
-- [ ] **Security Audit**
-  - Third-party security assessment
-  - Privilege escalation vulnerability testing
-  - Memory safety validation with Miri
-  - Input sanitization and validation
-
-- [ ] **Rootless Operation Enhancement**
-  - Complete rootless container support validation
-  - User namespace integration testing
-  - Permission boundary enforcement
-  - Secure temporary file handling
-
-- [ ] **Sandboxing & Isolation**
-  - Advanced GPU isolation modes implementation
-  - Resource quotas and limits enforcement
-  - Secure defaults for all configurations
-  - Container escape prevention measures
+  - [ ] Structured logging with tracing
+  - [ ] Configurable log levels
+  - [ ] Security-aware logging (no secrets)
+  - [ ] Error recovery guidance
 
 ---
 
-## 🏗️ Phase 2: Enterprise Features (Priority P1)
+## 🔄 Alpha (Early Testing)
+*Target: 4-6 weeks - GhostForge integration ready*
 
-### **2.1 Advanced CDI Implementation**
-- [ ] **CDI v0.7+ Support**
-  - Upgrade to latest CDI specification
-  - Extended device properties support
-  - Dynamic device allocation
-  - Device topology awareness
+### Alpha Focus Areas
+- [ ] **GhostForge Integration**
+  - [ ] Gaming container profile API
+  - [ ] Real-time performance metrics for GUI
+  - [ ] Proton/Wine optimization profiles
+  - [ ] Steam library detection hooks
+  - [ ] Container status reporting for GUI
 
+- [ ] **Gaming Optimizations**
+  - [ ] Complete Wine/Proton hooks implementation
+  - [ ] DXVK/VKD3D automatic configuration
+  - [ ] Game-specific optimization profiles
+  - [ ] Anti-cheat compatibility modes
+  - [ ] VR headset passthrough support
+
+- [ ] **AI/ML Workload Support**
+  - [ ] Complete Ollama integration testing
+  - [ ] Jarvis backend GPU acceleration
+  - [ ] Model-specific GPU configurations
+  - [ ] Multi-model resource scheduling
+  - [ ] LLM container optimization profiles
+
+- [ ] **Enhanced Security**
+  - [ ] Rootless container validation
+  - [ ] User namespace integration
+  - [ ] GPU isolation enforcement
+  - [ ] Privilege escalation testing
+
+- [ ] **WSL2 Gaming Support**
+  - [ ] WSL2 GPU passthrough validation
+  - [ ] Windows gaming compatibility
+  - [ ] Cross-platform development workflows
+
+---
+
+## 🛠️ Beta (Feature Complete)
+*Target: 8-10 weeks - Enterprise ready*
+
+### Beta Enhancements
 - [ ] **Multi-Vendor GPU Support**
-  - AMD GPU detection and passthrough
-  - Intel GPU support (ARC, integrated)
-  - Vendor-neutral abstraction layer
-  - Hybrid GPU environment handling
+  - [ ] AMD GPU detection and passthrough
+  - [ ] Intel GPU support (ARC, integrated)
+  - [ ] Hybrid GPU environment handling
+  - [ ] Vendor-neutral abstraction layer
 
-- [ ] **Dynamic Device Management**
-  - Hot-plug GPU detection
-  - Runtime device reconfiguration
-  - GPU resource sharing and scheduling
-  - Automatic failover mechanisms
+- [ ] **Enterprise Features**
+  - [ ] RBAC implementation with LDAP/AD
+  - [ ] Resource quota enforcement
+  - [ ] Audit trail for compliance
+  - [ ] Configuration policy engine
 
-### **2.2 Enterprise Integration**
-- [ ] **LDAP/Active Directory Integration**
-  - Enterprise authentication support
-  - Role-based access control
-  - Group-based GPU allocation policies
-  - Audit trail for security compliance
-
-- [ ] **Monitoring & Observability**
-  - OpenTelemetry integration
-  - Custom metrics and alerts
-  - Performance analytics
-  - Usage reporting and billing integration
+- [ ] **Advanced Monitoring**
+  - [ ] OpenTelemetry integration
+  - [ ] Prometheus metrics expansion
+  - [ ] Performance analytics dashboard
+  - [ ] Usage reporting for billing
 
 - [ ] **High Availability**
-  - Cluster-aware GPU management
-  - Load balancing across GPU nodes
-  - Automatic failover and recovery
-  - Distributed configuration management
+  - [ ] Multi-node GPU cluster support
+  - [ ] Load balancing across GPU nodes
+  - [ ] Automatic failover mechanisms
+  - [ ] Distributed configuration
 
-### **2.3 Advanced Configuration Management**
-- [ ] **Policy Engine**
-  - GPU allocation policies
-  - Resource quota enforcement
-  - Workload-specific optimizations
-  - Compliance rule validation
-
-- [ ] **Configuration Validation**
-  - Schema validation for all configs
-  - Dependency checking
-  - Conflict detection and resolution
-  - Migration assistance tools
+- [ ] **CDI v0.7+ Support**
+  - [ ] Latest CDI specification upgrade
+  - [ ] Dynamic device allocation
+  - [ ] Device topology awareness
+  - [ ] Hot-plug GPU detection
 
 ---
 
-## 🎮 Phase 3: Gaming & Specialized Workloads (Priority P2)
+## 🚀 Theta (Performance & Scale)
+*Target: 12-14 weeks - Large scale deployments*
 
-### **3.1 Gaming Ecosystem Excellence**
-- [ ] **Complete Wine/Proton Integration**
-  - Automatic Proton version detection
-  - Game-specific optimization profiles
-  - DXVK/VKD3D configuration management
-  - Steam Deck compatibility
+### Theta Optimizations
+- [ ] **Kubernetes Integration**
+  - [ ] Device plugin implementation
+  - [ ] Custom resource definitions
+  - [ ] GPU scheduling optimization
+  - [ ] Operator development
+
+- [ ] **Cloud Platform Support**
+  - [ ] AWS GPU instances optimization
+  - [ ] Google Cloud GPU integration
+  - [ ] Azure GPU VM support
+  - [ ] Multi-cloud GPU scheduling
+
+- [ ] **AI/ML Workload Optimization**
+  - [ ] TensorFlow GPU allocation
+  - [ ] PyTorch CUDA optimization
+  - [ ] Distributed training support
+  - [ ] MLflow experiment integration
 
 - [ ] **Advanced Gaming Features**
-  - DLSS/FSR optimization profiles
-  - Ray tracing acceleration
-  - VR headset passthrough
-  - Anti-cheat compatibility modes
-
-- [ ] **Game Library Integration**
-  - Steam library scanning
-  - Epic Games Store support
-  - GOG Galaxy integration
-  - Automatic game detection and profiling
-
-### **3.2 AI/ML Workload Optimization**
-- [ ] **ML Framework Integration**
-  - TensorFlow GPU allocation
-  - PyTorch CUDA optimization
-  - JAX distributed training
-  - MLflow experiment tracking
-
-- [ ] **Distributed Training Support**
-  - Multi-GPU training coordination
-  - NCCL communication optimization
-  - Gradient synchronization
-  - Fault tolerance for long-running jobs
-
-### **3.3 WSL2 Excellence**
-- [ ] **Windows Integration**
-  - WSL2 GPU passthrough validation
-  - Windows Terminal integration
-  - PowerShell module development
-  - Windows package manager support
-
-- [ ] **Development Workflow Integration**
-  - Visual Studio Code integration
-  - Docker Desktop compatibility
-  - Windows container support
-  - Cross-platform development tools
+  - [ ] DLSS/FSR optimization profiles
+  - [ ] Ray tracing acceleration
+  - [ ] Steam Deck compatibility
+  - [ ] Game library integration (Steam, Epic, GOG)
 
 ---
 
-## 📚 Phase 4: Developer Experience & Ecosystem (Priority P3)
+## 🧪 RC1-RC6 (Release Candidates)
+*Target: 16-20 weeks - Production hardening*
 
-### **4.1 Comprehensive Documentation**
-- [ ] **API Documentation**
-  - Complete Rust API docs with examples
-  - CLI command reference
-  - Configuration schema documentation
-  - Troubleshooting guides
+### RC1-RC2: Security & Stability
+- [ ] **Security Audit**
+  - [ ] Third-party security assessment
+  - [ ] Memory safety validation with Miri
+  - [ ] Input sanitization audit
+  - [ ] CVE scanning and fixes
 
-- [ ] **Integration Guides**
-  - Docker migration guide
-  - Kubernetes integration
-  - CI/CD pipeline examples
-  - Enterprise deployment patterns
+- [ ] **Stability Testing**
+  - [ ] Long-running stress tests
+  - [ ] Memory leak detection
+  - [ ] Resource contention scenarios
+  - [ ] Crash recovery testing
 
-- [ ] **Video Tutorials & Demos**
-  - Getting started screencast
-  - Gaming setup walkthrough
-  - Enterprise deployment demo
-  - Performance optimization guide
+### RC3-RC4: Performance & Documentation
+- [ ] **Performance Optimization**
+  - [ ] Sub-microsecond latency validation
+  - [ ] Performance regression testing
+  - [ ] Automated performance gates
+  - [ ] Benchmark suite completion
 
-### **4.2 Developer Tools & SDK**
-- [ ] **Language Bindings**
-  - Python SDK for ML workloads
-  - Go bindings for Kubernetes
-  - JavaScript/Node.js for web apps
-  - C++ bindings for performance-critical apps
+- [ ] **Documentation Complete**
+  - [ ] API documentation with examples
+  - [ ] Integration guides (Docker migration)
+  - [ ] Troubleshooting guides
+  - [ ] Video tutorials
 
-- [ ] **IDE Integrations**
-  - VS Code extension
-  - JetBrains plugin
-  - Vim/Neovim plugin
-  - Emacs package
-
-### **4.3 Community & Ecosystem**
+### RC5-RC6: Ecosystem & Distribution
 - [ ] **Package Distribution**
-  - Debian/Ubuntu packages
-  - RHEL/CentOS packages
-  - Arch Linux AUR package
-  - Homebrew formula (for macOS build tools)
+  - [ ] Debian/Ubuntu packages
+  - [ ] RHEL/CentOS packages
+  - [ ] Arch Linux AUR package
+  - [ ] Container images (Docker Hub)
 
-- [ ] **Container Images**
-  - Official Docker images
-  - Multi-architecture support
-  - Minimal security-hardened images
-  - Distroless variants
-
----
-
-## 🔄 Phase 5: Advanced Platform Features (Priority P4)
-
-### **5.1 Kubernetes Integration**
-- [ ] **Device Plugin**
-  - Kubernetes device plugin implementation
-  - GPU resource advertising
-  - Pod scheduling integration
-  - Node resource monitoring
-
-- [ ] **Operator Development**
-  - nvbind Kubernetes operator
-  - Custom resource definitions
-  - Automated GPU node management
-  - Upgrade and maintenance automation
-
-### **5.2 Cloud Platform Integration**
-- [ ] **Cloud Provider Support**
-  - AWS GPU instances optimization
-  - Google Cloud GPU integration
-  - Azure GPU VM support
-  - Multi-cloud GPU scheduling
-
-- [ ] **Serverless GPU**
-  - Function-as-a-Service GPU support
-  - Cold start optimization
-  - Automatic scaling integration
-  - Cost optimization features
+- [ ] **Developer Experience**
+  - [ ] Python SDK for ML workloads
+  - [ ] Go bindings for Kubernetes
+  - [ ] VS Code extension
+  - [ ] CLI completion scripts
 
 ---
 
-## ⚡ Next Immediate Actions (Week 1-2)
+## 📦 Release (1.0.0)
+*Target: 20-24 weeks - Production ready*
 
-### **Priority Tasks**
-1. **Stress Testing Implementation**
-   - Multi-GPU concurrent access tests
-   - Container lifecycle stress tests
-   - Memory leak detection
+### Release Criteria
+- [ ] **Quality Gates**
+  - [ ] All benchmarks pass performance targets
+  - [ ] Security audit clean (no critical findings)
+  - [ ] 90%+ test coverage maintained
+  - [ ] Documentation covers 95% of features
+  - [ ] Zero known data-loss bugs
 
-2. **Performance Dashboard**
-   - Real-time metrics collection
-   - Prometheus integration
-   - Basic performance visualization
+- [ ] **Integration Validation**
+  - [ ] Bolt runtime fully integrated and tested
+  - [ ] GhostForge gaming platform operational
+  - [ ] Enterprise deployment validated
+  - [ ] Community feedback incorporated
 
-3. **Production Logging**
-   - Structured logging implementation
-   - Log level configuration
-   - Security-aware logging
-
-4. **WSL2 Validation**
-   - Complete WSL2 testing suite
-   - Gaming workflow validation
-   - Performance benchmarking
+- [ ] **Performance Targets**
+  - [ ] GPU passthrough latency < 1 microsecond
+  - [ ] 99.9% successful container launches
+  - [ ] 95% Docker command compatibility
+  - [ ] Zero high/critical CVE findings
 
 ---
 
-## 📈 Success Metrics
+## 🎮 Bolt & GhostForge Specific Features
 
-### **Technical KPIs**
-- **Performance**: GPU passthrough latency < 1 microsecond (measurable)
+### Bolt Integration Priority Items
+- [ ] **Capsule GPU Management**
+  - [ ] BTRFS/ZFS snapshot with GPU state
+  - [ ] QUIC networking for GPU sharing
+  - [ ] Declarative TOML GPU configs
+  - [ ] Surge orchestration GPU scheduling
+
+- [ ] **Gaming Capsule Optimization**
+  - [ ] Pre-configured gaming capsule templates
+  - [ ] Wine/Proton capsule automation
+  - [ ] GPU performance profiles per game
+  - [ ] Anti-cheat compatibility capsules
+
+### GhostForge Integration Priority Items
+- [ ] **GUI Integration APIs**
+  - [ ] Real-time container metrics for egui
+  - [ ] Container status events for GUI
+  - [ ] Game detection and profiling
+  - [ ] Performance monitoring widgets
+
+- [ ] **Gaming Library Management**
+  - [ ] Steam library container mapping
+  - [ ] ProtonDB compatibility integration
+  - [ ] Automatic game environment setup
+  - [ ] One-click containerized launching
+
+---
+
+## 🤖 AI/ML Workload Integration
+
+### Ollama Integration Priority Items
+- [x] **Model Optimization Framework**
+  - [x] Model size categories (7B, 13B, 34B, 70B+)
+  - [x] Precision modes (FP32, FP16, Q8, Q4)
+  - [x] Memory optimization configurations
+  - [x] CUDA cache size management
+
+- [ ] **Production Ollama Features**
+  - [ ] Multi-model GPU scheduling
+  - [ ] Dynamic model loading/unloading
+  - [ ] Model warmup and caching
+  - [ ] Resource quotas per model
+  - [ ] Batch inference optimization
+
+### Jarvis AI Assistant Integration
+- [ ] **LLM Backend GPU Acceleration**
+  - [ ] Plugin architecture for GPU backends
+  - [ ] Local inference optimization
+  - [ ] Privacy-first GPU isolation
+  - [ ] Offline model serving
+
+- [ ] **DevOps AI Workflows**
+  - [ ] Docker automation with GPU
+  - [ ] Cloud resource GPU management
+  - [ ] Infrastructure monitoring with AI
+  - [ ] Code generation in containers
+
+### General AI/ML Support
+- [ ] **Framework Integration**
+  - [ ] TensorFlow Serving optimization
+  - [ ] PyTorch model serving
+  - [ ] ONNX Runtime acceleration
+  - [ ] Triton Inference Server support
+
+- [ ] **Model Lifecycle Management**
+  - [ ] Model versioning in containers
+  - [ ] A/B testing infrastructure
+  - [ ] Model deployment automation
+  - [ ] Performance monitoring per model
+
+---
+
+## 📊 Success Metrics
+
+### Technical KPIs
+- **Performance**: GPU passthrough latency < 1 microsecond
 - **Reliability**: 99.9% successful container launches
 - **Security**: Zero high/critical CVE findings
 - **Compatibility**: 95% Docker command compatibility
 
-### **Adoption Metrics**
-- **Community**: 1,000+ GitHub stars
-- **Usage**: 100+ production deployments
-- **Integration**: 5+ container orchestrators supported
-- **Documentation**: 90% user satisfaction score
-
-### **Quality Gates**
-- [ ] All benchmarks pass performance targets
-- [ ] Security audit clean with no critical findings
-- [ ] 90%+ test coverage maintained
-- [ ] Documentation covers 95% of features
-- [ ] Zero known data-loss bugs
+### Integration Success
+- **Bolt Runtime**: Full capsule GPU management
+- **GhostForge**: Seamless gaming container experience
+- **AI/ML Platforms**: Ollama + Jarvis GPU acceleration
+- **Enterprise**: Production deployment ready
+- **Community**: 1,000+ GitHub stars, 100+ production users
 
 ---
 
-*This roadmap prioritizes production readiness and performance validation while building toward comprehensive GPU container ecosystem leadership.*
+## ⚡ Next Sprint (Week 1-2)
+
+### Immediate Actions
+1. **Complete Bolt Integration Testing**
+   - Validate BoltRuntime trait with actual Bolt codebase
+   - Test GPU capsule creation and management
+   - Verify gaming optimization hooks
+
+2. **Performance Benchmarking**
+   - Implement sub-microsecond measurement tools
+   - Compare against nvidia-docker baseline
+   - Document performance characteristics
+
+3. **GhostForge API Design**
+   - Design container status reporting API
+   - Plan real-time metrics integration
+   - Define gaming profile data structures
+
+4. **AI/ML Integration Priority**
+   - Validate Ollama optimization framework
+   - Design Jarvis GPU acceleration API
+   - Test model-specific container configs
+
+5. **Production Logging Enhancement**
+   - Implement structured logging
+   - Add performance telemetry
+   - Security-aware log sanitization
+
+*This roadmap prioritizes Bolt and GhostForge integration while maintaining production-grade quality and performance leadership.*

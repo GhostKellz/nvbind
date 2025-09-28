@@ -5,8 +5,8 @@
 
 use anyhow::{Context, Result};
 use prometheus::{
-    register_counter_vec, register_gauge_vec, register_histogram_vec,
-    CounterVec, GaugeVec, HistogramVec, Encoder, TextEncoder,
+    CounterVec, Encoder, GaugeVec, HistogramVec, TextEncoder, register_counter_vec,
+    register_gauge_vec, register_histogram_vec,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -272,7 +272,10 @@ impl MetricsCollector {
             return Ok(());
         }
 
-        info!("Starting metrics collection (interval: {}s)", self.config.collection_interval_secs);
+        info!(
+            "Starting metrics collection (interval: {}s)",
+            self.config.collection_interval_secs
+        );
 
         let mut interval = interval(Duration::from_secs(self.config.collection_interval_secs));
 
@@ -320,17 +323,20 @@ impl MetricsCollector {
             if parts.len() >= 10 {
                 let gpu_id = parts[0].parse::<u32>().unwrap_or(0);
 
-                metrics.insert(gpu_id, GpuMetrics {
-                    utilization: parts[1].parse().unwrap_or(0.0),
-                    memory_used: parts[2].parse::<u64>().unwrap_or(0) * 1024 * 1024, // Convert MB to bytes
-                    memory_total: parts[3].parse::<u64>().unwrap_or(0) * 1024 * 1024,
-                    temperature: parts[4].parse().unwrap_or(0.0),
-                    power_draw: parts[5].parse().unwrap_or(0.0),
-                    clock_speed: parts[6].parse().unwrap_or(0),
-                    fan_speed: parts[7].parse().unwrap_or(0.0),
-                    encoder_util: parts[8].parse::<f64>().unwrap_or(0.0) * 10.0, // Convert session count to utilization
-                    decoder_util: parts[9].parse::<f64>().unwrap_or(0.0) * 10.0,
-                });
+                metrics.insert(
+                    gpu_id,
+                    GpuMetrics {
+                        utilization: parts[1].parse().unwrap_or(0.0),
+                        memory_used: parts[2].parse::<u64>().unwrap_or(0) * 1024 * 1024, // Convert MB to bytes
+                        memory_total: parts[3].parse::<u64>().unwrap_or(0) * 1024 * 1024,
+                        temperature: parts[4].parse().unwrap_or(0.0),
+                        power_draw: parts[5].parse().unwrap_or(0.0),
+                        clock_speed: parts[6].parse().unwrap_or(0),
+                        fan_speed: parts[7].parse().unwrap_or(0.0),
+                        encoder_util: parts[8].parse::<f64>().unwrap_or(0.0) * 10.0, // Convert session count to utilization
+                        decoder_util: parts[9].parse::<f64>().unwrap_or(0.0) * 10.0,
+                    },
+                );
             }
         }
 
@@ -348,8 +354,8 @@ impl MetricsCollector {
         // Example: Check for running containers
         if let Ok(output) = std::process::Command::new("podman")
             .args(&["ps", "--format", "{{.ID}},{{.Names}}"])
-            .output() {
-
+            .output()
+        {
             let output_str = String::from_utf8_lossy(&output.stdout);
             for line in output_str.lines() {
                 let parts: Vec<&str> = line.split(',').collect();
@@ -357,18 +363,21 @@ impl MetricsCollector {
                     let container_id = parts[0].to_string();
                     let container_name = parts[1].to_string();
 
-                    metrics.insert(container_id.clone(), ContainerMetrics {
-                        container_id: container_id.clone(),
-                        container_name,
-                        cpu_usage: 0.5, // Placeholder
-                        memory_usage: 512 * 1024 * 1024, // Placeholder 512MB
-                        network_rx_bytes: 0,
-                        network_tx_bytes: 0,
-                        disk_read_bytes: 0,
-                        disk_write_bytes: 0,
-                        gpu_devices: vec![],
-                        state: ContainerState::Running,
-                    });
+                    metrics.insert(
+                        container_id.clone(),
+                        ContainerMetrics {
+                            container_id: container_id.clone(),
+                            container_name,
+                            cpu_usage: 0.5,                  // Placeholder
+                            memory_usage: 512 * 1024 * 1024, // Placeholder 512MB
+                            network_rx_bytes: 0,
+                            network_tx_bytes: 0,
+                            disk_read_bytes: 0,
+                            disk_write_bytes: 0,
+                            gpu_devices: vec![],
+                            state: ContainerState::Running,
+                        },
+                    );
                 }
             }
         }
@@ -432,11 +441,11 @@ impl MetricsCollector {
                     .set(metrics.utilization);
 
                 self.gpu_memory
-                    .with_label_values(&[&gpu_id_str, "used"])
+                    .with_label_values(&[&gpu_id_str, &"used".to_string()])
                     .set(metrics.memory_used as f64);
 
                 self.gpu_memory
-                    .with_label_values(&[&gpu_id_str, "total"])
+                    .with_label_values(&[&gpu_id_str, &"total".to_string()])
                     .set(metrics.memory_total as f64);
 
                 self.gpu_temperature
@@ -518,7 +527,11 @@ impl MetricsCollector {
 
     /// Get container metrics
     pub fn get_container_metrics(&self, container_id: &str) -> Option<ContainerMetrics> {
-        self.container_metrics.read().unwrap().get(container_id).cloned()
+        self.container_metrics
+            .read()
+            .unwrap()
+            .get(container_id)
+            .cloned()
     }
 
     /// Get system metrics
@@ -582,8 +595,9 @@ pub async fn perform_health_checks() -> HealthStatus {
 
     // Runtime check
     let runtime_start = Instant::now();
-    let runtime_status = if crate::runtime::validate_runtime("podman").is_ok() ||
-                           crate::runtime::validate_runtime("docker").is_ok() {
+    let runtime_status = if crate::runtime::validate_runtime("podman").is_ok()
+        || crate::runtime::validate_runtime("docker").is_ok()
+    {
         CheckStatus::Ok
     } else {
         CheckStatus::Critical
@@ -595,7 +609,9 @@ pub async fn perform_health_checks() -> HealthStatus {
         duration_ms: runtime_start.elapsed().as_millis() as u64,
     });
 
-    let healthy = checks.iter().all(|c| !matches!(c.status, CheckStatus::Critical));
+    let healthy = checks
+        .iter()
+        .all(|c| !matches!(c.status, CheckStatus::Critical));
 
     HealthStatus {
         healthy,

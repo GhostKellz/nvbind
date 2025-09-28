@@ -179,8 +179,13 @@ impl KubernetesIntegration {
                 gpu.name.clone(),
             );
             labels.insert(
-                format!("{}.{}.memory", self.config.node_labeling.gpu_label_prefix, i),
-                gpu.memory.map(|m| (m / (1024 * 1024)).to_string()).unwrap_or_default(),
+                format!(
+                    "{}.{}.memory",
+                    self.config.node_labeling.gpu_label_prefix, i
+                ),
+                gpu.memory
+                    .map(|m| (m / (1024 * 1024)).to_string())
+                    .unwrap_or_default(),
             );
             labels.insert(
                 format!("{}.{}.uuid", self.config.node_labeling.gpu_label_prefix, i),
@@ -282,7 +287,10 @@ impl DevicePlugin {
             })
             .collect();
 
-        info!("Discovered {} GPU devices for device plugin", self.devices.len());
+        info!(
+            "Discovered {} GPU devices for device plugin",
+            self.devices.len()
+        );
         Ok(())
     }
 
@@ -296,10 +304,7 @@ impl DevicePlugin {
         }
 
         // Create server
-        let server = DevicePluginServer::new(
-            self.socket_path.clone(),
-            self.devices.clone(),
-        );
+        let server = DevicePluginServer::new(self.socket_path.clone(), self.devices.clone());
 
         self.server = Some(server);
 
@@ -316,7 +321,9 @@ impl DevicePlugin {
 
         let registration_request = RegistrationRequest {
             version: "v1beta1".to_string(),
-            endpoint: self.socket_path.file_name()
+            endpoint: self
+                .socket_path
+                .file_name()
                 .unwrap()
                 .to_string_lossy()
                 .to_string(),
@@ -424,23 +431,28 @@ impl CdiManager {
                 .enumerate()
                 .map(|(i, gpu)| CdiDevice {
                     name: format!("gpu{}", i),
-                    annotations: Some([
-                        ("gpu.uuid".to_string(), gpu.id.clone()),
-                        ("gpu.name".to_string(), gpu.name.clone()),
-                        ("gpu.memory".to_string(), gpu.memory.map(|m| m.to_string()).unwrap_or_default()),
-                    ].into_iter().collect()),
+                    annotations: Some(
+                        [
+                            ("gpu.uuid".to_string(), gpu.id.clone()),
+                            ("gpu.name".to_string(), gpu.name.clone()),
+                            (
+                                "gpu.memory".to_string(),
+                                gpu.memory.map(|m| m.to_string()).unwrap_or_default(),
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
                     container_edits: CdiContainerEdits {
-                        device_nodes: vec![
-                            CdiDeviceNode {
-                                path: format!("/dev/nvidia{}", i),
-                                type_: "c".to_string(),
-                                major: 195,
-                                minor: i as u32,
-                                file_mode: Some(0o666),
-                                uid: Some(0),
-                                gid: Some(0),
-                            }
-                        ],
+                        device_nodes: vec![CdiDeviceNode {
+                            path: format!("/dev/nvidia{}", i),
+                            type_: "c".to_string(),
+                            major: 195,
+                            minor: i as u32,
+                            file_mode: Some(0o666),
+                            uid: Some(0),
+                            gid: Some(0),
+                        }],
                         mounts: vec![
                             CdiMount {
                                 host_path: "/usr/bin/nvidia-smi".to_string(),
@@ -449,7 +461,8 @@ impl CdiManager {
                             },
                             CdiMount {
                                 host_path: "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so".to_string(),
-                                container_path: "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so".to_string(),
+                                container_path: "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so"
+                                    .to_string(),
                                 options: vec!["ro".to_string(), "bind".to_string()],
                             },
                         ],
@@ -657,9 +670,7 @@ impl KubernetesClient {
         }
 
         // Fall back to hostname
-        let hostname = hostname::get()?
-            .to_string_lossy()
-            .to_string();
+        let hostname = hostname::get()?.to_string_lossy().to_string();
 
         Ok(hostname)
     }
@@ -674,11 +685,7 @@ impl KubernetesClient {
             cmd.arg("--kubeconfig").arg(config_path);
         }
 
-        let output = cmd
-            .arg("top")
-            .arg("nodes")
-            .arg("--no-headers")
-            .output()?;
+        let output = cmd.arg("top").arg("nodes").arg("--no-headers").output()?;
 
         if !output.status.success() {
             return Err(anyhow::anyhow!(
@@ -689,11 +696,11 @@ impl KubernetesClient {
 
         // Parse output (simplified)
         let usage = ResourceUsage {
-            cpu_usage_percent: 50.0, // Placeholder
+            cpu_usage_percent: 50.0,    // Placeholder
             memory_usage_percent: 60.0, // Placeholder
-            gpu_usage_percent: 80.0, // Placeholder
-            allocated_pods: 10, // Placeholder
-            capacity_pods: 100, // Placeholder
+            gpu_usage_percent: 80.0,    // Placeholder
+            allocated_pods: 10,         // Placeholder
+            capacity_pods: 100,         // Placeholder
         };
 
         Ok(usage)
@@ -766,13 +773,16 @@ impl OpenShiftIntegration {
 
     /// Create GPU-specific Security Context Constraint
     async fn create_gpu_scc(&self) -> Result<()> {
-        let scc_name = self.scc_config.custom_scc_name
+        let scc_name = self
+            .scc_config
+            .custom_scc_name
             .as_deref()
             .unwrap_or("nvbind-gpu-scc");
 
         info!("Creating Security Context Constraint: {}", scc_name);
 
-        let scc_yaml = format!(r#"
+        let scc_yaml = format!(
+            r#"
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
@@ -807,7 +817,10 @@ users: []
 groups: []
 "#,
             scc_name,
-            self.scc_config.selinux_context.as_deref().unwrap_or("MustRunAs")
+            self.scc_config
+                .selinux_context
+                .as_deref()
+                .unwrap_or("MustRunAs")
         );
 
         // Apply SCC (would use oc or kubectl)
@@ -841,7 +854,11 @@ mod tests {
             cpu_cores: Some(4),
         };
 
-        assert!(integration.validate_resource_request(&valid_request).is_ok());
+        assert!(
+            integration
+                .validate_resource_request(&valid_request)
+                .is_ok()
+        );
 
         let invalid_request = ResourceRequest {
             gpu_count: 16, // Exceeds default limit of 8
@@ -849,7 +866,11 @@ mod tests {
             cpu_cores: Some(8),
         };
 
-        assert!(integration.validate_resource_request(&invalid_request).is_err());
+        assert!(
+            integration
+                .validate_resource_request(&invalid_request)
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -879,7 +900,11 @@ mod tests {
         let config = NodeLabeling::default();
         assert!(config.enabled);
         assert_eq!(config.gpu_label_prefix, "nvidia.com/gpu");
-        assert!(config.capability_labels.contains(&"nvidia.com/cuda".to_string()));
+        assert!(
+            config
+                .capability_labels
+                .contains(&"nvidia.com/cuda".to_string())
+        );
     }
 
     #[test]

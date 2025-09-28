@@ -420,7 +420,7 @@ impl Default for SecurityConfig {
                         max_memory: 8 * 1024 * 1024 * 1024, // 8GB
                         max_cpu: 4.0,
                         max_gpu_memory: 16 * 1024 * 1024 * 1024, // 16GB
-                        max_storage: 100 * 1024 * 1024 * 1024, // 100GB
+                        max_storage: 100 * 1024 * 1024 * 1024,   // 100GB
                         max_network_bandwidth: 1000 * 1024 * 1024, // 1Gbps
                     },
                 },
@@ -440,10 +440,7 @@ impl Default for SecurityConfig {
                         "graphics".to_string(),
                         "utility".to_string(),
                     ],
-                    forbidden_gpu_operations: vec![
-                        "display".to_string(),
-                        "video".to_string(),
-                    ],
+                    forbidden_gpu_operations: vec!["display".to_string(), "video".to_string()],
                     mig_isolation: true,
                 },
                 access_policies: AccessSecurityPolicies {
@@ -492,12 +489,16 @@ impl SecurityManager {
             encryption_manager: EncryptionManager::new(config.encryption.clone()),
             compliance_manager: ComplianceManager::new(config.compliance.clone()),
             selinux_manager: if config.mandatory_access_control.selinux.enabled {
-                Some(SeLinuxManager::new(config.mandatory_access_control.selinux.clone()))
+                Some(SeLinuxManager::new(
+                    config.mandatory_access_control.selinux.clone(),
+                ))
             } else {
                 None
             },
             apparmor_manager: if config.mandatory_access_control.apparmor.enabled {
-                Some(AppArmorManager::new(config.mandatory_access_control.apparmor.clone()))
+                Some(AppArmorManager::new(
+                    config.mandatory_access_control.apparmor.clone(),
+                ))
             } else {
                 None
             },
@@ -586,12 +587,21 @@ impl SecurityManager {
     }
 
     /// Validate container security configuration
-    pub async fn validate_container_security(&self, spec: &ContainerSecuritySpec) -> Result<SecurityValidationResult> {
+    pub async fn validate_container_security(
+        &self,
+        spec: &ContainerSecuritySpec,
+    ) -> Result<SecurityValidationResult> {
         let mut violations = Vec::new();
         let mut recommendations = Vec::new();
 
         // Check privileged containers
-        if spec.privileged && !self.config.security_policies.container_policies.allow_privileged {
+        if spec.privileged
+            && !self
+                .config
+                .security_policies
+                .container_policies
+                .allow_privileged
+        {
             violations.push(SecurityViolation {
                 severity: VulnerabilitySeverity::High,
                 category: "Container Security".to_string(),
@@ -602,7 +612,13 @@ impl SecurityManager {
 
         // Check capabilities
         for cap in &spec.capabilities {
-            if self.config.security_policies.container_policies.forbidden_capabilities.contains(cap) {
+            if self
+                .config
+                .security_policies
+                .container_policies
+                .forbidden_capabilities
+                .contains(cap)
+            {
                 violations.push(SecurityViolation {
                     severity: VulnerabilitySeverity::Medium,
                     category: "Container Security".to_string(),
@@ -613,13 +629,26 @@ impl SecurityManager {
         }
 
         // Check resource limits
-        if spec.memory_limit > self.config.security_policies.container_policies.resource_limits.max_memory {
+        if spec.memory_limit
+            > self
+                .config
+                .security_policies
+                .container_policies
+                .resource_limits
+                .max_memory
+        {
             violations.push(SecurityViolation {
                 severity: VulnerabilitySeverity::Medium,
                 category: "Resource Limits".to_string(),
                 description: "Memory limit exceeds maximum allowed".to_string(),
-                remediation: format!("Reduce memory limit to {} bytes or less",
-                                   self.config.security_policies.container_policies.resource_limits.max_memory),
+                remediation: format!(
+                    "Reduce memory limit to {} bytes or less",
+                    self.config
+                        .security_policies
+                        .container_policies
+                        .resource_limits
+                        .max_memory
+                ),
             });
         }
 
@@ -644,7 +673,11 @@ impl SecurityManager {
         })
     }
 
-    fn calculate_security_score(&self, _spec: &ContainerSecuritySpec, violations: &[SecurityViolation]) -> f64 {
+    fn calculate_security_score(
+        &self,
+        _spec: &ContainerSecuritySpec,
+        violations: &[SecurityViolation],
+    ) -> f64 {
         let base_score = 100.0;
         let mut deductions = 0.0;
 
@@ -679,16 +712,21 @@ impl SecurityManager {
 
         // Calculate overall score
         if !report.frameworks.is_empty() {
-            report.overall_score = report.frameworks.iter()
-                .map(|f| f.score)
-                .sum::<f64>() / report.frameworks.len() as f64;
+            report.overall_score = report.frameworks.iter().map(|f| f.score).sum::<f64>()
+                / report.frameworks.len() as f64;
         }
 
-        info!("Compliance report generated with score: {:.1}", report.overall_score);
+        info!(
+            "Compliance report generated with score: {:.1}",
+            report.overall_score
+        );
         Ok(report)
     }
 
-    async fn assess_compliance_framework(&self, framework: ComplianceFramework) -> Result<FrameworkAssessment> {
+    async fn assess_compliance_framework(
+        &self,
+        framework: ComplianceFramework,
+    ) -> Result<FrameworkAssessment> {
         let controls = self.get_framework_controls(framework);
         let mut passed_controls = 0;
         let mut findings = Vec::new();
@@ -729,22 +767,18 @@ impl SecurityManager {
                     category: "Data Protection".to_string(),
                 },
             ],
-            ComplianceFramework::ISO_27001 => vec![
-                ComplianceControl {
-                    id: "A.9.1.2".to_string(),
-                    name: "Access to networks and network services".to_string(),
-                    description: "Network access controls are implemented".to_string(),
-                    category: "Access Control".to_string(),
-                },
-            ],
-            ComplianceFramework::FIPS_140_2 => vec![
-                ComplianceControl {
-                    id: "4.1".to_string(),
-                    name: "Cryptographic Module Specification".to_string(),
-                    description: "Cryptographic modules meet FIPS requirements".to_string(),
-                    category: "Cryptography".to_string(),
-                },
-            ],
+            ComplianceFramework::ISO_27001 => vec![ComplianceControl {
+                id: "A.9.1.2".to_string(),
+                name: "Access to networks and network services".to_string(),
+                description: "Network access controls are implemented".to_string(),
+                category: "Access Control".to_string(),
+            }],
+            ComplianceFramework::FIPS_140_2 => vec![ComplianceControl {
+                id: "4.1".to_string(),
+                name: "Cryptographic Module Specification".to_string(),
+                description: "Cryptographic modules meet FIPS requirements".to_string(),
+                category: "Cryptography".to_string(),
+            }],
             _ => Vec::new(),
         }
     }
@@ -752,10 +786,18 @@ impl SecurityManager {
     async fn assess_control(&self, control: &ComplianceControl) -> Result<ControlAssessment> {
         // Simplified control assessment
         let compliant = match control.id.as_str() {
-            "CC6.1" => self.config.security_policies.access_policies.multi_factor_auth,
+            "CC6.1" => {
+                self.config
+                    .security_policies
+                    .access_policies
+                    .multi_factor_auth
+            }
             "CC6.7" => self.config.encryption.in_transit_encryption,
             "A.9.1.2" => self.config.security_policies.network_policies.default_deny,
-            "4.1" => matches!(self.config.encryption.key_management.algorithm, EncryptionAlgorithm::AES256_GCM),
+            "4.1" => matches!(
+                self.config.encryption.key_management.algorithm,
+                EncryptionAlgorithm::AES256_GCM
+            ),
             _ => false,
         };
 
@@ -944,7 +986,10 @@ impl EncryptionManager {
                 self.initialize_vault_keys().await?;
             }
             _ => {
-                warn!("Key provider not yet implemented: {:?}", self.config.key_management.provider);
+                warn!(
+                    "Key provider not yet implemented: {:?}",
+                    self.config.key_management.provider
+                );
             }
         }
 
@@ -1027,7 +1072,9 @@ impl SeLinuxManager {
             return Ok(SeLinuxStatus::Disabled);
         }
 
-        let status_str = String::from_utf8_lossy(&output.stdout).trim().to_lowercase();
+        let status_str = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .to_lowercase();
         match status_str.as_str() {
             "enforcing" => Ok(SeLinuxStatus::Enforcing),
             "permissive" => Ok(SeLinuxStatus::Permissive),
@@ -1128,16 +1175,14 @@ impl VulnerabilityScanner {
             scan_id: Uuid::new_v4(),
             timestamp: SystemTime::now(),
             scanner: *self,
-            vulnerabilities: vec![
-                Vulnerability {
-                    id: "CVE-2023-12345".to_string(),
-                    severity: VulnerabilitySeverity::Medium,
-                    description: "Example vulnerability".to_string(),
-                    affected_component: "example-library".to_string(),
-                    fixed_version: Some("1.2.3".to_string()),
-                    remediation: "Update to fixed version".to_string(),
-                }
-            ],
+            vulnerabilities: vec![Vulnerability {
+                id: "CVE-2023-12345".to_string(),
+                severity: VulnerabilitySeverity::Medium,
+                description: "Example vulnerability".to_string(),
+                affected_component: "example-library".to_string(),
+                fixed_version: Some("1.2.3".to_string()),
+                remediation: "Update to fixed version".to_string(),
+            }],
             scan_duration: Duration::from_secs(30),
         })
     }
@@ -1247,8 +1292,6 @@ impl Default for VulnerabilityScanner {
         Self::Trivy
     }
 }
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Vulnerability {

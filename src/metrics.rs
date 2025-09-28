@@ -272,7 +272,12 @@ impl MetricsCollector {
     }
 
     /// Record latency measurement
-    pub async fn record_latency(&self, session_id: &str, metric_type: SessionMetricType, latency_ns: u64) -> Result<()> {
+    pub async fn record_latency(
+        &self,
+        session_id: &str,
+        metric_type: SessionMetricType,
+        latency_ns: u64,
+    ) -> Result<()> {
         // Record in active session
         {
             let mut sessions = self.active_sessions.lock().unwrap();
@@ -287,7 +292,10 @@ impl MetricsCollector {
         }
 
         // Record in metrics store if it's a GPU latency metric
-        if matches!(metric_type, SessionMetricType::GpuDiscovery | SessionMetricType::GpuAttachment) {
+        if matches!(
+            metric_type,
+            SessionMetricType::GpuDiscovery | SessionMetricType::GpuAttachment
+        ) {
             let mut store = self.metrics_store.write().await;
             let metric = LatencyMetric {
                 timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
@@ -323,7 +331,12 @@ impl MetricsCollector {
     }
 
     /// Measure container creation performance
-    pub async fn measure_container_creation<F, R>(&self, container_id: &str, runtime: &str, operation: F) -> Result<(R, StartupMetric)>
+    pub async fn measure_container_creation<F, R>(
+        &self,
+        container_id: &str,
+        runtime: &str,
+        operation: F,
+    ) -> Result<(R, StartupMetric)>
     where
         F: FnOnce() -> Result<R>,
     {
@@ -406,13 +419,12 @@ impl MetricsCollector {
     /// End performance session and get results
     pub fn end_session(&self, session_id: &str) -> Result<BenchmarkResults> {
         let mut sessions = self.active_sessions.lock().unwrap();
-        let session = sessions.remove(session_id)
+        let session = sessions
+            .remove(session_id)
             .ok_or_else(|| anyhow::anyhow!("Session not found: {}", session_id))?;
 
         let total_duration = session.start_time.elapsed();
-        let latencies: Vec<f64> = session.metrics.iter()
-            .map(|m| m.value)
-            .collect();
+        let latencies: Vec<f64> = session.metrics.iter().map(|m| m.value).collect();
 
         if latencies.is_empty() {
             return Ok(BenchmarkResults {
@@ -435,9 +447,8 @@ impl MetricsCollector {
         let max = latencies.iter().fold(0.0f64, |a, &b| a.max(b)) as u64;
 
         // Calculate standard deviation
-        let variance = latencies.iter()
-            .map(|x| (x - avg).powi(2))
-            .sum::<f64>() / latencies.len() as f64;
+        let variance =
+            latencies.iter().map(|x| (x - avg).powi(2)).sum::<f64>() / latencies.len() as f64;
         let std_dev = variance.sqrt();
 
         // Calculate percentiles
@@ -464,8 +475,10 @@ impl MetricsCollector {
             metadata: session.tags,
         };
 
-        info!("Session {} completed: avg={}ns, p95={}ns, p99={}ns",
-               session_id, avg as u64, p95, p99);
+        info!(
+            "Session {} completed: avg={}ns, p95={}ns, p99={}ns",
+            session_id, avg as u64, p95, p99
+        );
 
         Ok(results)
     }
@@ -495,17 +508,23 @@ impl MetricsCollector {
         let store = self.metrics_store.read().await;
 
         let avg_latency = if !store.gpu_latency.is_empty() {
-            store.gpu_latency.iter()
+            store
+                .gpu_latency
+                .iter()
                 .map(|m| m.total_latency_ns as f64)
-                .sum::<f64>() / store.gpu_latency.len() as f64
+                .sum::<f64>()
+                / store.gpu_latency.len() as f64
         } else {
             0.0
         };
 
         let avg_startup_time = if !store.startup_metrics.is_empty() {
-            store.startup_metrics.iter()
+            store
+                .startup_metrics
+                .iter()
                 .map(|m| m.startup_time_ms as f64)
-                .sum::<f64>() / store.startup_metrics.len() as f64
+                .sum::<f64>()
+                / store.startup_metrics.len() as f64
         } else {
             0.0
         };
@@ -613,11 +632,19 @@ mod tests {
         let mut tags = HashMap::new();
         tags.insert("runtime".to_string(), "bolt".to_string());
 
-        collector.start_session("test-session".to_string(), tags).unwrap();
+        collector
+            .start_session("test-session".to_string(), tags)
+            .unwrap();
 
         // Record some latency measurements
-        collector.record_latency("test-session", SessionMetricType::GpuDiscovery, 50000).await.unwrap();
-        collector.record_latency("test-session", SessionMetricType::GpuAttachment, 75000).await.unwrap();
+        collector
+            .record_latency("test-session", SessionMetricType::GpuDiscovery, 50000)
+            .await
+            .unwrap();
+        collector
+            .record_latency("test-session", SessionMetricType::GpuAttachment, 75000)
+            .await
+            .unwrap();
 
         // End session and get results
         let results = collector.end_session("test-session").unwrap();

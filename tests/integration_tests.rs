@@ -3,8 +3,8 @@
 //! These tests validate end-to-end functionality without requiring actual GPU hardware.
 
 use anyhow::Result;
-use nvbind::config::Config;
 use nvbind::cdi::{CdiRegistry, generate_nvidia_cdi_spec};
+use nvbind::config::Config;
 use nvbind::gpu::{discover_gpus, is_nvidia_driver_available};
 use nvbind::runtime::validate_runtime;
 use tempfile::TempDir;
@@ -142,8 +142,14 @@ fn test_config_file_operations() -> Result<()> {
     let loaded_config = Config::load_from_file(&config_path)?;
 
     // Verify contents match
-    assert_eq!(config.gpu.default_selection, loaded_config.gpu.default_selection);
-    assert_eq!(config.runtime.default_runtime, loaded_config.runtime.default_runtime);
+    assert_eq!(
+        config.gpu.default_selection,
+        loaded_config.gpu.default_selection
+    );
+    assert_eq!(
+        config.runtime.default_runtime,
+        loaded_config.runtime.default_runtime
+    );
 
     Ok(())
 }
@@ -179,13 +185,16 @@ async fn test_bolt_integration() {
     let result = manager.check_bolt_gpu_compatibility().await;
     match result {
         Ok(compatibility) => {
-            println!("Bolt GPU compatibility: gpus={}, driver={}",
-                compatibility.gpus_available,
-                compatibility.driver_version
+            println!(
+                "Bolt GPU compatibility: gpus={}, driver={}",
+                compatibility.gpus_available, compatibility.driver_version
             );
         }
         Err(e) => {
-            println!("Bolt compatibility check failed (expected without hardware): {}", e);
+            println!(
+                "Bolt compatibility check failed (expected without hardware): {}",
+                e
+            );
         }
     }
 }
@@ -219,12 +228,20 @@ fn test_cli_command_generation() {
     let test_cases = vec![
         ("podman", "all", "nvidia/cuda:latest", vec!["nvidia-smi"]),
         ("docker", "gpu0", "ubuntu:22.04", vec!["echo", "test"]),
-        ("bolt", "all", "pytorch/pytorch:latest", vec!["python", "train.py"]),
+        (
+            "bolt",
+            "all",
+            "pytorch/pytorch:latest",
+            vec!["python", "train.py"],
+        ),
     ];
 
     for (runtime, gpu, image, args) in test_cases {
         // Test that command generation doesn't panic
-        println!("Testing command generation: {} {} {} {:?}", runtime, gpu, image, args);
+        println!(
+            "Testing command generation: {} {} {} {:?}",
+            runtime, gpu, image, args
+        );
 
         // Would normally generate actual commands here
         // For now, just verify the parameters are handled correctly
@@ -246,7 +263,11 @@ fn test_performance_characteristics() {
     let config_time = start.elapsed();
 
     // Should be very fast (sub-millisecond)
-    assert!(config_time.as_millis() < 10, "Config creation too slow: {:?}", config_time);
+    assert!(
+        config_time.as_millis() < 10,
+        "Config creation too slow: {:?}",
+        config_time
+    );
 
     // Test CDI registry creation performance
     let start = Instant::now();
@@ -254,10 +275,16 @@ fn test_performance_characteristics() {
     let registry_time = start.elapsed();
 
     // Should be very fast
-    assert!(registry_time.as_millis() < 10, "Registry creation too slow: {:?}", registry_time);
+    assert!(
+        registry_time.as_millis() < 10,
+        "Registry creation too slow: {:?}",
+        registry_time
+    );
 
-    println!("Performance test passed - config: {:?}, registry: {:?}",
-        config_time, registry_time);
+    println!(
+        "Performance test passed - config: {:?}, registry: {:?}",
+        config_time, registry_time
+    );
 }
 
 /// Test memory safety and resource cleanup
@@ -282,13 +309,15 @@ async fn test_concurrent_operations() {
     use tokio::task;
 
     // Test concurrent configuration access
-    let tasks: Vec<_> = (0..10).map(|i| {
-        task::spawn(async move {
-            let config = Config::default();
-            assert_eq!(config.gpu.default_selection, "all");
-            println!("Task {} completed", i);
+    let tasks: Vec<_> = (0..10)
+        .map(|i| {
+            task::spawn(async move {
+                let config = Config::default();
+                assert_eq!(config.gpu.default_selection, "all");
+                println!("Task {} completed", i);
+            })
         })
-    }).collect();
+        .collect();
 
     // Wait for all tasks
     for task in tasks {

@@ -12,11 +12,7 @@ const CDI_VERSION: &str = "0.6.0";
 const CDI_SPEC_DIR: &str = "/etc/cdi";
 
 /// Alternative CDI spec directories
-const CDI_SPEC_DIRS: &[&str] = &[
-    "/etc/cdi",
-    "/var/run/cdi",
-    "/usr/local/etc/cdi",
-];
+const CDI_SPEC_DIRS: &[&str] = &["/etc/cdi", "/var/run/cdi", "/usr/local/etc/cdi"];
 
 /// CDI specification structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,10 +104,7 @@ impl Default for CdiRegistry {
 impl CdiRegistry {
     /// Create a new CDI registry
     pub fn new() -> Self {
-        let spec_dirs = CDI_SPEC_DIRS
-            .iter()
-            .map(|dir| PathBuf::from(dir))
-            .collect();
+        let spec_dirs = CDI_SPEC_DIRS.iter().map(|dir| PathBuf::from(dir)).collect();
 
         Self {
             spec_dirs,
@@ -138,8 +131,10 @@ impl CdiRegistry {
     fn load_specs_from_dir(&mut self, dir: &Path) -> Result<()> {
         debug!("Loading CDI specs from: {}", dir.display());
 
-        let entries = fs::read_dir(dir)
-            .context(format!("Failed to read CDI spec directory: {}", dir.display()))?;
+        let entries = fs::read_dir(dir).context(format!(
+            "Failed to read CDI spec directory: {}",
+            dir.display()
+        ))?;
 
         for entry in entries {
             let entry = entry?;
@@ -217,18 +212,22 @@ impl CdiRegistry {
         let spec_dir = output_dir.unwrap_or_else(|| Path::new(CDI_SPEC_DIR));
 
         // Ensure the directory exists
-        fs::create_dir_all(spec_dir)
-            .context(format!("Failed to create CDI spec directory: {}", spec_dir.display()))?;
+        fs::create_dir_all(spec_dir).context(format!(
+            "Failed to create CDI spec directory: {}",
+            spec_dir.display()
+        ))?;
 
         // Generate filename from kind
         let filename = format!("{}.json", spec.kind.replace('/', "_"));
         let spec_path = spec_dir.join(filename);
 
-        let content = serde_json::to_string_pretty(spec)
-            .context("Failed to serialize CDI specification")?;
+        let content =
+            serde_json::to_string_pretty(spec).context("Failed to serialize CDI specification")?;
 
-        fs::write(&spec_path, content)
-            .context(format!("Failed to write CDI spec file: {}", spec_path.display()))?;
+        fs::write(&spec_path, content).context(format!(
+            "Failed to write CDI spec file: {}",
+            spec_path.display()
+        ))?;
 
         info!("Saved CDI spec to: {}", spec_path.display());
         Ok(spec_path)
@@ -292,7 +291,11 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
                 mounts.push(Mount {
                     host_path: lib_path.clone(),
                     container_path: lib_path.clone(),
-                    options: Some(vec!["ro".to_string(), "nosuid".to_string(), "nodev".to_string()]),
+                    options: Some(vec![
+                        "ro".to_string(),
+                        "nosuid".to_string(),
+                        "nodev".to_string(),
+                    ]),
                 });
             }
         } else {
@@ -402,7 +405,10 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
 fn validate_cdi_spec(spec: &CdiSpec) -> Result<()> {
     // Check CDI version
     if spec.cdi_version != CDI_VERSION {
-        warn!("CDI version mismatch: spec={}, expected={}", spec.cdi_version, CDI_VERSION);
+        warn!(
+            "CDI version mismatch: spec={}, expected={}",
+            spec.cdi_version, CDI_VERSION
+        );
     }
 
     // Check kind format
@@ -457,8 +463,10 @@ fn create_device_node(device_path: &str) -> Result<DeviceNode> {
     }
 
     // Get device information using stat
-    let metadata = fs::metadata(path)
-        .context(format!("Failed to get metadata for device: {}", device_path))?;
+    let metadata = fs::metadata(path).context(format!(
+        "Failed to get metadata for device: {}",
+        device_path
+    ))?;
 
     // Extract device numbers on Unix systems with correct calculation
     #[cfg(unix)]
@@ -558,7 +566,8 @@ mod tests {
         };
 
         let json = serde_json::to_string_pretty(&spec).expect("Serialization should work in tests");
-        let parsed: CdiSpec = serde_json::from_str(&json).expect("Deserialization should work in tests");
+        let parsed: CdiSpec =
+            serde_json::from_str(&json).expect("Deserialization should work in tests");
 
         assert_eq!(spec.cdi_version, parsed.cdi_version);
         assert_eq!(spec.kind, parsed.kind);
@@ -589,7 +598,9 @@ mod tests {
             }],
         };
 
-        registry.register_spec(spec).expect("Spec registration should work in tests");
+        registry
+            .register_spec(spec)
+            .expect("Spec registration should work in tests");
 
         let devices = registry.list_devices();
         assert_eq!(devices.len(), 1);
@@ -604,7 +615,8 @@ mod tests {
     fn test_device_node_creation() {
         // Test with /dev/null as it should exist on most systems
         if Path::new("/dev/null").exists() {
-            let device_node = create_device_node("/dev/null").expect("Device node creation should work");
+            let device_node =
+                create_device_node("/dev/null").expect("Device node creation should work");
             assert_eq!(device_node.path, "/dev/null");
             assert_eq!(device_node.device_type, Some("c".to_string()));
         }
@@ -628,11 +640,15 @@ mod tests {
         };
 
         // Save the spec
-        let spec_path = registry.save_spec(&spec, Some(temp_dir.path())).expect("Spec saving should work");
+        let spec_path = registry
+            .save_spec(&spec, Some(temp_dir.path()))
+            .expect("Spec saving should work");
         assert!(spec_path.exists());
 
         // Load it back
-        let loaded_spec = registry.load_spec_file(&spec_path).expect("Spec loading should work");
+        let loaded_spec = registry
+            .load_spec_file(&spec_path)
+            .expect("Spec loading should work");
         assert_eq!(spec.kind, loaded_spec.kind);
         assert_eq!(spec.cdi_version, loaded_spec.cdi_version);
     }

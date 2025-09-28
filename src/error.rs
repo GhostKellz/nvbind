@@ -3,8 +3,8 @@
 //! This module provides comprehensive error handling, graceful degradation,
 //! and detailed error reporting for production environments.
 
-use thiserror::Error;
 use std::fmt;
+use thiserror::Error;
 
 /// Main nvbind error type with detailed context and recovery suggestions
 #[derive(Error, Debug)]
@@ -153,25 +153,51 @@ impl NvbindError {
     /// Get the recovery suggestion for this error
     pub fn recovery_suggestion(&self) -> &str {
         match self {
-            NvbindError::Gpu { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::Driver { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::Runtime { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::Configuration { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::Cdi { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::Security { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::Wsl2 { recovery_suggestion, .. } => recovery_suggestion,
+            NvbindError::Gpu {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::Driver {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::Runtime {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::Configuration {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::Cdi {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::Security {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::Wsl2 {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
             #[cfg(feature = "bolt")]
-            NvbindError::Bolt { recovery_suggestion, .. } => recovery_suggestion,
-            NvbindError::System { recovery_suggestion, .. } => recovery_suggestion,
+            NvbindError::Bolt {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
+            NvbindError::System {
+                recovery_suggestion,
+                ..
+            } => recovery_suggestion,
         }
     }
 
     /// Check if this error allows graceful degradation
     pub fn allows_graceful_degradation(&self) -> bool {
-        matches!(self,
-            NvbindError::Gpu { .. } |
-            NvbindError::Driver { .. } |
-            NvbindError::Wsl2 { .. }
+        matches!(
+            self,
+            NvbindError::Gpu { .. } | NvbindError::Driver { .. } | NvbindError::Wsl2 { .. }
         )
     }
 
@@ -380,22 +406,38 @@ macro_rules! config_error {
 /// Error handling utilities
 pub mod utils {
     use super::*;
-    use tracing::{error, warn, info};
+    use tracing::{error, info, warn};
 
     /// Log error with appropriate level based on severity
     pub fn log_error(error: &NvbindError) {
         match error.severity() {
             ErrorSeverity::Critical => {
-                error!("CRITICAL ERROR: {}\nRecovery: {}", error, error.recovery_suggestion());
+                error!(
+                    "CRITICAL ERROR: {}\nRecovery: {}",
+                    error,
+                    error.recovery_suggestion()
+                );
             }
             ErrorSeverity::High => {
-                error!("HIGH SEVERITY: {}\nRecovery: {}", error, error.recovery_suggestion());
+                error!(
+                    "HIGH SEVERITY: {}\nRecovery: {}",
+                    error,
+                    error.recovery_suggestion()
+                );
             }
             ErrorSeverity::Medium => {
-                warn!("MEDIUM SEVERITY: {}\nRecovery: {}", error, error.recovery_suggestion());
+                warn!(
+                    "MEDIUM SEVERITY: {}\nRecovery: {}",
+                    error,
+                    error.recovery_suggestion()
+                );
             }
             ErrorSeverity::Low => {
-                info!("LOW SEVERITY: {}\nRecovery: {}", error, error.recovery_suggestion());
+                info!(
+                    "LOW SEVERITY: {}\nRecovery: {}",
+                    error,
+                    error.recovery_suggestion()
+                );
             }
         }
     }
@@ -461,7 +503,7 @@ mod tests {
     fn test_error_creation() {
         let error = NvbindError::gpu(
             "No GPU found",
-            "Install NVIDIA drivers and ensure GPU is properly connected"
+            "Install NVIDIA drivers and ensure GPU is properly connected",
         );
 
         assert_eq!(error.severity(), ErrorSeverity::Medium);

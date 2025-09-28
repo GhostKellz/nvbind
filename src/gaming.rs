@@ -559,15 +559,24 @@ impl GamingConfig {
             }
 
             if self.wine.dxvk.hud.enabled {
-                env.insert("DXVK_HUD".to_string(), self.wine.dxvk.hud.elements.join(","));
+                env.insert(
+                    "DXVK_HUD".to_string(),
+                    self.wine.dxvk.hud.elements.join(","),
+                );
             }
 
             match self.wine.dxvk.memory_allocation {
                 DxvkMemoryAllocation::Conservative => {
-                    env.insert("DXVK_MEMORY_ALLOCATION".to_string(), "conservative".to_string());
+                    env.insert(
+                        "DXVK_MEMORY_ALLOCATION".to_string(),
+                        "conservative".to_string(),
+                    );
                 }
                 DxvkMemoryAllocation::Aggressive => {
-                    env.insert("DXVK_MEMORY_ALLOCATION".to_string(), "aggressive".to_string());
+                    env.insert(
+                        "DXVK_MEMORY_ALLOCATION".to_string(),
+                        "aggressive".to_string(),
+                    );
                 }
                 _ => {}
             }
@@ -580,7 +589,10 @@ impl GamingConfig {
         // VKD3D configuration
         if self.wine.vkd3d.enabled {
             env.insert("VKD3D_CONFIG".to_string(), "dxr".to_string());
-            env.insert("VKD3D_SHADER_MODEL".to_string(), self.wine.vkd3d.shader_model.clone());
+            env.insert(
+                "VKD3D_SHADER_MODEL".to_string(),
+                self.wine.vkd3d.shader_model.clone(),
+            );
 
             if self.wine.vkd3d.dxr_enabled {
                 env.insert("VKD3D_ENABLE_DXR".to_string(), "1".to_string());
@@ -607,12 +619,15 @@ impl GamingConfig {
         // GPU gaming optimizations
         if self.gpu.dlss.enabled {
             env.insert("NVIDIA_DLSS_ENABLE".to_string(), "1".to_string());
-            env.insert("DLSS_QUALITY".to_string(), match self.gpu.dlss.quality {
-                DlssQuality::Performance => "performance".to_string(),
-                DlssQuality::Balanced => "balanced".to_string(),
-                DlssQuality::Quality => "quality".to_string(),
-                DlssQuality::UltraPerformance => "ultra_performance".to_string(),
-            });
+            env.insert(
+                "DLSS_QUALITY".to_string(),
+                match self.gpu.dlss.quality {
+                    DlssQuality::Performance => "performance".to_string(),
+                    DlssQuality::Balanced => "balanced".to_string(),
+                    DlssQuality::Quality => "quality".to_string(),
+                    DlssQuality::UltraPerformance => "ultra_performance".to_string(),
+                },
+            );
 
             if self.gpu.dlss.frame_generation {
                 env.insert("DLSS_FRAME_GENERATION".to_string(), "1".to_string());
@@ -621,12 +636,15 @@ impl GamingConfig {
 
         if self.gpu.raytracing.enabled {
             env.insert("NVIDIA_RT_CORES_ENABLE".to_string(), "1".to_string());
-            env.insert("RT_QUALITY".to_string(), match self.gpu.raytracing.quality {
-                RaytracingQuality::Low => "low".to_string(),
-                RaytracingQuality::Medium => "medium".to_string(),
-                RaytracingQuality::High => "high".to_string(),
-                RaytracingQuality::Ultra => "ultra".to_string(),
-            });
+            env.insert(
+                "RT_QUALITY".to_string(),
+                match self.gpu.raytracing.quality {
+                    RaytracingQuality::Low => "low".to_string(),
+                    RaytracingQuality::Medium => "medium".to_string(),
+                    RaytracingQuality::High => "high".to_string(),
+                    RaytracingQuality::Ultra => "ultra".to_string(),
+                },
+            );
         }
 
         if self.gpu.vrs.enabled {
@@ -634,12 +652,15 @@ impl GamingConfig {
         }
 
         // Power management
-        env.insert("NVIDIA_POWER_MANAGEMENT".to_string(), match self.gpu.power_management.profile {
-            PowerProfile::Maximum => "performance".to_string(),
-            PowerProfile::Balanced => "balanced".to_string(),
-            PowerProfile::PowerSaver => "power_saver".to_string(),
-            PowerProfile::Quiet => "quiet".to_string(),
-        });
+        env.insert(
+            "NVIDIA_POWER_MANAGEMENT".to_string(),
+            match self.gpu.power_management.profile {
+                PowerProfile::Maximum => "performance".to_string(),
+                PowerProfile::Balanced => "balanced".to_string(),
+                PowerProfile::PowerSaver => "power_saver".to_string(),
+                PowerProfile::Quiet => "quiet".to_string(),
+            },
+        );
 
         // GPU scheduling
         if self.gpu.gpu_scheduling.hardware_scheduling {
@@ -647,27 +668,39 @@ impl GamingConfig {
         }
 
         // Audio optimizations
-        env.insert("AUDIO_DRIVER".to_string(), match self.audio.driver {
-            AudioDriver::PulseAudio => "pulse".to_string(),
-            AudioDriver::PipeWire => "pipewire".to_string(),
-            AudioDriver::Alsa => "alsa".to_string(),
-            AudioDriver::Jack => "jack".to_string(),
-        });
+        env.insert(
+            "AUDIO_DRIVER".to_string(),
+            match self.audio.driver {
+                AudioDriver::PulseAudio => "pulse".to_string(),
+                AudioDriver::PipeWire => "pipewire".to_string(),
+                AudioDriver::Alsa => "alsa".to_string(),
+                AudioDriver::Jack => "jack".to_string(),
+            },
+        );
 
         if self.audio.low_latency {
             env.insert("AUDIO_LOW_LATENCY".to_string(), "1".to_string());
             env.insert("PULSE_LATENCY_MSEC".to_string(), "20".to_string());
         }
 
-        env.insert("AUDIO_SAMPLE_RATE".to_string(), self.audio.sample_rate.to_string());
-        env.insert("AUDIO_BUFFER_SIZE".to_string(), self.audio.buffer_size.to_string());
+        env.insert(
+            "AUDIO_SAMPLE_RATE".to_string(),
+            self.audio.sample_rate.to_string(),
+        );
+        env.insert(
+            "AUDIO_BUFFER_SIZE".to_string(),
+            self.audio.buffer_size.to_string(),
+        );
 
         // Input optimizations
         if self.input.mouse.raw_input {
             env.insert("MOUSE_RAW_INPUT".to_string(), "1".to_string());
         }
 
-        env.insert("MOUSE_POLLING_RATE".to_string(), self.input.mouse.polling_rate.to_string());
+        env.insert(
+            "MOUSE_POLLING_RATE".to_string(),
+            self.input.mouse.polling_rate.to_string(),
+        );
 
         env
     }

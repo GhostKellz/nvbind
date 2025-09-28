@@ -5,11 +5,11 @@
 //! and compares performance against nvidia-docker2.
 
 use anyhow::Result;
-use nvbind::gpu::{discover_gpus, is_nvidia_driver_available, check_nvidia_driver_status};
+use clap::{Parser, Subcommand};
 use nvbind::cdi::generate_nvidia_cdi_spec;
+use nvbind::gpu::{check_nvidia_driver_status, discover_gpus, is_nvidia_driver_available};
 use nvbind::runtime::validate_runtime;
 use std::time::{Duration, Instant};
-use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "nvbind-benchmark")]
@@ -45,7 +45,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Latency { iterations, detailed } => {
+        Commands::Latency {
+            iterations,
+            detailed,
+        } => {
             run_latency_benchmark(iterations, detailed).await?;
         }
         Commands::Compare { image } => {
@@ -109,15 +112,20 @@ async fn run_latency_benchmark(iterations: u32, detailed: bool) -> Result<()> {
     println!();
 
     // Validate sub-microsecond claim
-    let sub_microsecond_count = timings.iter()
+    let sub_microsecond_count = timings
+        .iter()
         .filter(|&&t| t < Duration::from_nanos(1000))
         .count();
 
     let sub_microsecond_percentage = (sub_microsecond_count as f64 / timings.len() as f64) * 100.0;
 
     println!("⚡ Sub-microsecond Performance:");
-    println!("  Operations < 1μs: {}/{} ({:.1}%)",
-             sub_microsecond_count, timings.len(), sub_microsecond_percentage);
+    println!(
+        "  Operations < 1μs: {}/{} ({:.1}%)",
+        sub_microsecond_count,
+        timings.len(),
+        sub_microsecond_percentage
+    );
 
     if sub_microsecond_percentage > 90.0 {
         println!("  ✅ Sub-microsecond claim VALIDATED");
@@ -170,8 +178,15 @@ async fn validate_performance_claims() -> Result<()> {
     let elapsed = start.elapsed();
 
     if driver_available {
-        println!("  Driver check: {:?} - {}", elapsed,
-                 if elapsed < Duration::from_nanos(1000) { "✅ PASS" } else { "❌ FAIL" });
+        println!(
+            "  Driver check: {:?} - {}",
+            elapsed,
+            if elapsed < Duration::from_nanos(1000) {
+                "✅ PASS"
+            } else {
+                "❌ FAIL"
+            }
+        );
     } else {
         println!("  ❌ No NVIDIA driver available");
         return Ok(());
@@ -182,18 +197,31 @@ async fn validate_performance_claims() -> Result<()> {
     let start = Instant::now();
     let gpus = discover_gpus().await?;
     let elapsed = start.elapsed();
-    println!("  GPU discovery ({} GPUs): {:?} - {}",
-             gpus.len(), elapsed,
-             if elapsed < Duration::from_millis(10) { "✅ PASS" } else { "❌ SLOW" });
+    println!(
+        "  GPU discovery ({} GPUs): {:?} - {}",
+        gpus.len(),
+        elapsed,
+        if elapsed < Duration::from_millis(10) {
+            "✅ PASS"
+        } else {
+            "❌ SLOW"
+        }
+    );
 
     // Claim 3: Efficient CDI generation
     println!("\nClaim 3: Efficient CDI specification generation");
     let start = Instant::now();
     let _spec = generate_nvidia_cdi_spec().await?;
     let elapsed = start.elapsed();
-    println!("  CDI generation: {:?} - {}",
-             elapsed,
-             if elapsed < Duration::from_millis(5) { "✅ PASS" } else { "❌ SLOW" });
+    println!(
+        "  CDI generation: {:?} - {}",
+        elapsed,
+        if elapsed < Duration::from_millis(5) {
+            "✅ PASS"
+        } else {
+            "❌ SLOW"
+        }
+    );
 
     // Claim 4: Runtime compatibility
     println!("\nClaim 4: Container runtime compatibility");

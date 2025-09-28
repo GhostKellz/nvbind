@@ -3,8 +3,8 @@
 //! This example demonstrates how to run a container with GPU access
 //! using nvbind's runtime API.
 
-use nvbind::{runtime, config::Config};
 use anyhow::Result;
+use nvbind::{config::Config, runtime};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,7 +28,10 @@ async fn main() -> Result<()> {
         }),
         environment: vec![
             ("NVIDIA_VISIBLE_DEVICES".to_string(), "all".to_string()),
-            ("NVIDIA_DRIVER_CAPABILITIES".to_string(), "compute,utility".to_string()),
+            (
+                "NVIDIA_DRIVER_CAPABILITIES".to_string(),
+                "compute,utility".to_string(),
+            ),
         ],
         working_dir: Some("/workspace".to_string()),
         remove_on_exit: true,
@@ -38,8 +41,19 @@ async fn main() -> Result<()> {
     println!("📋 Container Specification:");
     println!("   Image: {}", container_spec.image);
     println!("   Command: {:?}", container_spec.command);
-    println!("   GPU Count: {}", container_spec.gpu_request.as_ref().unwrap().count);
-    println!("   GPU Memory: {} MB", container_spec.gpu_request.as_ref().unwrap().memory_mb.unwrap_or(0));
+    println!(
+        "   GPU Count: {}",
+        container_spec.gpu_request.as_ref().unwrap().count
+    );
+    println!(
+        "   GPU Memory: {} MB",
+        container_spec
+            .gpu_request
+            .as_ref()
+            .unwrap()
+            .memory_mb
+            .unwrap_or(0)
+    );
     println!();
 
     // Create runtime (prefer podman, fallback to docker)
@@ -48,7 +62,9 @@ async fn main() -> Result<()> {
     } else if runtime::validate_runtime("docker").is_ok() {
         "docker"
     } else {
-        return Err(anyhow::anyhow!("No supported container runtime found (podman or docker)"));
+        return Err(anyhow::anyhow!(
+            "No supported container runtime found (podman or docker)"
+        ));
     };
 
     println!("🚀 Using {} runtime", runtime_name);

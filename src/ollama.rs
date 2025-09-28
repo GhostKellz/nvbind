@@ -161,22 +161,34 @@ impl OllamaConfig {
         let mut env = HashMap::new();
 
         // Core Ollama configuration
-        env.insert("OLLAMA_NUM_PARALLEL".to_string(), self.max_parallel_requests.to_string());
+        env.insert(
+            "OLLAMA_NUM_PARALLEL".to_string(),
+            self.max_parallel_requests.to_string(),
+        );
         env.insert("OLLAMA_MAX_LOADED_MODELS".to_string(), "1".to_string());
         env.insert("OLLAMA_HOST".to_string(), "0.0.0.0:11434".to_string());
         env.insert("OLLAMA_KEEP_ALIVE".to_string(), "24h".to_string());
 
         // GPU memory management
         env.insert("OLLAMA_GPU_MEMORY_FRACTION".to_string(), "0.9".to_string());
-        env.insert("OLLAMA_MAX_QUEUE".to_string(), (self.max_parallel_requests * 2).to_string());
+        env.insert(
+            "OLLAMA_MAX_QUEUE".to_string(),
+            (self.max_parallel_requests * 2).to_string(),
+        );
 
         // CUDA optimizations
         env.insert("CUDA_VISIBLE_DEVICES".to_string(), "all".to_string());
-        env.insert("CUDA_CACHE_MAXSIZE".to_string(), (self.cuda_cache_size * 1024 * 1024).to_string());
+        env.insert(
+            "CUDA_CACHE_MAXSIZE".to_string(),
+            (self.cuda_cache_size * 1024 * 1024).to_string(),
+        );
         env.insert("CUDA_CACHE_DISABLE".to_string(), "0".to_string());
 
         // Memory optimizations
-        env.insert("PYTORCH_CUDA_ALLOC_CONF".to_string(), "max_split_size_mb:512".to_string());
+        env.insert(
+            "PYTORCH_CUDA_ALLOC_CONF".to_string(),
+            "max_split_size_mb:512".to_string(),
+        );
         env.insert("CUDA_LAUNCH_BLOCKING".to_string(), "0".to_string());
 
         // Precision settings
@@ -213,11 +225,17 @@ impl OllamaConfig {
 
         if self.kv_cache_optimization {
             env.insert("OLLAMA_KV_CACHE_TYPE".to_string(), "flash".to_string());
-            env.insert("OLLAMA_KV_CACHE_QUANTIZATION".to_string(), "fp8".to_string());
+            env.insert(
+                "OLLAMA_KV_CACHE_QUANTIZATION".to_string(),
+                "fp8".to_string(),
+            );
         }
 
         // Context and batch settings
-        env.insert("OLLAMA_MAX_CONTEXT".to_string(), self.context_length.to_string());
+        env.insert(
+            "OLLAMA_MAX_CONTEXT".to_string(),
+            self.context_length.to_string(),
+        );
         env.insert("OLLAMA_BATCH_SIZE".to_string(), "512".to_string());
 
         // Performance tuning
@@ -250,22 +268,49 @@ impl Default for OllamaModelRegistry {
         let mut models = HashMap::new();
 
         // Popular 7B models
-        models.insert("llama3.2:7b".to_string(), OllamaConfig::for_model_name("llama3.2:7b"));
-        models.insert("phi3:3.8b".to_string(), OllamaConfig::for_model_name("phi3:3.8b"));
-        models.insert("codellama:7b".to_string(), OllamaConfig::for_model_name("codellama:7b"));
-        models.insert("mistral:7b".to_string(), OllamaConfig::for_model_name("mistral:7b"));
+        models.insert(
+            "llama3.2:7b".to_string(),
+            OllamaConfig::for_model_name("llama3.2:7b"),
+        );
+        models.insert(
+            "phi3:3.8b".to_string(),
+            OllamaConfig::for_model_name("phi3:3.8b"),
+        );
+        models.insert(
+            "codellama:7b".to_string(),
+            OllamaConfig::for_model_name("codellama:7b"),
+        );
+        models.insert(
+            "mistral:7b".to_string(),
+            OllamaConfig::for_model_name("mistral:7b"),
+        );
 
         // 13B models
-        models.insert("llama3.1:13b".to_string(), OllamaConfig::for_model_name("llama3.1:13b"));
-        models.insert("mixtral:8x7b".to_string(), OllamaConfig::for_model_name("mixtral:8x7b"));
+        models.insert(
+            "llama3.1:13b".to_string(),
+            OllamaConfig::for_model_name("llama3.1:13b"),
+        );
+        models.insert(
+            "mixtral:8x7b".to_string(),
+            OllamaConfig::for_model_name("mixtral:8x7b"),
+        );
 
         // 34B models
-        models.insert("codellama:34b".to_string(), OllamaConfig::for_model_name("codellama:34b"));
+        models.insert(
+            "codellama:34b".to_string(),
+            OllamaConfig::for_model_name("codellama:34b"),
+        );
         models.insert("yi:34b".to_string(), OllamaConfig::for_model_name("yi:34b"));
 
         // 70B+ models
-        models.insert("llama3.1:70b".to_string(), OllamaConfig::for_model_name("llama3.1:70b"));
-        models.insert("qwen2:72b".to_string(), OllamaConfig::for_model_name("qwen2:72b"));
+        models.insert(
+            "llama3.1:70b".to_string(),
+            OllamaConfig::for_model_name("llama3.1:70b"),
+        );
+        models.insert(
+            "qwen2:72b".to_string(),
+            OllamaConfig::for_model_name("qwen2:72b"),
+        );
 
         Self { models }
     }
@@ -278,7 +323,8 @@ impl OllamaModelRegistry {
 
     /// Get optimized configuration for a model
     pub fn get_config(&self, model_name: &str) -> OllamaConfig {
-        self.models.get(model_name)
+        self.models
+            .get(model_name)
             .cloned()
             .unwrap_or_else(|| OllamaConfig::for_model_name(model_name))
     }
@@ -313,11 +359,7 @@ impl OllamaLauncher {
     }
 
     /// Launch Ollama container with optimized GPU configuration
-    pub async fn launch_model(
-        &self,
-        model_name: &str,
-        runtime: Option<&str>,
-    ) -> Result<()> {
+    pub async fn launch_model(&self, model_name: &str, runtime: Option<&str>) -> Result<()> {
         info!("Launching Ollama model: {}", model_name);
 
         let config = self.registry.get_config(model_name);
@@ -351,18 +393,15 @@ impl OllamaLauncher {
             "all".to_string(),
             "ollama/ollama:latest".to_string(),
             launch_args,
-        ).await?;
+        )
+        .await?;
 
         info!("Ollama model {} launched successfully", model_name);
         Ok(())
     }
 
     /// Hot-swap to a different model with minimal downtime
-    pub async fn hot_swap_model(
-        &self,
-        old_model: &str,
-        new_model: &str,
-    ) -> Result<()> {
+    pub async fn hot_swap_model(&self, old_model: &str, new_model: &str) -> Result<()> {
         info!("Hot-swapping from {} to {}", old_model, new_model);
 
         let _new_config = self.registry.get_config(new_model);
@@ -386,21 +425,31 @@ impl OllamaLauncher {
 
         match config.model_size {
             ModelSize::Small => {
-                recommendations.push("Consider increasing parallel requests for better throughput".to_string());
-                recommendations.push("FP16 precision provides optimal speed/quality balance".to_string());
+                recommendations.push(
+                    "Consider increasing parallel requests for better throughput".to_string(),
+                );
+                recommendations
+                    .push("FP16 precision provides optimal speed/quality balance".to_string());
             }
             ModelSize::Medium => {
                 recommendations.push("Enable tensor parallelism for large batch sizes".to_string());
-                recommendations.push("Mixed precision recommended for best performance".to_string());
+                recommendations
+                    .push("Mixed precision recommended for best performance".to_string());
             }
             ModelSize::Large => {
-                recommendations.push("Ensure sufficient GPU memory (24GB+) for optimal performance".to_string());
+                recommendations.push(
+                    "Ensure sufficient GPU memory (24GB+) for optimal performance".to_string(),
+                );
                 recommendations.push("Consider multi-GPU setup for better throughput".to_string());
             }
             ModelSize::XLarge => {
-                recommendations.push("Multi-instance GPU (MIG) recommended for resource sharing".to_string());
-                recommendations.push("Tensor parallelism essential for acceptable inference speed".to_string());
-                recommendations.push("Consider model quantization if memory is limited".to_string());
+                recommendations
+                    .push("Multi-instance GPU (MIG) recommended for resource sharing".to_string());
+                recommendations.push(
+                    "Tensor parallelism essential for acceptable inference speed".to_string(),
+                );
+                recommendations
+                    .push("Consider model quantization if memory is limited".to_string());
             }
         }
 
@@ -414,10 +463,22 @@ mod tests {
 
     #[test]
     fn test_model_size_detection() {
-        assert_eq!(OllamaConfig::detect_model_size("llama3.1:70b"), ModelSize::XLarge);
-        assert_eq!(OllamaConfig::detect_model_size("codellama:34b"), ModelSize::Large);
-        assert_eq!(OllamaConfig::detect_model_size("llama3.1:13b"), ModelSize::Medium);
-        assert_eq!(OllamaConfig::detect_model_size("phi3:3.8b"), ModelSize::Small);
+        assert_eq!(
+            OllamaConfig::detect_model_size("llama3.1:70b"),
+            ModelSize::XLarge
+        );
+        assert_eq!(
+            OllamaConfig::detect_model_size("codellama:34b"),
+            ModelSize::Large
+        );
+        assert_eq!(
+            OllamaConfig::detect_model_size("llama3.1:13b"),
+            ModelSize::Medium
+        );
+        assert_eq!(
+            OllamaConfig::detect_model_size("phi3:3.8b"),
+            ModelSize::Small
+        );
     }
 
     #[test]

@@ -115,8 +115,8 @@ impl Distribution {
 
     /// Parse /etc/os-release file
     fn parse_os_release() -> Result<Self> {
-        let content = fs::read_to_string("/etc/os-release")
-            .context("Failed to read /etc/os-release")?;
+        let content =
+            fs::read_to_string("/etc/os-release").context("Failed to read /etc/os-release")?;
 
         let mut id = None;
         let mut id_like = None;
@@ -160,13 +160,15 @@ impl Distribution {
             });
         }
 
-        Err(anyhow::anyhow!("Could not determine distribution from os-release"))
+        Err(anyhow::anyhow!(
+            "Could not determine distribution from os-release"
+        ))
     }
 
     /// Parse /etc/lsb-release file
     fn parse_lsb_release() -> Result<Self> {
-        let content = fs::read_to_string("/etc/lsb-release")
-            .context("Failed to read /etc/lsb-release")?;
+        let content =
+            fs::read_to_string("/etc/lsb-release").context("Failed to read /etc/lsb-release")?;
 
         for line in content.lines() {
             if let Some(value) = line.strip_prefix("DISTRIB_ID=") {
@@ -185,7 +187,9 @@ impl Distribution {
             }
         }
 
-        Err(anyhow::anyhow!("Could not determine distribution from lsb-release"))
+        Err(anyhow::anyhow!(
+            "Could not determine distribution from lsb-release"
+        ))
     }
 
     /// Get the distribution name as a string
@@ -225,14 +229,26 @@ impl DistroConfig {
             version,
             package_manager: PackageManager {
                 name: "pacman".to_string(),
-                install_cmd: vec!["pacman".to_string(), "-S".to_string(), "--noconfirm".to_string()],
-                update_cmd: vec!["pacman".to_string(), "-Syu".to_string(), "--noconfirm".to_string()],
+                install_cmd: vec![
+                    "pacman".to_string(),
+                    "-S".to_string(),
+                    "--noconfirm".to_string(),
+                ],
+                update_cmd: vec![
+                    "pacman".to_string(),
+                    "-Syu".to_string(),
+                    "--noconfirm".to_string(),
+                ],
                 search_cmd: vec!["pacman".to_string(), "-Ss".to_string()],
-                remove_cmd: vec!["pacman".to_string(), "-R".to_string(), "--noconfirm".to_string()],
+                remove_cmd: vec![
+                    "pacman".to_string(),
+                    "-R".to_string(),
+                    "--noconfirm".to_string(),
+                ],
             },
             nvidia_packages: vec![
-                "nvidia-open".to_string(),        // Preferred open-source driver
-                "nvidia".to_string(),             // Proprietary driver fallback
+                "nvidia-open".to_string(), // Preferred open-source driver
+                "nvidia".to_string(),      // Proprietary driver fallback
                 "nvidia-utils".to_string(),
                 "nvidia-settings".to_string(),
                 "cuda".to_string(),
@@ -323,11 +339,11 @@ impl DistroConfig {
 
         // Ubuntu-specific NVIDIA packages
         config.nvidia_packages = vec![
-            "nvidia-driver-535".to_string(),  // Latest stable
-            "nvidia-driver-525".to_string(),  // LTS fallback
+            "nvidia-driver-535".to_string(), // Latest stable
+            "nvidia-driver-525".to_string(), // LTS fallback
             "nvidia-cuda-toolkit".to_string(),
             "nvidia-settings".to_string(),
-            "nvidia-prime".to_string(),       // For hybrid graphics
+            "nvidia-prime".to_string(), // For hybrid graphics
         ];
 
         config
@@ -346,7 +362,7 @@ impl DistroConfig {
                 remove_cmd: vec!["dnf".to_string(), "remove".to_string(), "-y".to_string()],
             },
             nvidia_packages: vec![
-                "akmod-nvidia".to_string(),       // RPM Fusion
+                "akmod-nvidia".to_string(), // RPM Fusion
                 "xorg-x11-drv-nvidia".to_string(),
                 "xorg-x11-drv-nvidia-cuda".to_string(),
                 "nvidia-settings".to_string(),
@@ -407,7 +423,11 @@ impl DistroConfig {
             version,
             package_manager: PackageManager {
                 name: "zypper".to_string(),
-                install_cmd: vec!["zypper".to_string(), "install".to_string(), "-y".to_string()],
+                install_cmd: vec![
+                    "zypper".to_string(),
+                    "install".to_string(),
+                    "-y".to_string(),
+                ],
                 update_cmd: vec!["zypper".to_string(), "update".to_string(), "-y".to_string()],
                 search_cmd: vec!["zypper".to_string(), "search".to_string()],
                 remove_cmd: vec!["zypper".to_string(), "remove".to_string(), "-y".to_string()],
@@ -417,10 +437,7 @@ impl DistroConfig {
                 "nvidia-computeG05".to_string(),
                 "nvidia-utils".to_string(),
             ],
-            opencl_packages: vec![
-                "nvidia-opencl".to_string(),
-                "opencl-headers".to_string(),
-            ],
+            opencl_packages: vec!["nvidia-opencl".to_string(), "opencl-headers".to_string()],
             vulkan_packages: vec![
                 "vulkan-tools".to_string(),
                 "vulkan-validationlayers".to_string(),
@@ -431,10 +448,7 @@ impl DistroConfig {
                 "kernel-devel".to_string(),
                 "kernel-default-devel".to_string(),
             ],
-            library_paths: vec![
-                "/usr/lib64".to_string(),
-                "/usr/lib".to_string(),
-            ],
+            library_paths: vec!["/usr/lib64".to_string(), "/usr/lib".to_string()],
             service_manager: ServiceManager::Systemd,
             kernel_modules: vec![
                 "nvidia".to_string(),
@@ -485,7 +499,8 @@ impl DistroConfig {
             Distribution::Arch | Distribution::Manjaro => {
                 instructions.push("# Arch Linux / Manjaro Installation".to_string());
                 instructions.push("sudo pacman -Syu".to_string());
-                instructions.push("sudo pacman -S nvidia-open nvidia-utils nvidia-settings".to_string());
+                instructions
+                    .push("sudo pacman -S nvidia-open nvidia-utils nvidia-settings".to_string());
                 instructions.push("# For AUR packages (optional):".to_string());
                 instructions.push("# yay -S cuda cuda-tools".to_string());
             }
@@ -509,7 +524,8 @@ impl DistroConfig {
                 instructions.push("# Enable RPM Fusion:".to_string());
                 instructions.push("sudo dnf install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm".to_string());
                 instructions.push("sudo dnf install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm".to_string());
-                instructions.push("sudo dnf install akmod-nvidia xorg-x11-drv-nvidia-cuda".to_string());
+                instructions
+                    .push("sudo dnf install akmod-nvidia xorg-x11-drv-nvidia-cuda".to_string());
             }
             Distribution::CentOS | Distribution::RHEL => {
                 instructions.push("# RHEL/CentOS Installation".to_string());
@@ -529,8 +545,12 @@ impl DistroConfig {
             }
             Distribution::Unknown(_) => {
                 instructions.push("# Generic Installation Instructions".to_string());
-                instructions.push("# Please refer to NVIDIA's documentation for your distribution:".to_string());
-                instructions.push("# https://docs.nvidia.com/cuda/cuda-installation-guide-linux/".to_string());
+                instructions.push(
+                    "# Please refer to NVIDIA's documentation for your distribution:".to_string(),
+                );
+                instructions.push(
+                    "# https://docs.nvidia.com/cuda/cuda-installation-guide-linux/".to_string(),
+                );
             }
         }
 
@@ -641,7 +661,11 @@ impl DistroManager {
         let version = Self::get_version(&distro)?;
         let config = DistroConfig::for_distribution(distro, version);
 
-        info!("Detected distribution: {} {}", config.distribution.name(), config.version);
+        info!(
+            "Detected distribution: {} {}",
+            config.distribution.name(),
+            config.version
+        );
 
         Ok(Self { config })
     }
@@ -681,7 +705,10 @@ impl DistroManager {
 
     /// Check system compatibility
     pub fn check_compatibility(&self) -> Result<CompatibilityReport> {
-        info!("Checking system compatibility for {}", self.config.distribution.name());
+        info!(
+            "Checking system compatibility for {}",
+            self.config.distribution.name()
+        );
 
         let package_status = self.config.check_nvidia_packages()?;
         let kernel_modules = self.check_kernel_modules()?;
@@ -766,7 +793,11 @@ impl CompatibilityReport {
         let has_runtime = self.container_runtime_available.values().any(|&v| v);
 
         // Check if essential NVIDIA modules are loaded
-        let has_nvidia_module = self.kernel_modules_loaded.get("nvidia").copied().unwrap_or(false);
+        let has_nvidia_module = self
+            .kernel_modules_loaded
+            .get("nvidia")
+            .copied()
+            .unwrap_or(false);
 
         // Check if at least one library path exists
         let has_library_path = self.library_paths_available.values().any(|&v| v);
@@ -825,7 +856,12 @@ mod tests {
         let config = DistroConfig::for_distribution(Distribution::Ubuntu, "22.04".to_string());
         assert_eq!(config.distribution, Distribution::Ubuntu);
         assert_eq!(config.package_manager.name, "apt");
-        assert!(config.nvidia_packages.iter().any(|p| p.contains("nvidia-driver")));
+        assert!(
+            config
+                .nvidia_packages
+                .iter()
+                .any(|p| p.contains("nvidia-driver"))
+        );
     }
 
     #[test]
@@ -833,7 +869,12 @@ mod tests {
         let config = DistroConfig::for_distribution(Distribution::Fedora, "38".to_string());
         assert_eq!(config.distribution, Distribution::Fedora);
         assert_eq!(config.package_manager.name, "dnf");
-        assert!(config.nvidia_packages.iter().any(|p| p.contains("akmod-nvidia")));
+        assert!(
+            config
+                .nvidia_packages
+                .iter()
+                .any(|p| p.contains("akmod-nvidia"))
+        );
     }
 
     #[test]
@@ -856,7 +897,10 @@ mod tests {
         let manager = DistroManager::new();
         // Should not panic
         if let Ok(manager) = manager {
-            println!("Created manager for: {}", manager.config.distribution.name());
+            println!(
+                "Created manager for: {}",
+                manager.config.distribution.name()
+            );
         }
     }
 

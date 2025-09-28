@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn, Span};
+use tracing::{Span, debug, error, info, warn};
 use uuid::Uuid;
 
 /// Observability manager with OpenTelemetry integration
@@ -253,11 +253,24 @@ pub struct NotificationChannel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ChannelType {
-    Email { smtp_server: String, recipients: Vec<String> },
-    Slack { webhook_url: String, channel: String },
-    Discord { webhook_url: String },
-    PagerDuty { integration_key: String },
-    Webhook { url: String, headers: HashMap<String, String> },
+    Email {
+        smtp_server: String,
+        recipients: Vec<String>,
+    },
+    Slack {
+        webhook_url: String,
+        channel: String,
+    },
+    Discord {
+        webhook_url: String,
+    },
+    PagerDuty {
+        integration_key: String,
+    },
+    Webhook {
+        url: String,
+        headers: HashMap<String, String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -382,7 +395,9 @@ impl Default for ObservabilityConfig {
                 resource_attributes: [
                     ("service.name".to_string(), "nvbind".to_string()),
                     ("service.version".to_string(), "0.1.0".to_string()),
-                ].into_iter().collect(),
+                ]
+                .into_iter()
+                .collect(),
                 instrumentation: InstrumentationConfig {
                     http: true,
                     grpc: true,
@@ -416,11 +431,17 @@ impl Default for ObservabilityConfig {
                         description: "Total container operations".to_string(),
                         unit: "operations".to_string(),
                         metric_type: MetricType::Counter,
-                        labels: vec!["operation".to_string(), "runtime".to_string(), "status".to_string()],
+                        labels: vec![
+                            "operation".to_string(),
+                            "runtime".to_string(),
+                            "status".to_string(),
+                        ],
                     },
                 ],
                 histograms: HistogramConfig {
-                    buckets: vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+                    buckets: vec![
+                        0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+                    ],
                     max_buckets: 50,
                     record_min_max: true,
                 },
@@ -440,89 +461,87 @@ impl Default for ObservabilityConfig {
                 port: 3000,
                 refresh_interval: Duration::from_secs(5),
                 real_time_updates: true,
-                dashboards: vec![
-                    Dashboard {
-                        name: "overview".to_string(),
-                        title: "nvbind Overview".to_string(),
-                        description: "General system overview".to_string(),
-                        refresh_rate: Duration::from_secs(30),
-                        panels: vec![
-                            DashboardPanel {
-                                name: "gpu_utilization".to_string(),
-                                panel_type: PanelType::Graph,
-                                query: "nvbind_gpu_utilization".to_string(),
-                                time_range: TimeRange {
-                                    from: "now-1h".to_string(),
-                                    to: "now".to_string(),
-                                    step: Duration::from_secs(15),
+                dashboards: vec![Dashboard {
+                    name: "overview".to_string(),
+                    title: "nvbind Overview".to_string(),
+                    description: "General system overview".to_string(),
+                    refresh_rate: Duration::from_secs(30),
+                    panels: vec![DashboardPanel {
+                        name: "gpu_utilization".to_string(),
+                        panel_type: PanelType::Graph,
+                        query: "nvbind_gpu_utilization".to_string(),
+                        time_range: TimeRange {
+                            from: "now-1h".to_string(),
+                            to: "now".to_string(),
+                            step: Duration::from_secs(15),
+                        },
+                        visualization: VisualizationConfig {
+                            color_scheme: "viridis".to_string(),
+                            legend: true,
+                            grid: true,
+                            tooltip: true,
+                            thresholds: vec![
+                                Threshold {
+                                    value: 80.0,
+                                    color: "orange".to_string(),
+                                    condition: ThresholdCondition::GreaterThan,
                                 },
-                                visualization: VisualizationConfig {
-                                    color_scheme: "viridis".to_string(),
-                                    legend: true,
-                                    grid: true,
-                                    tooltip: true,
-                                    thresholds: vec![
-                                        Threshold {
-                                            value: 80.0,
-                                            color: "orange".to_string(),
-                                            condition: ThresholdCondition::GreaterThan,
-                                        },
-                                        Threshold {
-                                            value: 90.0,
-                                            color: "red".to_string(),
-                                            condition: ThresholdCondition::GreaterThan,
-                                        },
-                                    ],
+                                Threshold {
+                                    value: 90.0,
+                                    color: "red".to_string(),
+                                    condition: ThresholdCondition::GreaterThan,
                                 },
-                            },
-                        ],
-                    },
-                ],
+                            ],
+                        },
+                    }],
+                }],
             },
             alerts: AlertConfig {
                 enabled: true,
-                rules: vec![
-                    AlertRule {
-                        name: "high_gpu_utilization".to_string(),
-                        description: "GPU utilization is too high".to_string(),
-                        query: "avg(nvbind_gpu_utilization) > 90".to_string(),
-                        condition: AlertCondition {
-                            operator: ComparisonOperator::GreaterThan,
-                            aggregation: AggregationFunction::Avg,
-                            time_window: Duration::from_secs(300),
-                        },
-                        threshold: 90.0,
-                        duration: Duration::from_secs(120),
-                        severity: AlertSeverity::Warning,
-                        labels: [("component".to_string(), "gpu".to_string())].into_iter().collect(),
-                        annotations: [
-                            ("summary".to_string(), "High GPU utilization detected".to_string()),
-                            ("runbook".to_string(), "Check GPU workload distribution".to_string()),
-                        ].into_iter().collect(),
+                rules: vec![AlertRule {
+                    name: "high_gpu_utilization".to_string(),
+                    description: "GPU utilization is too high".to_string(),
+                    query: "avg(nvbind_gpu_utilization) > 90".to_string(),
+                    condition: AlertCondition {
+                        operator: ComparisonOperator::GreaterThan,
+                        aggregation: AggregationFunction::Avg,
+                        time_window: Duration::from_secs(300),
                     },
-                ],
-                notification_channels: vec![
-                    NotificationChannel {
-                        name: "default_email".to_string(),
-                        channel_type: ChannelType::Email {
-                            smtp_server: "localhost:587".to_string(),
-                            recipients: vec!["admin@example.com".to_string()],
-                        },
-                        settings: HashMap::new(),
+                    threshold: 90.0,
+                    duration: Duration::from_secs(120),
+                    severity: AlertSeverity::Warning,
+                    labels: [("component".to_string(), "gpu".to_string())]
+                        .into_iter()
+                        .collect(),
+                    annotations: [
+                        (
+                            "summary".to_string(),
+                            "High GPU utilization detected".to_string(),
+                        ),
+                        (
+                            "runbook".to_string(),
+                            "Check GPU workload distribution".to_string(),
+                        ),
+                    ]
+                    .into_iter()
+                    .collect(),
+                }],
+                notification_channels: vec![NotificationChannel {
+                    name: "default_email".to_string(),
+                    channel_type: ChannelType::Email {
+                        smtp_server: "localhost:587".to_string(),
+                        recipients: vec!["admin@example.com".to_string()],
                     },
-                ],
-                escalation_policies: vec![
-                    EscalationPolicy {
-                        name: "default".to_string(),
-                        levels: vec![
-                            EscalationLevel {
-                                delay: Duration::from_secs(0),
-                                channels: vec!["default_email".to_string()],
-                                repeat: false,
-                            },
-                        ],
-                    },
-                ],
+                    settings: HashMap::new(),
+                }],
+                escalation_policies: vec![EscalationPolicy {
+                    name: "default".to_string(),
+                    levels: vec![EscalationLevel {
+                        delay: Duration::from_secs(0),
+                        channels: vec!["default_email".to_string()],
+                        repeat: false,
+                    }],
+                }],
             },
             logging: LoggingConfig {
                 enabled: true,
@@ -534,11 +553,9 @@ impl Default for ObservabilityConfig {
                     enabled: true,
                     buffer_size: 10000,
                     flush_interval: Duration::from_secs(5),
-                    destinations: vec![
-                        LogDestination::File {
-                            path: "/var/log/nvbind/app.log".to_string(),
-                        },
-                    ],
+                    destinations: vec![LogDestination::File {
+                        path: "/var/log/nvbind/app.log".to_string(),
+                    }],
                 },
             },
             export: ExportConfig {
@@ -626,7 +643,11 @@ impl ObservabilityManager {
     }
 
     /// Create a new trace span
-    pub fn create_span(&self, name: &str, attributes: HashMap<String, String>) -> ObservabilitySpan {
+    pub fn create_span(
+        &self,
+        name: &str,
+        attributes: HashMap<String, String>,
+    ) -> ObservabilitySpan {
         self.tracer.create_span(name, attributes)
     }
 
@@ -641,8 +662,14 @@ impl ObservabilityManager {
     }
 
     /// Trigger alert
-    pub async fn trigger_alert(&self, rule_name: &str, context: HashMap<String, String>) -> Result<()> {
-        self.alert_manager.evaluate_and_trigger(rule_name, context).await
+    pub async fn trigger_alert(
+        &self,
+        rule_name: &str,
+        context: HashMap<String, String>,
+    ) -> Result<()> {
+        self.alert_manager
+            .evaluate_and_trigger(rule_name, context)
+            .await
     }
 
     /// Get observability status
@@ -685,7 +712,10 @@ impl TracingManager {
         // - Exporters (OTLP, Jaeger, Zipkin)
         // - Sampling configuration
 
-        info!("Tracing initialized with sampling rate: {}", self.config.sampling_rate);
+        info!(
+            "Tracing initialized with sampling rate: {}",
+            self.config.sampling_rate
+        );
         Ok(())
     }
 
@@ -842,7 +872,9 @@ impl MetricsManager {
                 let labels = [
                     ("gpu_id".to_string(), gpu.id.clone()),
                     ("gpu_name".to_string(), gpu.name.clone()),
-                ].into_iter().collect();
+                ]
+                .into_iter()
+                .collect();
 
                 // Simulate GPU utilization (in real impl, would query nvidia-smi or NVML)
                 let utilization = 65.0; // Placeholder
@@ -862,7 +894,8 @@ impl MetricsManager {
     fn generate_metric_key(labels: &HashMap<String, String>) -> String {
         let mut key_parts: Vec<_> = labels.iter().collect();
         key_parts.sort_by_key(|(k, _)| *k);
-        key_parts.iter()
+        key_parts
+            .iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .collect::<Vec<_>>()
             .join(",")
@@ -936,10 +969,25 @@ impl PerformanceProfiler {
                     start_time: SystemTime::now(),
                     duration: config.profile_duration,
                     profile_types: vec![
-                        if config.cpu_profiling { Some(ProfileType::CPU) } else { None },
-                        if config.memory_profiling { Some(ProfileType::Memory) } else { None },
-                        if config.gpu_profiling { Some(ProfileType::GPU) } else { None },
-                    ].into_iter().flatten().collect(),
+                        if config.cpu_profiling {
+                            Some(ProfileType::CPU)
+                        } else {
+                            None
+                        },
+                        if config.memory_profiling {
+                            Some(ProfileType::Memory)
+                        } else {
+                            None
+                        },
+                        if config.gpu_profiling {
+                            Some(ProfileType::GPU)
+                        } else {
+                            None
+                        },
+                    ]
+                    .into_iter()
+                    .flatten()
+                    .collect(),
                     output_path: format!("{}/profile_{}.data", config.output_directory, session_id),
                     status: ProfilingStatus::Running,
                 };
@@ -982,7 +1030,10 @@ impl PerformanceProfiler {
             start_time: SystemTime::now(),
             duration,
             profile_types: vec![ProfileType::CPU, ProfileType::Memory, ProfileType::GPU],
-            output_path: format!("{}/profile_{}.data", self.config.output_directory, session_id),
+            output_path: format!(
+                "{}/profile_{}.data",
+                self.config.output_directory, session_id
+            ),
             status: ProfilingStatus::Running,
         };
 
@@ -991,7 +1042,10 @@ impl PerformanceProfiler {
             sessions.insert(session_id, session.clone());
         }
 
-        info!("Started profiling session: {} (duration: {:?})", session_id, duration);
+        info!(
+            "Started profiling session: {} (duration: {:?})",
+            session_id, duration
+        );
         Ok(session)
     }
 
@@ -1052,7 +1106,10 @@ impl DashboardManager {
             return Ok(());
         }
 
-        info!("Initializing dashboard manager on port {}", self.config.port);
+        info!(
+            "Initializing dashboard manager on port {}",
+            self.config.port
+        );
 
         // In a real implementation, would start web server
         // and serve dashboard UI (e.g., using warp, axum, or similar)
@@ -1090,7 +1147,10 @@ impl AlertManager {
             return Ok(());
         }
 
-        info!("Initializing alert manager with {} rules", self.config.rules.len());
+        info!(
+            "Initializing alert manager with {} rules",
+            self.config.rules.len()
+        );
 
         // Start alert evaluation loop
         self.start_evaluation_loop().await?;
@@ -1126,7 +1186,8 @@ impl AlertManager {
         // Simplified rule evaluation
         // In a real implementation, would query metrics and evaluate conditions
 
-        let should_fire = Self::query_and_evaluate(&rule.query, &rule.condition, rule.threshold).await?;
+        let should_fire =
+            Self::query_and_evaluate(&rule.query, &rule.condition, rule.threshold).await?;
 
         let mut alerts = firing_alerts.write().await;
 
@@ -1163,7 +1224,11 @@ impl AlertManager {
         Ok(false) // Placeholder
     }
 
-    async fn evaluate_and_trigger(&self, rule_name: &str, _context: HashMap<String, String>) -> Result<()> {
+    async fn evaluate_and_trigger(
+        &self,
+        rule_name: &str,
+        _context: HashMap<String, String>,
+    ) -> Result<()> {
         info!("Manually triggering alert: {}", rule_name);
 
         // Find rule and trigger alert
@@ -1352,7 +1417,10 @@ mod tests {
         };
 
         let profiler = PerformanceProfiler::new(config);
-        let session = profiler.start_profiling(Duration::from_secs(10)).await.unwrap();
+        let session = profiler
+            .start_profiling(Duration::from_secs(10))
+            .await
+            .unwrap();
 
         assert!(matches!(session.status, ProfilingStatus::Running));
         assert_eq!(session.profile_types.len(), 2); // CPU and GPU enabled

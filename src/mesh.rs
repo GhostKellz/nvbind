@@ -80,8 +80,14 @@ pub struct RetryPolicyConfig {
 pub enum BackoffStrategy {
     Fixed(Duration),
     Linear(Duration),
-    Exponential { base: Duration, max: Duration },
-    Jittered { base: Duration, max_jitter: Duration },
+    Exponential {
+        base: Duration,
+        max: Duration,
+    },
+    Jittered {
+        base: Duration,
+        max_jitter: Duration,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,7 +163,11 @@ pub struct LoadBalancer {
 }
 
 pub trait LoadBalanceStrategy: Send + Sync {
-    fn select_instance(&self, instances: &[ServiceInstance], context: &RequestContext) -> Option<ServiceInstance>;
+    fn select_instance(
+        &self,
+        instances: &[ServiceInstance],
+        context: &RequestContext,
+    ) -> Option<ServiceInstance>;
     fn update_stats(&self, instance_id: &Uuid, response_time: Duration, success: bool);
 }
 
@@ -223,10 +233,20 @@ pub enum RoutingCondition {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RoutingAction {
-    RouteToService { service: String, weight: u32 },
-    Redirect { url: String },
-    Fault { delay: Option<Duration>, abort: Option<u16> },
-    Mirror { service: String },
+    RouteToService {
+        service: String,
+        weight: u32,
+    },
+    Redirect {
+        url: String,
+    },
+    Fault {
+        delay: Option<Duration>,
+        abort: Option<u16>,
+    },
+    Mirror {
+        service: String,
+    },
 }
 
 /// Health checker for service instances
@@ -298,7 +318,9 @@ impl ServiceMesh {
         services.insert(instance.name.clone(), instance.clone());
 
         // Start health checking for the new instance
-        self.health_checker.start_health_check(instance.clone()).await?;
+        self.health_checker
+            .start_health_check(instance.clone())
+            .await?;
 
         Ok(())
     }
@@ -320,7 +342,9 @@ impl ServiceMesh {
         let services = self.services.read().await;
         let instances: Vec<ServiceInstance> = services
             .values()
-            .filter(|instance| instance.name == service_name && instance.health_status == HealthStatus::Healthy)
+            .filter(|instance| {
+                instance.name == service_name && instance.health_status == HealthStatus::Healthy
+            })
             .cloned()
             .collect();
 
@@ -343,7 +367,10 @@ impl ServiceMesh {
         // Check circuit breaker
         let circuit_breaker = self.get_circuit_breaker(&context.destination_service).await;
         if !circuit_breaker.allow_request().await {
-            warn!("Circuit breaker open for service: {}", context.destination_service);
+            warn!(
+                "Circuit breaker open for service: {}",
+                context.destination_service
+            );
             return Ok(None);
         }
 
@@ -351,7 +378,9 @@ impl ServiceMesh {
         let selected = self.load_balancer.select_instance(&instances, context);
 
         if let Some(ref instance) = selected {
-            self.metrics_collector.record_request(&context.destination_service).await;
+            self.metrics_collector
+                .record_request(&context.destination_service)
+                .await;
         }
 
         Ok(selected)
@@ -365,7 +394,8 @@ impl ServiceMesh {
     /// Get circuit breaker for service
     async fn get_circuit_breaker(&self, service_name: &str) -> CircuitBreaker {
         let mut breakers = self.circuit_breakers.write().await;
-        breakers.entry(service_name.to_string())
+        breakers
+            .entry(service_name.to_string())
             .or_insert_with(|| CircuitBreaker::new(self.config.circuit_breaker.clone()))
             .clone()
     }
@@ -377,7 +407,10 @@ impl ServiceMesh {
 
     /// Start the service mesh
     pub async fn start(&self) -> Result<()> {
-        info!("Starting service mesh with cluster: {}", self.config.cluster_name);
+        info!(
+            "Starting service mesh with cluster: {}",
+            self.config.cluster_name
+        );
 
         // Start health checking
         self.health_checker.start().await?;
@@ -408,21 +441,35 @@ impl ServiceMesh {
 
 impl LoadBalancer {
     pub fn new(config: LoadBalancingConfig) -> Result<Self> {
-        let mut algorithms: HashMap<LoadBalancingAlgorithm, Box<dyn LoadBalanceStrategy>> = HashMap::new();
+        let mut algorithms: HashMap<LoadBalancingAlgorithm, Box<dyn LoadBalanceStrategy>> =
+            HashMap::new();
 
         // Register load balancing algorithms
-        algorithms.insert(LoadBalancingAlgorithm::RoundRobin, Box::new(RoundRobinStrategy::new()));
-        algorithms.insert(LoadBalancingAlgorithm::LeastConnections, Box::new(LeastConnectionsStrategy::new()));
-        algorithms.insert(LoadBalancingAlgorithm::Random, Box::new(RandomStrategy::new()));
-        algorithms.insert(LoadBalancingAlgorithm::ResourceAware, Box::new(ResourceAwareStrategy::new()));
+        algorithms.insert(
+            LoadBalancingAlgorithm::RoundRobin,
+            Box::new(RoundRobinStrategy::new()),
+        );
+        algorithms.insert(
+            LoadBalancingAlgorithm::LeastConnections,
+            Box::new(LeastConnectionsStrategy::new()),
+        );
+        algorithms.insert(
+            LoadBalancingAlgorithm::Random,
+            Box::new(RandomStrategy::new()),
+        );
+        algorithms.insert(
+            LoadBalancingAlgorithm::ResourceAware,
+            Box::new(ResourceAwareStrategy::new()),
+        );
 
-        Ok(LoadBalancer {
-            config,
-            algorithms,
-        })
+        Ok(LoadBalancer { config, algorithms })
     }
 
-    pub fn select_instance(&self, instances: &[ServiceInstance], context: &RequestContext) -> Option<ServiceInstance> {
+    pub fn select_instance(
+        &self,
+        instances: &[ServiceInstance],
+        context: &RequestContext,
+    ) -> Option<ServiceInstance> {
         let strategy = self.algorithms.get(&self.config.algorithm)?;
         strategy.select_instance(instances, context)
     }
@@ -450,7 +497,11 @@ impl CircuitBreaker {
             CircuitBreakerStatus::Closed => true,
             CircuitBreakerStatus::Open => {
                 if let Some(last_failure) = state.last_failure_time {
-                    if SystemTime::now().duration_since(last_failure).unwrap_or_default() >= self.config.timeout {
+                    if SystemTime::now()
+                        .duration_since(last_failure)
+                        .unwrap_or_default()
+                        >= self.config.timeout
+                    {
                         state.status = CircuitBreakerStatus::HalfOpen;
                         state.half_open_requests = 0;
                         true
@@ -507,7 +558,10 @@ impl TrafficRouter {
         Ok(())
     }
 
-    pub async fn apply_routing_rules(&self, _context: &RequestContext) -> Result<Option<ServiceInstance>> {
+    pub async fn apply_routing_rules(
+        &self,
+        _context: &RequestContext,
+    ) -> Result<Option<ServiceInstance>> {
         // Implementation would evaluate routing rules and return appropriate service
         // This is a simplified version
         Ok(None)
@@ -594,7 +648,11 @@ impl RoundRobinStrategy {
 }
 
 impl LoadBalanceStrategy for RoundRobinStrategy {
-    fn select_instance(&self, instances: &[ServiceInstance], _context: &RequestContext) -> Option<ServiceInstance> {
+    fn select_instance(
+        &self,
+        instances: &[ServiceInstance],
+        _context: &RequestContext,
+    ) -> Option<ServiceInstance> {
         if instances.is_empty() {
             return None;
         }
@@ -619,7 +677,11 @@ impl LeastConnectionsStrategy {
 }
 
 impl LoadBalanceStrategy for LeastConnectionsStrategy {
-    fn select_instance(&self, instances: &[ServiceInstance], _context: &RequestContext) -> Option<ServiceInstance> {
+    fn select_instance(
+        &self,
+        instances: &[ServiceInstance],
+        _context: &RequestContext,
+    ) -> Option<ServiceInstance> {
         // Select instance with least connections
         instances.first().cloned()
     }
@@ -638,7 +700,11 @@ impl RandomStrategy {
 }
 
 impl LoadBalanceStrategy for RandomStrategy {
-    fn select_instance(&self, instances: &[ServiceInstance], _context: &RequestContext) -> Option<ServiceInstance> {
+    fn select_instance(
+        &self,
+        instances: &[ServiceInstance],
+        _context: &RequestContext,
+    ) -> Option<ServiceInstance> {
         if instances.is_empty() {
             return None;
         }
@@ -661,7 +727,11 @@ impl ResourceAwareStrategy {
 }
 
 impl LoadBalanceStrategy for ResourceAwareStrategy {
-    fn select_instance(&self, instances: &[ServiceInstance], context: &RequestContext) -> Option<ServiceInstance> {
+    fn select_instance(
+        &self,
+        instances: &[ServiceInstance],
+        context: &RequestContext,
+    ) -> Option<ServiceInstance> {
         // Select instance based on GPU resource availability
         if let Some(gpu_req) = &context.gpu_requirements {
             for instance in instances {

@@ -2,7 +2,7 @@
 //!
 //! Provides comprehensive validation, migration tools, and schema management
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::{HashMap, HashSet};
@@ -31,16 +31,14 @@ impl ConfigValidator {
 
     /// Validate configuration file
     pub fn validate_file(&self, path: &Path) -> Result<ValidationResult> {
-        let content = fs::read_to_string(path)
-            .context("Failed to read configuration file")?;
+        let content = fs::read_to_string(path).context("Failed to read configuration file")?;
 
         self.validate_string(&content)
     }
 
     /// Validate configuration string
     pub fn validate_string(&self, content: &str) -> Result<ValidationResult> {
-        let value: TomlValue = toml::from_str(content)
-            .context("Failed to parse TOML")?;
+        let value: TomlValue = toml::from_str(content).context("Failed to parse TOML")?;
 
         self.validate_value(&value)
     }
@@ -54,7 +52,10 @@ impl ConfigValidator {
             if version != SCHEMA_VERSION {
                 result.warnings.push(ValidationWarning {
                     field: "schema_version".to_string(),
-                    message: format!("Schema version {} differs from expected {}", version, SCHEMA_VERSION),
+                    message: format!(
+                        "Schema version {} differs from expected {}",
+                        version, SCHEMA_VERSION
+                    ),
                     severity: WarningSeverity::Medium,
                 });
             }
@@ -127,7 +128,10 @@ impl ConfigValidator {
                     if !schema.fields.contains_key(key) {
                         result.warnings.push(ValidationWarning {
                             field: format!("{}.{}", section_name, key),
-                            message: format!("Unknown field in section '{}': {}", section_name, key),
+                            message: format!(
+                                "Unknown field in section '{}': {}",
+                                section_name, key
+                            ),
                             severity: WarningSeverity::Low,
                         });
                     }
@@ -164,7 +168,10 @@ impl ConfigValidator {
         if !self.validate_type(value, &schema.field_type) {
             result.errors.push(ValidationError {
                 field: field_path.to_string(),
-                message: format!("Field '{}' has invalid type. Expected: {:?}", field_path, schema.field_type),
+                message: format!(
+                    "Field '{}' has invalid type. Expected: {:?}",
+                    field_path, schema.field_type
+                ),
                 error_type: ErrorType::InvalidType,
             });
             return Ok(());
@@ -241,7 +248,10 @@ impl ConfigValidator {
                         if !re.is_match(s) {
                             return Some(ValidationError {
                                 field: field_path.to_string(),
-                                message: format!("Value '{}' does not match pattern '{}'", s, pattern),
+                                message: format!(
+                                    "Value '{}' does not match pattern '{}'",
+                                    s, pattern
+                                ),
                                 error_type: ErrorType::InvalidValue,
                             });
                         }
@@ -276,80 +286,111 @@ impl Default for ConfigSchema {
         let mut sections = HashMap::new();
 
         // GPU configuration schema
-        sections.insert("gpu".to_string(), SectionSchema {
-            required: false,
-            fields: {
-                let mut fields = HashMap::new();
-                fields.insert("default_selection".to_string(), FieldSchema {
-                    field_type: FieldType::String,
-                    required: false,
-                    default: Some(TomlValue::String("all".to_string())),
-                    description: "Default GPU selection mode".to_string(),
-                    validators: vec![
-                        FieldValidator::OneOf(vec!["all".to_string(), "first".to_string(), "none".to_string()]),
-                    ],
-                });
-                fields.insert("allow_non_nvidia".to_string(), FieldSchema {
-                    field_type: FieldType::Boolean,
-                    required: false,
-                    default: Some(TomlValue::Boolean(false)),
-                    description: "Allow non-NVIDIA GPUs".to_string(),
-                    validators: vec![],
-                });
-                fields
+        sections.insert(
+            "gpu".to_string(),
+            SectionSchema {
+                required: false,
+                fields: {
+                    let mut fields = HashMap::new();
+                    fields.insert(
+                        "default_selection".to_string(),
+                        FieldSchema {
+                            field_type: FieldType::String,
+                            required: false,
+                            default: Some(TomlValue::String("all".to_string())),
+                            description: "Default GPU selection mode".to_string(),
+                            validators: vec![FieldValidator::OneOf(vec![
+                                "all".to_string(),
+                                "first".to_string(),
+                                "none".to_string(),
+                            ])],
+                        },
+                    );
+                    fields.insert(
+                        "allow_non_nvidia".to_string(),
+                        FieldSchema {
+                            field_type: FieldType::Boolean,
+                            required: false,
+                            default: Some(TomlValue::Boolean(false)),
+                            description: "Allow non-NVIDIA GPUs".to_string(),
+                            validators: vec![],
+                        },
+                    );
+                    fields
+                },
             },
-        });
+        );
 
         // Runtime configuration schema
-        sections.insert("runtime".to_string(), SectionSchema {
-            required: false,
-            fields: {
-                let mut fields = HashMap::new();
-                fields.insert("default".to_string(), FieldSchema {
-                    field_type: FieldType::String,
-                    required: false,
-                    default: Some(TomlValue::String("podman".to_string())),
-                    description: "Default container runtime".to_string(),
-                    validators: vec![
-                        FieldValidator::OneOf(vec!["podman".to_string(), "docker".to_string(), "containerd".to_string()]),
-                    ],
-                });
-                fields.insert("timeout_seconds".to_string(), FieldSchema {
-                    field_type: FieldType::Integer,
-                    required: false,
-                    default: Some(TomlValue::Integer(300)),
-                    description: "Operation timeout".to_string(),
-                    validators: vec![
-                        FieldValidator::MinValue(1),
-                        FieldValidator::MaxValue(3600),
-                    ],
-                });
-                fields
+        sections.insert(
+            "runtime".to_string(),
+            SectionSchema {
+                required: false,
+                fields: {
+                    let mut fields = HashMap::new();
+                    fields.insert(
+                        "default".to_string(),
+                        FieldSchema {
+                            field_type: FieldType::String,
+                            required: false,
+                            default: Some(TomlValue::String("podman".to_string())),
+                            description: "Default container runtime".to_string(),
+                            validators: vec![FieldValidator::OneOf(vec![
+                                "podman".to_string(),
+                                "docker".to_string(),
+                                "containerd".to_string(),
+                            ])],
+                        },
+                    );
+                    fields.insert(
+                        "timeout_seconds".to_string(),
+                        FieldSchema {
+                            field_type: FieldType::Integer,
+                            required: false,
+                            default: Some(TomlValue::Integer(300)),
+                            description: "Operation timeout".to_string(),
+                            validators: vec![
+                                FieldValidator::MinValue(1),
+                                FieldValidator::MaxValue(3600),
+                            ],
+                        },
+                    );
+                    fields
+                },
             },
-        });
+        );
 
         // Security configuration schema
-        sections.insert("security".to_string(), SectionSchema {
-            required: false,
-            fields: {
-                let mut fields = HashMap::new();
-                fields.insert("enable_rbac".to_string(), FieldSchema {
-                    field_type: FieldType::Boolean,
-                    required: false,
-                    default: Some(TomlValue::Boolean(false)),
-                    description: "Enable role-based access control".to_string(),
-                    validators: vec![],
-                });
-                fields.insert("allow_privileged".to_string(), FieldSchema {
-                    field_type: FieldType::Boolean,
-                    required: false,
-                    default: Some(TomlValue::Boolean(false)),
-                    description: "Allow privileged containers".to_string(),
-                    validators: vec![],
-                });
-                fields
+        sections.insert(
+            "security".to_string(),
+            SectionSchema {
+                required: false,
+                fields: {
+                    let mut fields = HashMap::new();
+                    fields.insert(
+                        "enable_rbac".to_string(),
+                        FieldSchema {
+                            field_type: FieldType::Boolean,
+                            required: false,
+                            default: Some(TomlValue::Boolean(false)),
+                            description: "Enable role-based access control".to_string(),
+                            validators: vec![],
+                        },
+                    );
+                    fields.insert(
+                        "allow_privileged".to_string(),
+                        FieldSchema {
+                            field_type: FieldType::Boolean,
+                            required: false,
+                            default: Some(TomlValue::Boolean(false)),
+                            description: "Allow privileged containers".to_string(),
+                            validators: vec![],
+                        },
+                    );
+                    fields
+                },
             },
-        });
+        );
 
         Self {
             version: SCHEMA_VERSION.to_string(),
@@ -448,9 +489,7 @@ impl ConfigMigrator {
     /// Create new migrator
     pub fn new() -> Self {
         Self {
-            migrations: vec![
-                Box::new(V0ToV1Migration),
-            ],
+            migrations: vec![Box::new(V0ToV1Migration)],
         }
     }
 
@@ -464,8 +503,11 @@ impl ConfigMigrator {
 
         for migration in &self.migrations {
             if migration.should_apply(&current_version) {
-                info!("Applying migration from {} to {}",
-                    migration.from_version(), migration.to_version());
+                info!(
+                    "Applying migration from {} to {}",
+                    migration.from_version(),
+                    migration.to_version()
+                );
                 migration.apply(config)?;
             }
         }
@@ -514,7 +556,8 @@ impl Migration for V0ToV1Migration {
             }
 
             // Example: Add new required fields with defaults
-            table.entry("monitoring".to_string())
+            table
+                .entry("monitoring".to_string())
                 .or_insert_with(|| TomlValue::Table(toml::map::Map::new()));
         }
 

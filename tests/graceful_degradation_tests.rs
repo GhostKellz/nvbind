@@ -1,11 +1,11 @@
 //! Graceful degradation integration tests
 //! Tests the fallback mechanisms when GPU resources are unavailable
 
-use nvbind::graceful_degradation::{
-    GracefulDegradationManager, DegradationConfig, DegradationStrategy, OperationContext,
-    OperationCriticality, DegradationResult,
-};
 use nvbind::error::NvbindError;
+use nvbind::graceful_degradation::{
+    DegradationConfig, DegradationResult, DegradationStrategy, GracefulDegradationManager,
+    OperationContext, OperationCriticality,
+};
 use std::collections::HashMap;
 
 /// Test degradation manager initialization
@@ -20,9 +20,9 @@ async fn test_degradation_manager_init() {
 
     // Should have detected some system capabilities
     assert!(!stats.capabilities.available_runtimes.is_empty() || !stats.capabilities.gpu_available);
-    println!("Detected capabilities: GPU={}, Runtimes={:?}",
-        stats.capabilities.gpu_available,
-        stats.capabilities.available_runtimes
+    println!(
+        "Detected capabilities: GPU={}, Runtimes={:?}",
+        stats.capabilities.gpu_available, stats.capabilities.available_runtimes
     );
 }
 
@@ -35,7 +35,7 @@ async fn test_cpu_fallback_degradation() {
     // Create GPU missing error
     let gpu_error = NvbindError::gpu(
         "No GPU detected",
-        "Install NVIDIA drivers and ensure GPU is properly connected"
+        "Install NVIDIA drivers and ensure GPU is properly connected",
     );
 
     // Create operation context
@@ -51,13 +51,20 @@ async fn test_cpu_fallback_degradation() {
     };
 
     // Attempt degradation
-    let result = manager.handle_failure("test_gpu_processing", &gpu_error, &context).await;
+    let result = manager
+        .handle_failure("test_gpu_processing", &gpu_error, &context)
+        .await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
 
     match result {
-        DegradationResult::Applied { strategy, modifications, performance_impact, .. } => {
+        DegradationResult::Applied {
+            strategy,
+            modifications,
+            performance_impact,
+            ..
+        } => {
             assert_eq!(strategy, DegradationStrategy::CpuFallback);
             assert!(!modifications.is_empty());
             assert!(performance_impact.is_some());
@@ -83,7 +90,7 @@ async fn test_runtime_fallback() {
     let runtime_error = NvbindError::runtime(
         "docker",
         "Docker daemon not available",
-        "Start Docker daemon or use alternative runtime"
+        "Start Docker daemon or use alternative runtime",
     );
 
     let context = OperationContext {
@@ -94,7 +101,9 @@ async fn test_runtime_fallback() {
         criticality: OperationCriticality::Medium,
     };
 
-    let result = manager.handle_failure("test_runtime", &runtime_error, &context).await;
+    let result = manager
+        .handle_failure("test_runtime", &runtime_error, &context)
+        .await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -130,7 +139,9 @@ async fn test_max_attempts_enforcement() {
 
     // First two attempts should work
     for attempt in 1..=2 {
-        let result = manager.handle_failure("max_attempts_test", &error, &context).await;
+        let result = manager
+            .handle_failure("max_attempts_test", &error, &context)
+            .await;
         assert!(result.is_ok());
 
         match result.unwrap() {
@@ -142,7 +153,9 @@ async fn test_max_attempts_enforcement() {
     }
 
     // Third attempt should exceed max attempts
-    let result = manager.handle_failure("max_attempts_test", &error, &context).await;
+    let result = manager
+        .handle_failure("max_attempts_test", &error, &context)
+        .await;
     assert!(result.is_ok());
 
     match result.unwrap() {
@@ -168,7 +181,9 @@ async fn test_preferred_strategy_override() {
         criticality: OperationCriticality::Medium,
     };
 
-    let result = manager.handle_failure("strategy_test", &error, &context).await;
+    let result = manager
+        .handle_failure("strategy_test", &error, &context)
+        .await;
     assert!(result.is_ok());
 
     match result.unwrap() {
@@ -197,7 +212,9 @@ async fn test_degradation_disabled() {
         criticality: OperationCriticality::High,
     };
 
-    let result = manager.handle_failure("disabled_test", &error, &context).await;
+    let result = manager
+        .handle_failure("disabled_test", &error, &context)
+        .await;
     assert!(result.is_ok());
 
     match result.unwrap() {
@@ -212,7 +229,8 @@ async fn test_degradation_disabled() {
 #[test]
 fn test_statistics_collection() {
     let config = DegradationConfig::default();
-    let manager = tokio::runtime::Runtime::new().unwrap()
+    let manager = tokio::runtime::Runtime::new()
+        .unwrap()
         .block_on(GracefulDegradationManager::new(config))
         .unwrap();
 
@@ -223,19 +241,30 @@ fn test_statistics_collection() {
     assert_eq!(stats.operations_with_attempts, 0);
 
     // Capabilities should be detected
-    assert!(!stats.capabilities.system_resources.cpu_features.is_empty() ||
-           stats.capabilities.system_resources.cpu_cores > 0);
+    assert!(
+        !stats.capabilities.system_resources.cpu_features.is_empty()
+            || stats.capabilities.system_resources.cpu_cores > 0
+    );
 
     println!("✅ Statistics collection working");
-    println!("  CPU cores: {}", stats.capabilities.system_resources.cpu_cores);
-    println!("  Total memory: {:.1} GB", stats.capabilities.system_resources.total_memory_gb);
+    println!(
+        "  CPU cores: {}",
+        stats.capabilities.system_resources.cpu_cores
+    );
+    println!(
+        "  Total memory: {:.1} GB",
+        stats.capabilities.system_resources.total_memory_gb
+    );
 }
 
 /// Test feature reduction degradation
 #[tokio::test]
 async fn test_feature_reduction() {
     let mut config = DegradationConfig::default();
-    config.strategies.insert("test_context".to_string(), DegradationStrategy::FeatureReduction);
+    config.strategies.insert(
+        "test_context".to_string(),
+        DegradationStrategy::FeatureReduction,
+    );
 
     let mut manager = GracefulDegradationManager::new(config).await.unwrap();
 
@@ -253,11 +282,17 @@ async fn test_feature_reduction() {
         criticality: OperationCriticality::Medium,
     };
 
-    let result = manager.handle_failure("feature_test", &error, &context).await;
+    let result = manager
+        .handle_failure("feature_test", &error, &context)
+        .await;
     assert!(result.is_ok());
 
     match result.unwrap() {
-        DegradationResult::Applied { strategy, modifications, .. } => {
+        DegradationResult::Applied {
+            strategy,
+            modifications,
+            ..
+        } => {
             assert_eq!(strategy, DegradationStrategy::FeatureReduction);
             assert!(modifications.iter().any(|m| m.contains("feature")));
             println!("✅ Feature reduction applied successfully");
@@ -276,7 +311,7 @@ async fn test_software_rendering_fallback() {
         "NVIDIA driver incompatible",
         Some("470.0".to_string()),
         Some("515.0".to_string()),
-        "Update NVIDIA drivers to version 515.0 or higher"
+        "Update NVIDIA drivers to version 515.0 or higher",
     );
 
     let context = OperationContext {
@@ -287,11 +322,18 @@ async fn test_software_rendering_fallback() {
         criticality: OperationCriticality::High,
     };
 
-    let result = manager.handle_failure("rendering_test", &driver_error, &context).await;
+    let result = manager
+        .handle_failure("rendering_test", &driver_error, &context)
+        .await;
     assert!(result.is_ok());
 
     match result.unwrap() {
-        DegradationResult::Applied { strategy, modifications, new_container_config, .. } => {
+        DegradationResult::Applied {
+            strategy,
+            modifications,
+            new_container_config,
+            ..
+        } => {
             assert_eq!(strategy, DegradationStrategy::SoftwareRendering);
             assert!(modifications.iter().any(|m| m.contains("software")));
 
@@ -321,7 +363,9 @@ async fn test_attempt_history_reset() {
     };
 
     // Make one degradation attempt
-    let result = manager.handle_failure("reset_operation", &error, &context).await;
+    let result = manager
+        .handle_failure("reset_operation", &error, &context)
+        .await;
     assert!(result.is_ok());
 
     let stats_before = manager.get_statistics();
@@ -331,7 +375,9 @@ async fn test_attempt_history_reset() {
     manager.reset_attempts("reset_operation");
 
     // Should be able to make more attempts now
-    let result = manager.handle_failure("reset_operation", &error, &context).await;
+    let result = manager
+        .handle_failure("reset_operation", &error, &context)
+        .await;
     assert!(result.is_ok());
 
     println!("✅ Attempt history reset working correctly");

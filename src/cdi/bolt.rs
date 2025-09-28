@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::debug;
 
-use super::{CdiSpec, ContainerEdits, CdiDevice, DeviceNode, Mount};
+use super::{CdiDevice, CdiSpec, ContainerEdits, DeviceNode, Mount};
 use crate::gpu::GpuDevice;
 
 /// Bolt-specific capsule configuration for GPU management
@@ -115,12 +115,17 @@ pub async fn generate_bolt_aiml_cdi_spec() -> Result<CdiSpec> {
 
 /// Generate custom Bolt CDI specification with specific configuration
 pub async fn generate_bolt_nvidia_cdi_spec(config: BoltCapsuleConfig) -> Result<CdiSpec> {
-    debug!("Generating Bolt NVIDIA CDI specification with config: {:?}", config);
+    debug!(
+        "Generating Bolt NVIDIA CDI specification with config: {:?}",
+        config
+    );
 
     // Discover available GPUs
     let gpus = crate::gpu::discover_gpus().await?;
     if gpus.is_empty() {
-        return Err(anyhow::anyhow!("No NVIDIA GPUs found for Bolt CDI generation"));
+        return Err(anyhow::anyhow!(
+            "No NVIDIA GPUs found for Bolt CDI generation"
+        ));
     }
 
     // Generate base CDI spec
@@ -146,7 +151,10 @@ pub async fn generate_bolt_nvidia_cdi_spec(config: BoltCapsuleConfig) -> Result<
     let all_device = generate_bolt_all_device(&gpus, &config)?;
     spec.devices.push(all_device);
 
-    debug!("Generated Bolt CDI spec with {} devices", spec.devices.len());
+    debug!(
+        "Generated Bolt CDI spec with {} devices",
+        spec.devices.len()
+    );
     Ok(spec)
 }
 
@@ -162,7 +170,10 @@ fn generate_bolt_environment_variables(config: &BoltCapsuleConfig) -> Result<Vec
     match &config.isolation_level {
         BoltGpuIsolation::Shared => env.push("BOLT_GPU_ISOLATION=shared".to_string()),
         BoltGpuIsolation::Exclusive => env.push("BOLT_GPU_ISOLATION=exclusive".to_string()),
-        BoltGpuIsolation::Virtual { memory_limit, compute_limit } => {
+        BoltGpuIsolation::Virtual {
+            memory_limit,
+            compute_limit,
+        } => {
             env.push("BOLT_GPU_ISOLATION=virtual".to_string());
             env.push(format!("BOLT_GPU_MEMORY_LIMIT={}", memory_limit));
             env.push(format!("BOLT_GPU_COMPUTE_LIMIT={}", compute_limit));
@@ -196,18 +207,18 @@ fn generate_bolt_environment_variables(config: &BoltCapsuleConfig) -> Result<Vec
             GamingProfile::UltraLowLatency => {
                 env.push("BOLT_GPU_PROFILE=ultra-low-latency".to_string());
                 env.push("NVIDIA_TF32_OVERRIDE=0".to_string());
-            },
+            }
             GamingProfile::Performance => {
                 env.push("BOLT_GPU_PROFILE=performance".to_string());
                 env.push("NVIDIA_TF32_OVERRIDE=0".to_string());
-            },
+            }
             GamingProfile::Balanced => {
                 env.push("BOLT_GPU_PROFILE=balanced".to_string());
-            },
+            }
             GamingProfile::Efficiency => {
                 env.push("BOLT_GPU_PROFILE=efficiency".to_string());
                 env.push("CUDA_CACHE_MAXSIZE=268435456".to_string()); // 256MB
-            },
+            }
         }
     } else {
         // AI/ML optimizations
@@ -243,23 +254,28 @@ fn generate_bolt_library_mounts(_config: &BoltCapsuleConfig) -> Result<Vec<Mount
             mounts.push(Mount {
                 host_path: lib_path.to_string(),
                 container_path: lib_path.to_string(),
-                options: Some(vec!["ro".to_string(), "nosuid".to_string(), "nodev".to_string()]),
+                options: Some(vec![
+                    "ro".to_string(),
+                    "nosuid".to_string(),
+                    "nodev".to_string(),
+                ]),
             });
         }
     }
 
     // CUDA toolkit paths
-    let cuda_paths = vec![
-        "/usr/local/cuda",
-        "/opt/cuda",
-    ];
+    let cuda_paths = vec!["/usr/local/cuda", "/opt/cuda"];
 
     for cuda_path in cuda_paths {
         if std::path::Path::new(cuda_path).exists() {
             mounts.push(Mount {
                 host_path: cuda_path.to_string(),
                 container_path: cuda_path.to_string(),
-                options: Some(vec!["ro".to_string(), "nosuid".to_string(), "nodev".to_string()]),
+                options: Some(vec![
+                    "ro".to_string(),
+                    "nosuid".to_string(),
+                    "nodev".to_string(),
+                ]),
             });
         }
     }
@@ -294,10 +310,7 @@ fn generate_bolt_hooks(config: &BoltCapsuleConfig) -> Result<Vec<super::Hook>> {
         hooks.push(super::Hook {
             hook_name: "poststart".to_string(),
             path: "/usr/local/bin/nvbind".to_string(),
-            args: Some(vec![
-                "bolt".to_string(),
-                "snapshot-prepare".to_string(),
-            ]),
+            args: Some(vec!["bolt".to_string(), "snapshot-prepare".to_string()]),
             env: None,
             timeout: Some(10),
         });
@@ -307,10 +320,7 @@ fn generate_bolt_hooks(config: &BoltCapsuleConfig) -> Result<Vec<super::Hook>> {
     hooks.push(super::Hook {
         hook_name: "prestop".to_string(),
         path: "/usr/local/bin/nvbind".to_string(),
-        args: Some(vec![
-            "bolt".to_string(),
-            "cleanup".to_string(),
-        ]),
+        args: Some(vec!["bolt".to_string(), "cleanup".to_string()]),
         env: None,
         timeout: Some(15),
     });
@@ -319,20 +329,22 @@ fn generate_bolt_hooks(config: &BoltCapsuleConfig) -> Result<Vec<super::Hook>> {
 }
 
 /// Generate CDI device specification for a specific GPU
-fn generate_bolt_gpu_device(index: usize, gpu: &GpuDevice, config: &BoltCapsuleConfig) -> Result<CdiDevice> {
+fn generate_bolt_gpu_device(
+    index: usize,
+    gpu: &GpuDevice,
+    config: &BoltCapsuleConfig,
+) -> Result<CdiDevice> {
     let device_name = format!("gpu{}", index);
 
-    let mut device_nodes = vec![
-        DeviceNode {
-            path: format!("/dev/nvidia{}", index),
-            device_type: Some("c".to_string()),
-            major: Some(195),
-            minor: Some(index as u32),
-            file_mode: Some(0o666),
-            uid: None,
-            gid: None,
-        },
-    ];
+    let mut device_nodes = vec![DeviceNode {
+        path: format!("/dev/nvidia{}", index),
+        device_type: Some("c".to_string()),
+        major: Some(195),
+        minor: Some(index as u32),
+        file_mode: Some(0o666),
+        uid: None,
+        gid: None,
+    }];
 
     // Add NVIDIA control device if this is GPU 0
     if index == 0 {

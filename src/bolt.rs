@@ -5,12 +5,11 @@
 //! to integrate nvbind's GPU management capabilities directly into its capsule architecture.
 
 #[cfg(feature = "bolt")]
+use crate::{cdi::bolt::BoltCapsuleConfig, config::BoltConfig};
+#[cfg(feature = "bolt")]
 use anyhow::Result;
 #[cfg(feature = "bolt")]
 use async_trait::async_trait;
-#[cfg(feature = "bolt")]
-use crate::{config::BoltConfig, cdi::bolt::BoltCapsuleConfig};
-
 
 /// Core trait that Bolt implements to integrate with nvbind
 #[cfg(feature = "bolt")]
@@ -97,7 +96,10 @@ impl NvbindGpuManager {
     }
 
     /// Create custom CDI specification with specific capsule config
-    pub async fn generate_custom_cdi_spec(&self, capsule_config: BoltCapsuleConfig) -> Result<crate::cdi::CdiSpec> {
+    pub async fn generate_custom_cdi_spec(
+        &self,
+        capsule_config: BoltCapsuleConfig,
+    ) -> Result<crate::cdi::CdiSpec> {
         crate::cdi::bolt::generate_bolt_nvidia_cdi_spec(capsule_config).await
     }
 
@@ -141,7 +143,8 @@ impl NvbindGpuManager {
             gpu_selection.unwrap_or_else(|| "all".to_string()),
             image,
             args,
-        ).await
+        )
+        .await
     }
 }
 
@@ -213,8 +216,8 @@ pub mod utils {
 /// Re-export important types for Bolt's convenience
 #[cfg(feature = "bolt")]
 pub use crate::{
-    config::{BoltCapsuleGpuConfig, BoltGamingGpuConfig, BoltAiMlGpuConfig},
-    cdi::bolt::{BoltGpuIsolation, BoltGamingConfig, GamingProfile},
+    cdi::bolt::{BoltGamingConfig, BoltGpuIsolation, GamingProfile},
+    config::{BoltAiMlGpuConfig, BoltCapsuleGpuConfig, BoltGamingGpuConfig},
     gpu::GpuDevice,
 };
 

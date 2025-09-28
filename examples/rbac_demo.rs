@@ -3,8 +3,8 @@
 //! This example demonstrates role-based access control (RBAC)
 //! functionality in nvbind.
 
-use nvbind::rbac::{RbacManager, RbacConfig, Role, Permission, User, ResourceLimits};
 use anyhow::Result;
+use nvbind::rbac::{Permission, RbacConfig, RbacManager, ResourceLimits, Role, User};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -79,7 +79,10 @@ async fn main() -> Result<()> {
     let rbac = RbacManager::new(config);
     rbac.initialize().await?;
 
-    println!("✅ RBAC manager initialized with {} roles\n", rbac.get_roles().len());
+    println!(
+        "✅ RBAC manager initialized with {} roles\n",
+        rbac.get_roles().len()
+    );
 
     // Simulate different users
     let admin_user = User {
@@ -128,13 +131,13 @@ async fn main() -> Result<()> {
 
     for (user_desc, user) in users {
         println!("👤 Testing permissions for {}:", user_desc);
-        
+
         for action in &test_actions {
             let has_permission = rbac.check_permission(user, action).await?;
             let icon = if has_permission { "✅" } else { "❌" };
             println!("   {} {}: {}", icon, action, has_permission);
         }
-        
+
         // Check resource limits
         if let Ok(limits) = rbac.get_user_limits(user).await {
             if let Some(limits) = limits {
@@ -152,7 +155,7 @@ async fn main() -> Result<()> {
                 println!("   📊 Resource Limits: None (unlimited)");
             }
         }
-        
+
         println!();
     }
 
@@ -160,7 +163,8 @@ async fn main() -> Result<()> {
     println!("📝 Recent audit log entries:");
     if let Ok(entries) = rbac.get_audit_log(5).await {
         for entry in entries {
-            println!("   [{}] {}: {} -> {} ({})",
+            println!(
+                "   [{}] {}: {} -> {} ({})",
                 entry.timestamp.format("%H:%M:%S"),
                 entry.user,
                 entry.action,
@@ -171,6 +175,6 @@ async fn main() -> Result<()> {
     }
 
     println!("\n🎉 RBAC demo completed successfully!");
-    
+
     Ok(())
 }

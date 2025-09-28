@@ -60,11 +60,21 @@ pub struct CredentialConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuthMethod {
-    ServiceAccount { key_path: String },
-    IAMRole { role_arn: String },
+    ServiceAccount {
+        key_path: String,
+    },
+    IAMRole {
+        role_arn: String,
+    },
     ManagedIdentity,
-    AccessKey { access_key_id: String, secret_key: String },
-    OAuth2 { client_id: String, client_secret: String },
+    AccessKey {
+        access_key_id: String,
+        secret_key: String,
+    },
+    OAuth2 {
+        client_id: String,
+        client_secret: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -364,57 +374,55 @@ impl Default for CloudConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            providers: vec![
-                ProviderConfig {
-                    provider: CloudProvider::AWS,
-                    enabled: false,
-                    credentials: CredentialConfig {
-                        auth_method: AuthMethod::IAMRole {
-                            role_arn: "arn:aws:iam::123456789012:role/nvbind-role".to_string(),
-                        },
-                        credentials: HashMap::new(),
+            providers: vec![ProviderConfig {
+                provider: CloudProvider::AWS,
+                enabled: false,
+                credentials: CredentialConfig {
+                    auth_method: AuthMethod::IAMRole {
+                        role_arn: "arn:aws:iam::123456789012:role/nvbind-role".to_string(),
                     },
-                    regions: vec!["us-west-2".to_string(), "us-east-1".to_string()],
-                    instance_types: vec![
-                        InstanceTypeConfig {
-                            name: "p3.2xlarge".to_string(),
-                            gpu_type: GpuType::V100,
-                            gpu_count: 1,
-                            vcpus: 8,
-                            memory_gb: 61,
-                            storage_gb: 0,
-                            network_performance: NetworkPerformance::Up_to_25Gbps,
-                            hourly_cost: 3.06,
-                            spot_eligible: true,
-                        },
-                        InstanceTypeConfig {
-                            name: "p4d.24xlarge".to_string(),
-                            gpu_type: GpuType::A100,
-                            gpu_count: 8,
-                            vcpus: 96,
-                            memory_gb: 1152,
-                            storage_gb: 8000,
-                            network_performance: NetworkPerformance::Up_to_100Gbps,
-                            hourly_cost: 32.77,
-                            spot_eligible: true,
-                        },
-                    ],
-                    networking: ProviderNetworkingConfig {
-                        vpc_id: None,
-                        subnet_ids: Vec::new(),
-                        security_groups: Vec::new(),
-                        public_ip: false,
-                        placement_group: None,
-                    },
-                    limits: ProviderLimits {
-                        max_instances: 100,
-                        max_vcpus: 1000,
-                        max_gpus: 100,
-                        max_storage_gb: 100000,
-                        max_bandwidth_gbps: 1000.0,
-                    },
+                    credentials: HashMap::new(),
                 },
-            ],
+                regions: vec!["us-west-2".to_string(), "us-east-1".to_string()],
+                instance_types: vec![
+                    InstanceTypeConfig {
+                        name: "p3.2xlarge".to_string(),
+                        gpu_type: GpuType::V100,
+                        gpu_count: 1,
+                        vcpus: 8,
+                        memory_gb: 61,
+                        storage_gb: 0,
+                        network_performance: NetworkPerformance::Up_to_25Gbps,
+                        hourly_cost: 3.06,
+                        spot_eligible: true,
+                    },
+                    InstanceTypeConfig {
+                        name: "p4d.24xlarge".to_string(),
+                        gpu_type: GpuType::A100,
+                        gpu_count: 8,
+                        vcpus: 96,
+                        memory_gb: 1152,
+                        storage_gb: 8000,
+                        network_performance: NetworkPerformance::Up_to_100Gbps,
+                        hourly_cost: 32.77,
+                        spot_eligible: true,
+                    },
+                ],
+                networking: ProviderNetworkingConfig {
+                    vpc_id: None,
+                    subnet_ids: Vec::new(),
+                    security_groups: Vec::new(),
+                    public_ip: false,
+                    placement_group: None,
+                },
+                limits: ProviderLimits {
+                    max_instances: 100,
+                    max_vcpus: 1000,
+                    max_gpus: 100,
+                    max_storage_gb: 100000,
+                    max_bandwidth_gbps: 1000.0,
+                },
+            }],
             hybrid_scheduling: HybridSchedulingConfig {
                 enabled: true,
                 strategy: SchedulingStrategy::HybridBalanced,
@@ -562,7 +570,10 @@ impl CloudManager {
             return Ok(());
         }
 
-        info!("Initializing multi-cloud manager with {} providers", self.providers.len());
+        info!(
+            "Initializing multi-cloud manager with {} providers",
+            self.providers.len()
+        );
 
         // Initialize all providers
         for (provider, interface) in &mut self.providers {
@@ -587,12 +598,18 @@ impl CloudManager {
 
     /// Schedule GPU workload across cloud providers
     pub async fn schedule_workload(&self, workload: CloudWorkload) -> Result<SchedulingResult> {
-        info!("Scheduling cloud workload: {} (GPUs: {})", workload.name, workload.requirements.gpu_count);
+        info!(
+            "Scheduling cloud workload: {} (GPUs: {})",
+            workload.name, workload.requirements.gpu_count
+        );
 
         // Get available resources from all providers
         let mut available_resources = Vec::new();
         for (provider, interface) in &self.providers {
-            match interface.get_available_resources(&workload.requirements).await {
+            match interface
+                .get_available_resources(&workload.requirements)
+                .await
+            {
                 Ok(resources) => {
                     for mut resource in resources {
                         resource.provider = *provider;
@@ -610,18 +627,29 @@ impl CloudManager {
         }
 
         // Use scheduler to select best resource
-        let selected_resource = self.scheduler.select_resource(&available_resources, &workload)?;
+        let selected_resource = self
+            .scheduler
+            .select_resource(&available_resources, &workload)?;
 
         // Launch instance
-        let provider_interface = self.providers.get(&selected_resource.provider)
-            .ok_or_else(|| anyhow::anyhow!("Provider not found: {:?}", selected_resource.provider))?;
+        let provider_interface =
+            self.providers
+                .get(&selected_resource.provider)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("Provider not found: {:?}", selected_resource.provider)
+                })?;
 
-        let instance = provider_interface.launch_instance(&selected_resource, &workload).await?;
+        let instance = provider_interface
+            .launch_instance(&selected_resource, &workload)
+            .await?;
 
         // Track instance for cost optimization
         self.cost_optimizer.track_instance(&instance).await?;
 
-        info!("Workload scheduled successfully on {:?}: {}", selected_resource.provider, instance.id);
+        info!(
+            "Workload scheduled successfully on {:?}: {}",
+            selected_resource.provider, instance.id
+        );
 
         Ok(SchedulingResult {
             workload_id: workload.id,
@@ -666,7 +694,10 @@ impl CloudManager {
         info!("Initiating disaster recovery for region: {}", region);
 
         // Find affected instances
-        let affected_instances = self.instance_manager.get_instances_in_region(region).await?;
+        let affected_instances = self
+            .instance_manager
+            .get_instances_in_region(region)
+            .await?;
 
         let mut recovery_actions = Vec::new();
 
@@ -679,8 +710,12 @@ impl CloudManager {
         Ok(DisasterRecoveryResult {
             affected_instances: recovery_actions.len() as u32,
             recovery_actions,
-            estimated_recovery_time: Duration::from_secs(self.config.disaster_recovery.rto_minutes as u64 * 60),
-            data_loss_window: Duration::from_secs(self.config.disaster_recovery.rpo_minutes as u64 * 60),
+            estimated_recovery_time: Duration::from_secs(
+                self.config.disaster_recovery.rto_minutes as u64 * 60,
+            ),
+            data_loss_window: Duration::from_secs(
+                self.config.disaster_recovery.rpo_minutes as u64 * 60,
+            ),
         })
     }
 
@@ -711,8 +746,15 @@ impl CloudManager {
 #[async_trait::async_trait]
 pub trait CloudProviderInterface: Send + Sync {
     async fn initialize(&mut self) -> Result<()>;
-    async fn get_available_resources(&self, requirements: &ResourceRequirements) -> Result<Vec<CloudResource>>;
-    async fn launch_instance(&self, resource: &CloudResource, workload: &CloudWorkload) -> Result<CloudInstance>;
+    async fn get_available_resources(
+        &self,
+        requirements: &ResourceRequirements,
+    ) -> Result<Vec<CloudResource>>;
+    async fn launch_instance(
+        &self,
+        resource: &CloudResource,
+        workload: &CloudWorkload,
+    ) -> Result<CloudInstance>;
     async fn terminate_instance(&self, instance_id: &str) -> Result<()>;
     async fn get_instance_status(&self, instance_id: &str) -> Result<InstanceStatus>;
     async fn get_status(&self) -> Result<ProviderStatus>;
@@ -737,7 +779,10 @@ impl CloudProviderInterface for AwsProvider {
         Ok(())
     }
 
-    async fn get_available_resources(&self, requirements: &ResourceRequirements) -> Result<Vec<CloudResource>> {
+    async fn get_available_resources(
+        &self,
+        requirements: &ResourceRequirements,
+    ) -> Result<Vec<CloudResource>> {
         // Query AWS EC2 for available GPU instances
         let mut resources = Vec::new();
 
@@ -766,8 +811,15 @@ impl CloudProviderInterface for AwsProvider {
         Ok(resources)
     }
 
-    async fn launch_instance(&self, resource: &CloudResource, workload: &CloudWorkload) -> Result<CloudInstance> {
-        info!("Launching AWS instance: {} in {}", resource.instance_type, resource.region);
+    async fn launch_instance(
+        &self,
+        resource: &CloudResource,
+        workload: &CloudWorkload,
+    ) -> Result<CloudInstance> {
+        info!(
+            "Launching AWS instance: {} in {}",
+            resource.instance_type, resource.region
+        );
 
         // Use AWS SDK to launch EC2 instance
         let instance_id = format!("i-{}", Uuid::new_v4().simple());
@@ -828,12 +880,19 @@ impl CloudProviderInterface for GcpProvider {
         Ok(())
     }
 
-    async fn get_available_resources(&self, _requirements: &ResourceRequirements) -> Result<Vec<CloudResource>> {
+    async fn get_available_resources(
+        &self,
+        _requirements: &ResourceRequirements,
+    ) -> Result<Vec<CloudResource>> {
         // Simplified - would implement actual GCP Compute Engine API calls
         Ok(Vec::new())
     }
 
-    async fn launch_instance(&self, _resource: &CloudResource, _workload: &CloudWorkload) -> Result<CloudInstance> {
+    async fn launch_instance(
+        &self,
+        _resource: &CloudResource,
+        _workload: &CloudWorkload,
+    ) -> Result<CloudInstance> {
         Err(anyhow::anyhow!("GCP provider not fully implemented"))
     }
 
@@ -875,11 +934,18 @@ impl CloudProviderInterface for AzureProvider {
         Ok(())
     }
 
-    async fn get_available_resources(&self, _requirements: &ResourceRequirements) -> Result<Vec<CloudResource>> {
+    async fn get_available_resources(
+        &self,
+        _requirements: &ResourceRequirements,
+    ) -> Result<Vec<CloudResource>> {
         Ok(Vec::new())
     }
 
-    async fn launch_instance(&self, _resource: &CloudResource, _workload: &CloudWorkload) -> Result<CloudInstance> {
+    async fn launch_instance(
+        &self,
+        _resource: &CloudResource,
+        _workload: &CloudWorkload,
+    ) -> Result<CloudInstance> {
         Err(anyhow::anyhow!("Azure provider not fully implemented"))
     }
 
@@ -921,7 +987,10 @@ impl CloudProviderInterface for OnPremisesProvider {
         Ok(())
     }
 
-    async fn get_available_resources(&self, requirements: &ResourceRequirements) -> Result<Vec<CloudResource>> {
+    async fn get_available_resources(
+        &self,
+        requirements: &ResourceRequirements,
+    ) -> Result<Vec<CloudResource>> {
         // Query local GPU resources
         let gpus = crate::gpu::discover_gpus().await?;
         let mut resources = Vec::new();
@@ -935,7 +1004,7 @@ impl CloudProviderInterface for OnPremisesProvider {
                 gpu_type: GpuType::A100, // Would detect actual GPU type
                 gpu_count: gpus.len() as u32,
                 vcpus: std::thread::available_parallelism()?.get() as u32,
-                memory_gb: 64, // Would detect actual memory
+                memory_gb: 64,      // Would detect actual memory
                 cost_per_hour: 0.0, // On-premises has no hourly cost
                 spot_available: false,
                 spot_price: None,
@@ -947,7 +1016,11 @@ impl CloudProviderInterface for OnPremisesProvider {
         Ok(resources)
     }
 
-    async fn launch_instance(&self, resource: &CloudResource, workload: &CloudWorkload) -> Result<CloudInstance> {
+    async fn launch_instance(
+        &self,
+        resource: &CloudResource,
+        workload: &CloudWorkload,
+    ) -> Result<CloudInstance> {
         info!("Starting on-premises workload: {}", workload.name);
 
         Ok(CloudInstance {
@@ -997,16 +1070,24 @@ impl HybridScheduler {
     }
 
     async fn initialize(&self) -> Result<()> {
-        info!("Initializing hybrid scheduler with strategy: {:?}", self.config.strategy);
+        info!(
+            "Initializing hybrid scheduler with strategy: {:?}",
+            self.config.strategy
+        );
         Ok(())
     }
 
-    fn select_resource<'a>(&self, resources: &'a [CloudResource], workload: &CloudWorkload) -> Result<&'a CloudResource> {
+    fn select_resource<'a>(
+        &self,
+        resources: &'a [CloudResource],
+        workload: &CloudWorkload,
+    ) -> Result<&'a CloudResource> {
         if resources.is_empty() {
             return Err(anyhow::anyhow!("No resources available"));
         }
 
-        let scored_resources: Vec<_> = resources.iter()
+        let scored_resources: Vec<_> = resources
+            .iter()
             .map(|resource| {
                 let score = self.calculate_score(resource, workload);
                 (resource, score)
@@ -1014,15 +1095,16 @@ impl HybridScheduler {
             .collect();
 
         // Select resource with highest score
-        let best_resource = scored_resources.iter()
+        let best_resource = scored_resources
+            .iter()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(resource, _)| *resource)
             .ok_or_else(|| anyhow::anyhow!("No suitable resource found"))?;
 
-        info!("Selected resource: {} on {:?} (region: {})",
-              best_resource.instance_type,
-              best_resource.provider,
-              best_resource.region);
+        info!(
+            "Selected resource: {} on {:?} (region: {})",
+            best_resource.instance_type, best_resource.provider, best_resource.region
+        );
 
         Ok(best_resource)
     }
@@ -1043,11 +1125,21 @@ impl HybridScheduler {
         score += availability_score * self.config.priorities.availability_weight;
 
         // Provider preference
-        if self.config.constraints.preferred_providers.contains(&resource.provider) {
+        if self
+            .config
+            .constraints
+            .preferred_providers
+            .contains(&resource.provider)
+        {
             score += 10.0;
         }
 
-        if self.config.constraints.excluded_providers.contains(&resource.provider) {
+        if self
+            .config
+            .constraints
+            .excluded_providers
+            .contains(&resource.provider)
+        {
             score -= 100.0;
         }
 
@@ -1109,19 +1201,24 @@ impl CostOptimizer {
     ) -> Result<()> {
         let instances = tracked_instances.read().await;
 
-        let total_hourly_cost: f64 = instances.values()
+        let total_hourly_cost: f64 = instances
+            .values()
             .map(|instance| instance.cost_per_hour)
             .sum();
 
         let daily_projected = total_hourly_cost * 24.0;
 
         if daily_projected > config.cost_alerts.daily_budget {
-            warn!("Daily cost projection (${:.2}) exceeds budget (${:.2})",
-                  daily_projected, config.cost_alerts.daily_budget);
+            warn!(
+                "Daily cost projection (${:.2}) exceeds budget (${:.2})",
+                daily_projected, config.cost_alerts.daily_budget
+            );
         }
 
-        debug!("Current hourly cost: ${:.2}, daily projection: ${:.2}",
-               total_hourly_cost, daily_projected);
+        debug!(
+            "Current hourly cost: ${:.2}, daily projection: ${:.2}",
+            total_hourly_cost, daily_projected
+        );
 
         Ok(())
     }
@@ -1148,14 +1245,12 @@ impl CostOptimizer {
             total_cost,
             provider_breakdown: provider_costs,
             spot_savings: total_cost * 0.3, // Estimated 30% spot savings
-            recommendations: vec![
-                CostRecommendation {
-                    recommendation_type: CostRecommendationType::UseSpotInstances,
-                    description: "Use spot instances for non-critical workloads".to_string(),
-                    potential_savings: total_cost * 0.7,
-                    effort_level: EffortLevel::Low,
-                },
-            ],
+            recommendations: vec![CostRecommendation {
+                recommendation_type: CostRecommendationType::UseSpotInstances,
+                description: "Use spot instances for non-critical workloads".to_string(),
+                potential_savings: total_cost * 0.7,
+                effort_level: EffortLevel::Low,
+            }],
         })
     }
 
@@ -1190,10 +1285,11 @@ impl InstanceManager {
 
     async fn get_instances_in_region(&self, region: &str) -> Result<Vec<CloudInstance>> {
         let instances = self.instances.read().await;
-        Ok(instances.values()
-           .filter(|i| i.region == region)
-           .cloned()
-           .collect())
+        Ok(instances
+            .values()
+            .filter(|i| i.region == region)
+            .cloned()
+            .collect())
     }
 }
 
@@ -1461,7 +1557,10 @@ mod tests {
         };
 
         assert_eq!(requirements.gpu_count, 2);
-        assert!(matches!(requirements.gpu_type_preference, Some(GpuType::A100)));
+        assert!(matches!(
+            requirements.gpu_type_preference,
+            Some(GpuType::A100)
+        ));
     }
 
     #[test]
@@ -1515,19 +1614,17 @@ mod tests {
                 credentials: HashMap::new(),
             },
             regions: vec!["us-west-2".to_string()],
-            instance_types: vec![
-                InstanceTypeConfig {
-                    name: "p3.2xlarge".to_string(),
-                    gpu_type: GpuType::V100,
-                    gpu_count: 1,
-                    vcpus: 8,
-                    memory_gb: 61,
-                    storage_gb: 0,
-                    network_performance: NetworkPerformance::Up_to_25Gbps,
-                    hourly_cost: 3.06,
-                    spot_eligible: true,
-                },
-            ],
+            instance_types: vec![InstanceTypeConfig {
+                name: "p3.2xlarge".to_string(),
+                gpu_type: GpuType::V100,
+                gpu_count: 1,
+                vcpus: 8,
+                memory_gb: 61,
+                storage_gb: 0,
+                network_performance: NetworkPerformance::Up_to_25Gbps,
+                hourly_cost: 3.06,
+                spot_eligible: true,
+            }],
             networking: ProviderNetworkingConfig {
                 vpc_id: None,
                 subnet_ids: Vec::new(),
@@ -1574,6 +1671,9 @@ mod tests {
         };
 
         let scheduler = HybridScheduler::new(config);
-        assert!(matches!(scheduler.config.strategy, SchedulingStrategy::CostOptimized));
+        assert!(matches!(
+            scheduler.config.strategy,
+            SchedulingStrategy::CostOptimized
+        ));
     }
 }

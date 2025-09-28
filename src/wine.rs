@@ -227,11 +227,10 @@ impl WineOptimizer {
             .and_then(|steam_path| {
                 if steam_path.exists() {
                     // Look for Proton installations
-                    fs::read_dir(&steam_path).ok()?
+                    fs::read_dir(&steam_path)
+                        .ok()?
                         .filter_map(|entry| entry.ok())
-                        .find(|entry| {
-                            entry.file_name().to_string_lossy().starts_with("Proton")
-                        })
+                        .find(|entry| entry.file_name().to_string_lossy().starts_with("Proton"))
                         .map(|entry| entry.path())
                 } else {
                     None
@@ -363,7 +362,10 @@ impl WineOptimizer {
                 .context("Failed to apply registry tweak")?;
 
             if !output.status.success() {
-                warn!("Failed to apply registry tweak: {} = {}", tweak.name, tweak.value);
+                warn!(
+                    "Failed to apply registry tweak: {} = {}",
+                    tweak.name, tweak.value
+                );
             }
         }
 
@@ -396,8 +398,7 @@ impl WineOptimizer {
             dxvk_conf.push_str(&format!("{} = {}\n", key, value));
         }
 
-        fs::write(&dxvk_conf_path, dxvk_conf)
-            .context("Failed to write DXVK configuration")?;
+        fs::write(&dxvk_conf_path, dxvk_conf).context("Failed to write DXVK configuration")?;
 
         info!("DXVK configuration written to: {:?}", dxvk_conf_path);
         Ok(())
@@ -545,7 +546,10 @@ impl WineOptimizer {
     }
 
     /// Get current gaming performance statistics
-    pub async fn get_performance_stats(&self, _container_id: &str) -> Result<GamingPerformanceStats> {
+    pub async fn get_performance_stats(
+        &self,
+        _container_id: &str,
+    ) -> Result<GamingPerformanceStats> {
         // TODO: Implement actual performance monitoring
         // This would integrate with Wine's performance counters and GPU monitoring
 
@@ -569,8 +573,12 @@ impl WineOptimizer {
         match game_engine.to_lowercase().as_str() {
             "unreal" | "unreal_engine" => {
                 // Unreal Engine optimizations
-                profile.environment_vars.insert("DXVK_ASYNC".to_string(), "1".to_string());
-                profile.environment_vars.insert("DXVK_STATE_CACHE".to_string(), "1".to_string());
+                profile
+                    .environment_vars
+                    .insert("DXVK_ASYNC".to_string(), "1".to_string());
+                profile
+                    .environment_vars
+                    .insert("DXVK_STATE_CACHE".to_string(), "1".to_string());
             }
             "unity" => {
                 // Unity optimizations
@@ -612,7 +620,10 @@ impl WineOptimizer {
         }
 
         // Add Wine prefix
-        env.insert("WINEPREFIX".to_string(), self.wine_paths.wine_prefix.to_string_lossy().to_string());
+        env.insert(
+            "WINEPREFIX".to_string(),
+            self.wine_paths.wine_prefix.to_string_lossy().to_string(),
+        );
 
         env
     }
@@ -666,7 +677,10 @@ mod tests {
         let profile = WineOptimizer::create_default_profile();
 
         assert_eq!(profile.name, "default_gaming");
-        assert!(matches!(profile.gpu_acceleration, GpuAccelerationMode::Exclusive));
+        assert!(matches!(
+            profile.gpu_acceleration,
+            GpuAccelerationMode::Exclusive
+        ));
         assert!(matches!(profile.directx_mode, DirectXMode::Dxvk));
     }
 

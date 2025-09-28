@@ -302,7 +302,9 @@ async fn handle_cdi_command(command: CdiCommands) -> Result<()> {
             let devices = cdi::list_cdi_devices()?;
 
             if devices.is_empty() {
-                println!("No CDI devices found. Generate specifications with 'nvbind cdi generate'");
+                println!(
+                    "No CDI devices found. Generate specifications with 'nvbind cdi generate'"
+                );
             } else {
                 println!("Available CDI devices:");
                 for device in devices {
@@ -336,35 +338,74 @@ async fn handle_doctor_command(install: bool) -> Result<()> {
     let compatibility = distro_manager.check_compatibility()?;
 
     println!("=== System Diagnostics ===");
-    println!("Distribution: {} {}", compatibility.distribution.name(), compatibility.version);
-    println!("System Ready: {}", if compatibility.is_ready() { "✅ Yes" } else { "❌ No" });
+    println!(
+        "Distribution: {} {}",
+        compatibility.distribution.name(),
+        compatibility.version
+    );
+    println!(
+        "System Ready: {}",
+        if compatibility.is_ready() {
+            "✅ Yes"
+        } else {
+            "❌ No"
+        }
+    );
     println!();
 
     // Container runtime status
     println!("Container Runtimes:");
     for (runtime, available) in &compatibility.container_runtime_available {
-        println!("  {}: {}", runtime, if *available { "✅ Available" } else { "❌ Missing" });
+        println!(
+            "  {}: {}",
+            runtime,
+            if *available {
+                "✅ Available"
+            } else {
+                "❌ Missing"
+            }
+        );
     }
     println!();
 
     // NVIDIA packages status
     println!("NVIDIA Packages:");
     for (package, installed) in &compatibility.packages_installed {
-        println!("  {}: {}", package, if *installed { "✅ Installed" } else { "❌ Missing" });
+        println!(
+            "  {}: {}",
+            package,
+            if *installed {
+                "✅ Installed"
+            } else {
+                "❌ Missing"
+            }
+        );
     }
     println!();
 
     // Kernel modules status
     println!("Kernel Modules:");
     for (module, loaded) in &compatibility.kernel_modules_loaded {
-        println!("  {}: {}", module, if *loaded { "✅ Loaded" } else { "❌ Not loaded" });
+        println!(
+            "  {}: {}",
+            module,
+            if *loaded {
+                "✅ Loaded"
+            } else {
+                "❌ Not loaded"
+            }
+        );
     }
     println!();
 
     // Library paths status
     println!("Library Paths:");
     for (path, exists) in &compatibility.library_paths_available {
-        println!("  {}: {}", path, if *exists { "✅ Exists" } else { "❌ Missing" });
+        println!(
+            "  {}: {}",
+            path,
+            if *exists { "✅ Exists" } else { "❌ Missing" }
+        );
     }
     println!();
 
@@ -400,13 +441,50 @@ async fn handle_wsl2_command(command: Wsl2Commands) -> Result<()> {
                 wsl2::Wsl2GpuSupport::NotWsl2 => {
                     println!("❌ Not running under WSL2");
                 }
-                wsl2::Wsl2GpuSupport::Available { cuda, opencl, directx, opengl, vulkan } => {
+                wsl2::Wsl2GpuSupport::Available {
+                    cuda,
+                    opencl,
+                    directx,
+                    opengl,
+                    vulkan,
+                } => {
                     println!("✅ WSL2 detected");
-                    println!("CUDA Support: {}", if cuda { "✅ Available" } else { "❌ Missing" });
-                    println!("OpenCL Support: {}", if opencl { "✅ Available" } else { "❌ Missing" });
-                    println!("DirectX Support: {}", if directx { "✅ Available" } else { "❌ Missing" });
-                    println!("OpenGL Support: {}", if opengl { "✅ Available" } else { "❌ Missing" });
-                    println!("Vulkan Support: {}", if vulkan { "✅ Available" } else { "❌ Missing" });
+                    println!(
+                        "CUDA Support: {}",
+                        if cuda { "✅ Available" } else { "❌ Missing" }
+                    );
+                    println!(
+                        "OpenCL Support: {}",
+                        if opencl {
+                            "✅ Available"
+                        } else {
+                            "❌ Missing"
+                        }
+                    );
+                    println!(
+                        "DirectX Support: {}",
+                        if directx {
+                            "✅ Available"
+                        } else {
+                            "❌ Missing"
+                        }
+                    );
+                    println!(
+                        "OpenGL Support: {}",
+                        if opengl {
+                            "✅ Available"
+                        } else {
+                            "❌ Missing"
+                        }
+                    );
+                    println!(
+                        "Vulkan Support: {}",
+                        if vulkan {
+                            "✅ Available"
+                        } else {
+                            "❌ Missing"
+                        }
+                    );
                 }
             }
         }
@@ -474,7 +552,11 @@ async fn handle_detailed_info() -> Result<()> {
     let compatibility = distro_manager.check_compatibility()?;
 
     println!("\n=== System Information ===");
-    println!("Distribution: {} {}", compatibility.distribution.name(), compatibility.version);
+    println!(
+        "Distribution: {} {}",
+        compatibility.distribution.name(),
+        compatibility.version
+    );
 
     // WSL2 information if applicable
     if wsl2::Wsl2Manager::detect_wsl2() {
@@ -509,10 +591,23 @@ async fn handle_wsl2_info() -> Result<()> {
     if let Some(build) = diagnostics.windows_build {
         println!("Windows Build: {}", build);
     }
-    println!("Windows GPU Support: {}", if diagnostics.windows_gpu_support { "✅ Yes" } else { "❌ No" });
+    println!(
+        "Windows GPU Support: {}",
+        if diagnostics.windows_gpu_support {
+            "✅ Yes"
+        } else {
+            "❌ No"
+        }
+    );
 
     match diagnostics.gpu_support {
-        wsl2::Wsl2GpuSupport::Available { cuda, opencl, directx, opengl, vulkan } => {
+        wsl2::Wsl2GpuSupport::Available {
+            cuda,
+            opencl,
+            directx,
+            opengl,
+            vulkan,
+        } => {
             println!("\nGPU API Support:");
             println!("  CUDA: {}", if cuda { "✅" } else { "❌" });
             println!("  OpenCL: {}", if opencl { "✅" } else { "❌" });

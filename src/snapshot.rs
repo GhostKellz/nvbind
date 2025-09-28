@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::{debug, info};
 
-
 /// GPU state snapshot containing all recoverable GPU context
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuStateSnapshot {
@@ -248,15 +247,17 @@ impl GpuSnapshotManager {
     /// Create new snapshot manager
     pub fn new<P: AsRef<Path>>(snapshot_dir: P) -> Result<Self> {
         let snapshot_dir = snapshot_dir.as_ref().to_path_buf();
-        fs::create_dir_all(&snapshot_dir)
-            .context("Failed to create snapshot directory")?;
+        fs::create_dir_all(&snapshot_dir).context("Failed to create snapshot directory")?;
 
         Ok(Self { snapshot_dir })
     }
 
     /// Create GPU state snapshot for container
     pub async fn create_snapshot(&self, container_id: &str) -> Result<GpuStateSnapshot> {
-        info!("Creating GPU state snapshot for container: {}", container_id);
+        info!(
+            "Creating GPU state snapshot for container: {}",
+            container_id
+        );
 
         let snapshot = GpuStateSnapshot {
             timestamp: chrono::Utc::now(),
@@ -271,7 +272,10 @@ impl GpuSnapshotManager {
         // Save snapshot to disk
         self.save_snapshot(&snapshot).await?;
 
-        info!("GPU snapshot created successfully for container: {}", container_id);
+        info!(
+            "GPU snapshot created successfully for container: {}",
+            container_id
+        );
         Ok(snapshot)
     }
 
@@ -282,15 +286,21 @@ impl GpuSnapshotManager {
         let snapshot = self.load_snapshot(container_id).await?;
 
         // Restore GPU device states
-        self.restore_gpu_device_states(&snapshot.gpu_devices).await?;
+        self.restore_gpu_device_states(&snapshot.gpu_devices)
+            .await?;
 
         // Restore performance settings
-        self.restore_performance_state(&snapshot.performance_state).await?;
+        self.restore_performance_state(&snapshot.performance_state)
+            .await?;
 
         // Restore process contexts (if possible)
-        self.restore_process_contexts(&snapshot.process_contexts).await?;
+        self.restore_process_contexts(&snapshot.process_contexts)
+            .await?;
 
-        info!("GPU state restored successfully for container: {}", container_id);
+        info!(
+            "GPU state restored successfully for container: {}",
+            container_id
+        );
         Ok(())
     }
 
@@ -375,7 +385,10 @@ impl GpuSnapshotManager {
 
         // Use nvidia-ml-py equivalent or nvidia-smi to get memory info
         let output = Command::new("nvidia-smi")
-            .args(&["--query-gpu=memory.total,memory.used", "--format=csv,noheader,nounits"])
+            .args(&[
+                "--query-gpu=memory.total,memory.used",
+                "--format=csv,noheader,nounits",
+            ])
             .output()
             .context("Failed to query GPU memory")?;
 
@@ -407,7 +420,10 @@ impl GpuSnapshotManager {
 
         // Query GPU utilization and power
         let output = Command::new("nvidia-smi")
-            .args(&["--query-gpu=utilization.gpu,utilization.memory,power.draw", "--format=csv,noheader,nounits"])
+            .args(&[
+                "--query-gpu=utilization.gpu,utilization.memory,power.draw",
+                "--format=csv,noheader,nounits",
+            ])
             .output()
             .context("Failed to query GPU performance")?;
 
@@ -455,7 +471,10 @@ impl GpuSnapshotManager {
     /// Get thermal state for GPU
     async fn get_thermal_state(&self, _gpu_id: &str) -> Result<ThermalState> {
         let output = Command::new("nvidia-smi")
-            .args(&["--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"])
+            .args(&[
+                "--query-gpu=temperature.gpu",
+                "--format=csv,noheader,nounits",
+            ])
             .output()
             .context("Failed to query GPU temperature")?;
 
@@ -523,7 +542,10 @@ impl GpuSnapshotManager {
     }
 
     /// Restore performance state
-    async fn restore_performance_state(&self, _performance_state: &GpuPerformanceState) -> Result<()> {
+    async fn restore_performance_state(
+        &self,
+        _performance_state: &GpuPerformanceState,
+    ) -> Result<()> {
         debug!("Restoring performance state");
         // TODO: Implement performance state restoration
         Ok(())
@@ -541,11 +563,10 @@ impl GpuSnapshotManager {
         let filename = format!("{}.snapshot.json", snapshot.container_id);
         let filepath = self.snapshot_dir.join(filename);
 
-        let snapshot_json = serde_json::to_string_pretty(snapshot)
-            .context("Failed to serialize snapshot")?;
+        let snapshot_json =
+            serde_json::to_string_pretty(snapshot).context("Failed to serialize snapshot")?;
 
-        fs::write(&filepath, snapshot_json)
-            .context("Failed to write snapshot file")?;
+        fs::write(&filepath, snapshot_json).context("Failed to write snapshot file")?;
 
         debug!("Snapshot saved to: {:?}", filepath);
         Ok(())
@@ -556,11 +577,11 @@ impl GpuSnapshotManager {
         let filename = format!("{}.snapshot.json", container_id);
         let filepath = self.snapshot_dir.join(filename);
 
-        let snapshot_json = fs::read_to_string(&filepath)
-            .context("Failed to read snapshot file")?;
+        let snapshot_json =
+            fs::read_to_string(&filepath).context("Failed to read snapshot file")?;
 
-        let snapshot: GpuStateSnapshot = serde_json::from_str(&snapshot_json)
-            .context("Failed to deserialize snapshot")?;
+        let snapshot: GpuStateSnapshot =
+            serde_json::from_str(&snapshot_json).context("Failed to deserialize snapshot")?;
 
         debug!("Snapshot loaded from: {:?}", filepath);
         Ok(snapshot)
@@ -568,8 +589,8 @@ impl GpuSnapshotManager {
 
     /// List available snapshots
     pub async fn list_snapshots(&self) -> Result<Vec<String>> {
-        let entries = fs::read_dir(&self.snapshot_dir)
-            .context("Failed to read snapshot directory")?;
+        let entries =
+            fs::read_dir(&self.snapshot_dir).context("Failed to read snapshot directory")?;
 
         let mut snapshots = Vec::new();
         for entry in entries {
@@ -595,8 +616,7 @@ impl GpuSnapshotManager {
         let filepath = self.snapshot_dir.join(filename);
 
         if filepath.exists() {
-            fs::remove_file(&filepath)
-                .context("Failed to delete snapshot file")?;
+            fs::remove_file(&filepath).context("Failed to delete snapshot file")?;
             info!("Deleted snapshot for container: {}", container_id);
         }
 
@@ -651,6 +671,9 @@ mod tests {
         let deserialized: GpuStateSnapshot = serde_json::from_str(&json).unwrap();
 
         assert_eq!(snapshot.container_id, deserialized.container_id);
-        assert_eq!(snapshot.memory_state.total_memory, deserialized.memory_state.total_memory);
+        assert_eq!(
+            snapshot.memory_state.total_memory,
+            deserialized.memory_state.total_memory
+        );
     }
 }

@@ -48,37 +48,46 @@ impl Default for IsolationConfig {
         let mut profiles = HashMap::new();
 
         // Gaming profile - prioritize performance
-        profiles.insert("gaming".to_string(), IsolationProfile {
-            name: "gaming".to_string(),
-            description: "Optimized for gaming workloads with high performance".to_string(),
-            max_memory_percent: 90,
-            max_compute_percent: 95,
-            max_processes: 8,
-            strict_enforcement: false,
-            cgroup_params: HashMap::new(),
-        });
+        profiles.insert(
+            "gaming".to_string(),
+            IsolationProfile {
+                name: "gaming".to_string(),
+                description: "Optimized for gaming workloads with high performance".to_string(),
+                max_memory_percent: 90,
+                max_compute_percent: 95,
+                max_processes: 8,
+                strict_enforcement: false,
+                cgroup_params: HashMap::new(),
+            },
+        );
 
         // AI/ML profile - balanced resource usage
-        profiles.insert("ai-ml".to_string(), IsolationProfile {
-            name: "ai-ml".to_string(),
-            description: "Balanced profile for AI/ML workloads".to_string(),
-            max_memory_percent: 80,
-            max_compute_percent: 85,
-            max_processes: 4,
-            strict_enforcement: true,
-            cgroup_params: HashMap::new(),
-        });
+        profiles.insert(
+            "ai-ml".to_string(),
+            IsolationProfile {
+                name: "ai-ml".to_string(),
+                description: "Balanced profile for AI/ML workloads".to_string(),
+                max_memory_percent: 80,
+                max_compute_percent: 85,
+                max_processes: 4,
+                strict_enforcement: true,
+                cgroup_params: HashMap::new(),
+            },
+        );
 
         // Shared profile - conservative resource usage
-        profiles.insert("shared".to_string(), IsolationProfile {
-            name: "shared".to_string(),
-            description: "Conservative profile for shared environments".to_string(),
-            max_memory_percent: 50,
-            max_compute_percent: 60,
-            max_processes: 2,
-            strict_enforcement: true,
-            cgroup_params: HashMap::new(),
-        });
+        profiles.insert(
+            "shared".to_string(),
+            IsolationProfile {
+                name: "shared".to_string(),
+                description: "Conservative profile for shared environments".to_string(),
+                max_memory_percent: 50,
+                max_compute_percent: 60,
+                max_processes: 2,
+                strict_enforcement: true,
+                cgroup_params: HashMap::new(),
+            },
+        );
 
         Self {
             enable_cgroups: true,
@@ -212,8 +221,10 @@ impl IsolationManager {
 
     /// Get device major/minor numbers
     fn get_device_info(&self, device_path: &str) -> Result<DeviceInfo> {
-        let metadata = fs::metadata(device_path)
-            .context(format!("Failed to get metadata for device: {}", device_path))?;
+        let metadata = fs::metadata(device_path).context(format!(
+            "Failed to get metadata for device: {}",
+            device_path
+        ))?;
 
         #[cfg(unix)]
         {
@@ -230,7 +241,9 @@ impl IsolationManager {
 
         #[cfg(not(unix))]
         {
-            Err(anyhow::anyhow!("Device info not available on non-Unix systems"))
+            Err(anyhow::anyhow!(
+                "Device info not available on non-Unix systems"
+            ))
         }
     }
 
@@ -280,7 +293,9 @@ impl IsolationManager {
         info!("Creating isolated container: {}", container_id);
 
         let profile = if let Some(name) = profile_name {
-            self.config.profiles.get(name)
+            self.config
+                .profiles
+                .get(name)
                 .ok_or_else(|| anyhow::anyhow!("Profile not found: {}", name))?
                 .clone()
         } else {
@@ -362,7 +377,10 @@ impl IsolationManager {
             let total_gpu_memory = self.get_total_gpu_memory(&container.gpu_devices)?;
             let limit = (total_gpu_memory * container.profile.max_memory_percent as u64) / 100;
 
-            debug!("Setting memory limit for container {}: {} bytes", container.id, limit);
+            debug!(
+                "Setting memory limit for container {}: {} bytes",
+                container.id, limit
+            );
 
             // Note: This sets system memory limit, not GPU memory
             // GPU memory limits require driver-level controls
@@ -383,13 +401,16 @@ impl IsolationManager {
 
         // Lower priority for containers with lower compute limits
         let nice_value = match container.profile.max_compute_percent {
-            90..=100 => 0,   // Normal priority
-            70..=89 => 5,    // Slightly lower priority
-            50..=69 => 10,   // Lower priority
-            _ => 15,         // Lowest priority
+            90..=100 => 0, // Normal priority
+            70..=89 => 5,  // Slightly lower priority
+            50..=69 => 10, // Lower priority
+            _ => 15,       // Lowest priority
         };
 
-        debug!("Setting nice value for container {}: {}", container.id, nice_value);
+        debug!(
+            "Setting nice value for container {}: {}",
+            container.id, nice_value
+        );
 
         Ok(())
     }
@@ -408,7 +429,10 @@ impl IsolationManager {
 
     /// Setup device whitelist for container
     fn setup_device_whitelist(&self, container: &IsolatedContainer) -> Result<()> {
-        debug!("Setting up device whitelist for container: {}", container.id);
+        debug!(
+            "Setting up device whitelist for container: {}",
+            container.id
+        );
 
         let devices_allow = container.cgroup_path.join("devices.allow");
         let devices_deny = container.cgroup_path.join("devices.deny");
@@ -425,12 +449,12 @@ impl IsolationManager {
 
         // Allow basic devices
         let basic_devices = vec![
-            "c 1:3 rwm",    // /dev/null
-            "c 1:5 rwm",    // /dev/zero
-            "c 1:7 rwm",    // /dev/full
-            "c 1:8 rwm",    // /dev/random
-            "c 1:9 rwm",    // /dev/urandom
-            "c 5:0 rwm",    // /dev/tty
+            "c 1:3 rwm", // /dev/null
+            "c 1:5 rwm", // /dev/zero
+            "c 1:7 rwm", // /dev/full
+            "c 1:8 rwm", // /dev/random
+            "c 1:9 rwm", // /dev/urandom
+            "c 5:0 rwm", // /dev/tty
         ];
 
         for device_rule in basic_devices {
@@ -508,11 +532,11 @@ pub mod wsl2 {
     /// Check if running under WSL2
     pub fn is_wsl2() -> bool {
         // Check for WSL-specific files and environment
-        std::env::var("WSL_DISTRO_NAME").is_ok() ||
-        Path::new("/proc/sys/fs/binfmt_misc/WSLInterop").exists() ||
-        fs::read_to_string("/proc/version")
-            .map(|v| v.contains("Microsoft") || v.contains("WSL"))
-            .unwrap_or(false)
+        std::env::var("WSL_DISTRO_NAME").is_ok()
+            || Path::new("/proc/sys/fs/binfmt_misc/WSLInterop").exists()
+            || fs::read_to_string("/proc/version")
+                .map(|v| v.contains("Microsoft") || v.contains("WSL"))
+                .unwrap_or(false)
     }
 
     /// Get WSL2 GPU passthrough configuration
@@ -531,25 +555,31 @@ pub mod wsl2 {
         config.enable_device_whitelist = false; // Windows handles device access
 
         // Add WSL2-specific profiles
-        config.profiles.insert("wsl2-gaming".to_string(), IsolationProfile {
-            name: "wsl2-gaming".to_string(),
-            description: "WSL2 optimized gaming profile".to_string(),
-            max_memory_percent: 95,
-            max_compute_percent: 98,
-            max_processes: 16,
-            strict_enforcement: false,
-            cgroup_params: HashMap::new(),
-        });
+        config.profiles.insert(
+            "wsl2-gaming".to_string(),
+            IsolationProfile {
+                name: "wsl2-gaming".to_string(),
+                description: "WSL2 optimized gaming profile".to_string(),
+                max_memory_percent: 95,
+                max_compute_percent: 98,
+                max_processes: 16,
+                strict_enforcement: false,
+                cgroup_params: HashMap::new(),
+            },
+        );
 
-        config.profiles.insert("wsl2-development".to_string(), IsolationProfile {
-            name: "wsl2-development".to_string(),
-            description: "WSL2 development profile with moderate resource usage".to_string(),
-            max_memory_percent: 70,
-            max_compute_percent: 80,
-            max_processes: 8,
-            strict_enforcement: false,
-            cgroup_params: HashMap::new(),
-        });
+        config.profiles.insert(
+            "wsl2-development".to_string(),
+            IsolationProfile {
+                name: "wsl2-development".to_string(),
+                description: "WSL2 development profile with moderate resource usage".to_string(),
+                max_memory_percent: 70,
+                max_compute_percent: 80,
+                max_processes: 8,
+                strict_enforcement: false,
+                cgroup_params: HashMap::new(),
+            },
+        );
 
         Ok(config)
     }

@@ -193,14 +193,9 @@ pub enum PolicyCondition {
         days: Vec<String>,
     },
     /// Require specific environment variable
-    EnvironmentVariable {
-        name: String,
-        value: Option<String>,
-    },
+    EnvironmentVariable { name: String, value: Option<String> },
     /// Network-based restriction
-    NetworkRestriction {
-        allowed_networks: Vec<String>,
-    },
+    NetworkRestriction { allowed_networks: Vec<String> },
 }
 
 /// Policy decision
@@ -238,11 +233,9 @@ impl RbacManager {
 
     /// Load policy database from file
     fn load_policy_database(path: &Path) -> Result<PolicyDatabase> {
-        let content = fs::read_to_string(path)
-            .context("Failed to read RBAC policy file")?;
+        let content = fs::read_to_string(path).context("Failed to read RBAC policy file")?;
 
-        toml::from_str(&content)
-            .context("Failed to parse RBAC policy file")
+        toml::from_str(&content).context("Failed to parse RBAC policy file")
     }
 
     /// Create default policy database
@@ -250,46 +243,57 @@ impl RbacManager {
         let mut roles = HashMap::new();
 
         // Admin role
-        roles.insert("admin".to_string(), Role {
-            name: "admin".to_string(),
-            description: "Full system access".to_string(),
-            permissions: vec![
-                Permission::GpuAccessAll,
-                Permission::ContainerPrivileged,
-                Permission::ConfigWrite,
-                Permission::ManageUsers,
-                Permission::OverrideLimits,
-                Permission::MetricsRead,
-            ].into_iter().collect(),
-            resource_limits: ResourceLimits::default(),
-        });
+        roles.insert(
+            "admin".to_string(),
+            Role {
+                name: "admin".to_string(),
+                description: "Full system access".to_string(),
+                permissions: vec![
+                    Permission::GpuAccessAll,
+                    Permission::ContainerPrivileged,
+                    Permission::ConfigWrite,
+                    Permission::ManageUsers,
+                    Permission::OverrideLimits,
+                    Permission::MetricsRead,
+                ]
+                .into_iter()
+                .collect(),
+                resource_limits: ResourceLimits::default(),
+            },
+        );
 
         // Developer role
-        roles.insert("developer".to_string(), Role {
-            name: "developer".to_string(),
-            description: "Standard developer access".to_string(),
-            permissions: vec![
-                Permission::GpuAccess(0),
-                Permission::ContainerGpu,
-                Permission::MetricsRead,
-            ].into_iter().collect(),
-            resource_limits: ResourceLimits {
-                max_gpus: Some(1),
-                max_gpu_memory: Some(8 * 1024 * 1024 * 1024), // 8GB
-                max_containers: Some(5),
-                ..Default::default()
+        roles.insert(
+            "developer".to_string(),
+            Role {
+                name: "developer".to_string(),
+                description: "Standard developer access".to_string(),
+                permissions: vec![
+                    Permission::GpuAccess(0),
+                    Permission::ContainerGpu,
+                    Permission::MetricsRead,
+                ]
+                .into_iter()
+                .collect(),
+                resource_limits: ResourceLimits {
+                    max_gpus: Some(1),
+                    max_gpu_memory: Some(8 * 1024 * 1024 * 1024), // 8GB
+                    max_containers: Some(5),
+                    ..Default::default()
+                },
             },
-        });
+        );
 
         // Viewer role
-        roles.insert("viewer".to_string(), Role {
-            name: "viewer".to_string(),
-            description: "Read-only access".to_string(),
-            permissions: vec![
-                Permission::MetricsRead,
-            ].into_iter().collect(),
-            resource_limits: ResourceLimits::default(),
-        });
+        roles.insert(
+            "viewer".to_string(),
+            Role {
+                name: "viewer".to_string(),
+                description: "Read-only access".to_string(),
+                permissions: vec![Permission::MetricsRead].into_iter().collect(),
+                resource_limits: ResourceLimits::default(),
+            },
+        );
 
         PolicyDatabase {
             roles,
@@ -388,7 +392,10 @@ impl RbacManager {
                 return Ok(PolicyDecision::AllowWithLimits);
             }
 
-            if let Some(gpu_id) = resource.strip_prefix("gpu:").and_then(|s| s.parse::<u32>().ok()) {
+            if let Some(gpu_id) = resource
+                .strip_prefix("gpu:")
+                .and_then(|s| s.parse::<u32>().ok())
+            {
                 if permissions.contains(&Permission::GpuAccess(gpu_id)) {
                     return Ok(PolicyDecision::AllowWithLimits);
                 }
@@ -491,7 +498,12 @@ impl RbacManager {
     }
 
     /// Check if user has exceeded resource limits
-    pub fn check_resource_limits(&mut self, user: &User, resource_type: &str, amount: u64) -> Result<bool> {
+    pub fn check_resource_limits(
+        &mut self,
+        user: &User,
+        resource_type: &str,
+        amount: u64,
+    ) -> Result<bool> {
         let limits = self.get_user_limits(user);
         let usage = self.usage_tracker.get_usage(user);
 

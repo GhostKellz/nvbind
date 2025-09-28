@@ -1,6 +1,6 @@
-use criterion::{Criterion, criterion_group, criterion_main, BenchmarkId};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use nvbind::cdi::{CdiRegistry, generate_nvidia_cdi_spec};
 use nvbind::gpu::{discover_gpus, is_nvidia_driver_available};
-use nvbind::cdi::{generate_nvidia_cdi_spec, CdiRegistry};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
@@ -23,7 +23,8 @@ fn bench_gpu_passthrough_latency(c: &mut Criterion) {
                 let start = Instant::now();
                 let spec = generate_nvidia_cdi_spec().await.unwrap();
                 let registry = CdiRegistry::new();
-                let _device = registry.get_device(&format!("nvidia.com/gpu={}", spec.devices[0].name));
+                let _device =
+                    registry.get_device(&format!("nvidia.com/gpu={}", spec.devices[0].name));
                 start.elapsed()
             })
         });
@@ -62,7 +63,14 @@ fn bench_gpu_passthrough_latency(c: &mut Criterion) {
 fn bench_nvidia_docker_comparison(c: &mut Criterion) {
     // Check if nvidia-docker2 is available
     let nvidia_docker_available = Command::new("docker")
-        .args(&["run", "--rm", "--gpus", "all", "nvidia/cuda:latest", "nvidia-smi"])
+        .args(&[
+            "run",
+            "--rm",
+            "--gpus",
+            "all",
+            "nvidia/cuda:latest",
+            "nvidia-smi",
+        ])
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false);
@@ -78,8 +86,15 @@ fn bench_nvidia_docker_comparison(c: &mut Criterion) {
     group.bench_function("nvidia_docker_cmd_prep", |b| {
         b.iter(|| {
             let start = Instant::now();
-            let _cmd = Command::new("docker")
-                .args(&["run", "--rm", "--gpus", "all", "nvidia/cuda:latest", "echo", "test"]);
+            let _cmd = Command::new("docker").args(&[
+                "run",
+                "--rm",
+                "--gpus",
+                "all",
+                "nvidia/cuda:latest",
+                "echo",
+                "test",
+            ]);
             start.elapsed()
         });
     });

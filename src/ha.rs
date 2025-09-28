@@ -9,7 +9,7 @@ use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use tokio::sync::{RwLock, Mutex};
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, sleep};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -286,7 +286,10 @@ impl HaClusterManager {
             info!("No existing nodes found, becoming cluster leader");
             self.become_leader().await?;
         } else {
-            info!("Found {} existing nodes, joining as follower", discovered_nodes.len());
+            info!(
+                "Found {} existing nodes, joining as follower",
+                discovered_nodes.len()
+            );
             self.join_as_follower(discovered_nodes).await?;
         }
 
@@ -324,7 +327,11 @@ impl HaClusterManager {
         Ok(Vec::new())
     }
 
-    async fn discover_multicast_nodes(&self, _address: &str, _port: u16) -> Result<Vec<ClusterNode>> {
+    async fn discover_multicast_nodes(
+        &self,
+        _address: &str,
+        _port: u16,
+    ) -> Result<Vec<ClusterNode>> {
         // Implementation would use UDP multicast for node discovery
         Ok(Vec::new())
     }
@@ -368,7 +375,10 @@ impl HaClusterManager {
             return Err(anyhow::anyhow!("HA clustering is not enabled"));
         }
 
-        info!("Scheduling workload: {} (GPUs: {})", workload.name, workload.gpu_requirements.count);
+        info!(
+            "Scheduling workload: {} (GPUs: {})",
+            workload.name, workload.gpu_requirements.count
+        );
 
         // Find best nodes for workload
         let candidate_nodes = self.find_candidate_nodes(&workload).await?;
@@ -378,12 +388,19 @@ impl HaClusterManager {
         }
 
         // Use load balancer to select optimal node
-        let selected_node = self.load_balancer.select_node(&candidate_nodes, &workload)?;
+        let selected_node = self
+            .load_balancer
+            .select_node(&candidate_nodes, &workload)?;
 
         // Schedule workload on selected node
-        let assignment = self.assign_workload_to_node(&workload, &selected_node).await?;
+        let assignment = self
+            .assign_workload_to_node(&workload, &selected_node)
+            .await?;
 
-        info!("Workload {} scheduled on node {}", workload.name, selected_node.id);
+        info!(
+            "Workload {} scheduled on node {}",
+            workload.name, selected_node.id
+        );
 
         Ok(SchedulingResult {
             workload_id: workload.id,
@@ -418,7 +435,9 @@ impl HaClusterManager {
         }
 
         // Check GPU availability
-        let available_gpus = node.gpus.iter()
+        let available_gpus = node
+            .gpus
+            .iter()
             .filter(|gpu| matches!(gpu.status, GpuStatus::Available))
             .count();
 
@@ -427,7 +446,9 @@ impl HaClusterManager {
         }
 
         // Check memory requirements
-        let available_memory: u64 = node.gpus.iter()
+        let available_memory: u64 = node
+            .gpus
+            .iter()
             .filter(|gpu| matches!(gpu.status, GpuStatus::Available))
             .map(|gpu| gpu.memory_mb - gpu.allocated_memory)
             .sum();
@@ -454,9 +475,12 @@ impl HaClusterManager {
         let mut allocated_memory = 0;
 
         for gpu in &node.gpus {
-            if matches!(gpu.status, GpuStatus::Available) && selected_gpus.len() < workload.gpu_requirements.count as usize {
+            if matches!(gpu.status, GpuStatus::Available)
+                && selected_gpus.len() < workload.gpu_requirements.count as usize
+            {
                 selected_gpus.push(gpu.id.clone());
-                allocated_memory += workload.gpu_requirements.memory_mb / workload.gpu_requirements.count as u64;
+                allocated_memory +=
+                    workload.gpu_requirements.memory_mb / workload.gpu_requirements.count as u64;
             }
         }
 
@@ -476,15 +500,17 @@ impl HaClusterManager {
         let state = self.cluster_state.read().await;
 
         let total_nodes = state.nodes.len() as u32;
-        let healthy_nodes = state.nodes.values()
+        let healthy_nodes = state
+            .nodes
+            .values()
             .filter(|n| matches!(n.status, NodeStatus::Healthy))
             .count() as u32;
 
-        let total_gpus = state.nodes.values()
-            .map(|n| n.gpus.len())
-            .sum::<usize>() as u32;
+        let total_gpus = state.nodes.values().map(|n| n.gpus.len()).sum::<usize>() as u32;
 
-        let available_gpus = state.nodes.values()
+        let available_gpus = state
+            .nodes
+            .values()
             .flat_map(|n| &n.gpus)
             .filter(|gpu| matches!(gpu.status, GpuStatus::Available))
             .count() as u32;
@@ -533,7 +559,9 @@ impl HaClusterManager {
         // Simple leader election based on node ID
         let new_leader_id = {
             let state = self.cluster_state.read().await;
-            let healthy_nodes: Vec<_> = state.nodes.values()
+            let healthy_nodes: Vec<_> = state
+                .nodes
+                .values()
                 .filter(|n| matches!(n.status, NodeStatus::Healthy))
                 .collect();
 
@@ -543,10 +571,12 @@ impl HaClusterManager {
             }
 
             // Select node with lowest ID as new leader (deterministic)
-            healthy_nodes.iter()
+            healthy_nodes
+                .iter()
                 .min_by(|a, b| a.id.cmp(&b.id))
                 .unwrap()
-                .id.clone()
+                .id
+                .clone()
         };
 
         let mut state = self.cluster_state.write().await;
@@ -554,7 +584,11 @@ impl HaClusterManager {
         state.epoch += 1;
         state.last_election = Some(SystemTime::now());
 
-        info!("New leader elected: {} (epoch: {})", state.leader.as_ref().unwrap(), state.epoch);
+        info!(
+            "New leader elected: {} (epoch: {})",
+            state.leader.as_ref().unwrap(),
+            state.epoch
+        );
         Ok(())
     }
 
@@ -638,8 +672,12 @@ impl NodeManager {
     async fn get_node_capabilities(&self) -> Result<NodeCapabilities> {
         Ok(NodeCapabilities {
             max_containers: 100,
-            supported_runtimes: vec!["podman".to_string(), "docker".to_string(), "bolt".to_string()],
-            gpu_count: 1, // Would be detected
+            supported_runtimes: vec![
+                "podman".to_string(),
+                "docker".to_string(),
+                "bolt".to_string(),
+            ],
+            gpu_count: 1,                          // Would be detected
             total_memory: 32 * 1024 * 1024 * 1024, // 32GB
             cpu_cores: std::thread::available_parallelism()?.get() as u32,
             network_bandwidth: 1000, // 1Gbps
@@ -729,9 +767,7 @@ impl NodeManager {
 
     fn calculate_load_score(metrics: &NodeMetrics) -> f64 {
         // Weighted load calculation
-        (metrics.cpu_usage * 0.3 +
-         metrics.memory_usage * 0.3 +
-         metrics.gpu_usage * 0.4) / 100.0
+        (metrics.cpu_usage * 0.3 + metrics.memory_usage * 0.3 + metrics.gpu_usage * 0.4) / 100.0
     }
 }
 
@@ -802,7 +838,7 @@ impl FailoverManager {
 
     async fn check_node_health(
         config: &HaConfig,
-        cluster_state: &Arc<RwLock<ClusterState>>
+        cluster_state: &Arc<RwLock<ClusterState>>,
     ) -> Result<()> {
         let now = SystemTime::now();
         let timeout_threshold = now - config.failover_timeout;
@@ -814,8 +850,10 @@ impl FailoverManager {
             let mut state = cluster_state.write().await;
             for (node_id, node) in state.nodes.iter_mut() {
                 if node.last_heartbeat < timeout_threshold && node.status != NodeStatus::Offline {
-                    warn!("Node {} has not sent heartbeat for {:?}, marking as failed",
-                          node_id, config.failover_timeout);
+                    warn!(
+                        "Node {} has not sent heartbeat for {:?}, marking as failed",
+                        node_id, config.failover_timeout
+                    );
                     node.status = NodeStatus::Offline;
                     failed_nodes.push(node_id.clone());
                 }
@@ -877,23 +915,35 @@ impl HealthMonitor {
             // Check GPU health
             for gpu in &node.gpus {
                 if gpu.temperature.unwrap_or(0.0) > 85.0 {
-                    warn!("GPU {} on node {} is overheating: {}°C",
-                          gpu.id, node_id, gpu.temperature.unwrap());
+                    warn!(
+                        "GPU {} on node {} is overheating: {}°C",
+                        gpu.id,
+                        node_id,
+                        gpu.temperature.unwrap()
+                    );
                 }
 
                 if gpu.utilization > 95.0 {
-                    warn!("GPU {} on node {} is at high utilization: {:.1}%",
-                          gpu.id, node_id, gpu.utilization);
+                    warn!(
+                        "GPU {} on node {} is at high utilization: {:.1}%",
+                        gpu.id, node_id, gpu.utilization
+                    );
                 }
             }
 
             // Check node resource usage
             if node.metrics.cpu_usage > 90.0 {
-                warn!("Node {} has high CPU usage: {:.1}%", node_id, node.metrics.cpu_usage);
+                warn!(
+                    "Node {} has high CPU usage: {:.1}%",
+                    node_id, node.metrics.cpu_usage
+                );
             }
 
             if node.metrics.memory_usage > 85.0 {
-                warn!("Node {} has high memory usage: {:.1}%", node_id, node.metrics.memory_usage);
+                warn!(
+                    "Node {} has high memory usage: {:.1}%",
+                    node_id, node.metrics.memory_usage
+                );
             }
         }
 
@@ -915,7 +965,11 @@ impl LoadBalancer {
         }
     }
 
-    fn select_node<'a>(&self, candidates: &'a [ClusterNode], _workload: &ClusterWorkload) -> Result<&'a ClusterNode> {
+    fn select_node<'a>(
+        &self,
+        candidates: &'a [ClusterNode],
+        _workload: &ClusterWorkload,
+    ) -> Result<&'a ClusterNode> {
         if candidates.is_empty() {
             return Err(anyhow::anyhow!("No candidate nodes available"));
         }
@@ -927,16 +981,14 @@ impl LoadBalancer {
                 *index += 1;
                 Ok(selected)
             }
-            LoadBalancingStrategy::LeastConnections => {
-                candidates.iter()
-                    .min_by_key(|node| node.metrics.container_count)
-                    .ok_or_else(|| anyhow::anyhow!("No nodes available"))
-            }
-            LoadBalancingStrategy::ResourceBased => {
-                candidates.iter()
-                    .min_by(|a, b| a.load_score.partial_cmp(&b.load_score).unwrap())
-                    .ok_or_else(|| anyhow::anyhow!("No nodes available"))
-            }
+            LoadBalancingStrategy::LeastConnections => candidates
+                .iter()
+                .min_by_key(|node| node.metrics.container_count)
+                .ok_or_else(|| anyhow::anyhow!("No nodes available")),
+            LoadBalancingStrategy::ResourceBased => candidates
+                .iter()
+                .min_by(|a, b| a.load_score.partial_cmp(&b.load_score).unwrap())
+                .ok_or_else(|| anyhow::anyhow!("No nodes available")),
             _ => {
                 // Default to first candidate
                 Ok(&candidates[0])
@@ -1009,7 +1061,10 @@ mod tests {
         let config = HaConfig::default();
         assert!(!config.enabled);
         assert_eq!(config.cluster_name, "nvbind-cluster");
-        assert!(matches!(config.discovery_method, DiscoveryMethod::Multicast { .. }));
+        assert!(matches!(
+            config.discovery_method,
+            DiscoveryMethod::Multicast { .. }
+        ));
     }
 
     #[tokio::test]
@@ -1036,7 +1091,10 @@ mod tests {
             health_weight: 0.8,
         };
 
-        assert!(matches!(config.strategy, LoadBalancingStrategy::ResourceBased));
+        assert!(matches!(
+            config.strategy,
+            LoadBalancingStrategy::ResourceBased
+        ));
         assert_eq!(config.weight_factors.gpu_utilization, 0.4);
     }
 

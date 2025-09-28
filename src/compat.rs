@@ -39,7 +39,7 @@ pub struct ContainerArgs {
 #[derive(Debug, Clone)]
 pub struct GpuArgs {
     pub enabled: bool,
-    pub device_ids: Vec<String>, // "all", "0", "1", etc.
+    pub device_ids: Vec<String>,   // "all", "0", "1", etc.
     pub capabilities: Vec<String>, // "compute", "graphics", "video", etc.
     pub memory_limit: Option<String>,
     pub driver: Option<String>,
@@ -91,7 +91,9 @@ impl DockerCompat {
                 }
                 "--runtime" => {
                     if i + 1 < args.len() {
-                        container_args.runtime_args.push(format!("--runtime={}", args[i + 1]));
+                        container_args
+                            .runtime_args
+                            .push(format!("--runtime={}", args[i + 1]));
                         i += 2;
                     } else {
                         return Err(anyhow::anyhow!("--runtime requires a value"));
@@ -99,7 +101,9 @@ impl DockerCompat {
                 }
                 "-v" | "--volume" => {
                     if i + 1 < args.len() {
-                        container_args.volumes.push(self.parse_volume(&args[i + 1])?);
+                        container_args
+                            .volumes
+                            .push(self.parse_volume(&args[i + 1])?);
                         i += 2;
                     } else {
                         return Err(anyhow::anyhow!("--volume requires a value"));
@@ -116,7 +120,9 @@ impl DockerCompat {
                 }
                 "-p" | "--publish" => {
                     if i + 1 < args.len() {
-                        container_args.ports.push(self.parse_port_mapping(&args[i + 1])?);
+                        container_args
+                            .ports
+                            .push(self.parse_port_mapping(&args[i + 1])?);
                         i += 2;
                     } else {
                         return Err(anyhow::anyhow!("--publish requires a value"));
@@ -203,7 +209,10 @@ impl DockerCompat {
 
         // Add environment variables
         for (key, value) in &args.environment {
-            config.runtime.environment.insert(key.clone(), value.clone());
+            config
+                .runtime
+                .environment
+                .insert(key.clone(), value.clone());
         }
 
         // Add GPU capabilities if specified
@@ -226,7 +235,8 @@ impl DockerCompat {
             gpu_selection,
             args.image,
             args.command,
-        ).await
+        )
+        .await
     }
 
     fn parse_gpu_args(&self, gpu_spec: &str) -> Result<GpuArgs> {
@@ -269,7 +279,10 @@ impl DockerCompat {
                 container_path: parts[1].to_string(),
                 options: parts[2].split(',').map(|s| s.to_string()).collect(),
             }),
-            _ => Err(anyhow::anyhow!("Invalid volume specification: {}", volume_spec)),
+            _ => Err(anyhow::anyhow!(
+                "Invalid volume specification: {}",
+                volume_spec
+            )),
         }
     }
 
@@ -280,7 +293,10 @@ impl DockerCompat {
             Ok((key, value))
         } else {
             // Environment variable without value (use from host)
-            Ok((env_spec.to_string(), std::env::var(env_spec).unwrap_or_default()))
+            Ok((
+                env_spec.to_string(),
+                std::env::var(env_spec).unwrap_or_default(),
+            ))
         }
     }
 
@@ -402,8 +418,8 @@ pub async fn handle_podman_command(args: Vec<String>) -> Result<()> {
 pub fn install_docker_replacement() -> Result<()> {
     info!("Installing nvbind as Docker/Podman replacement");
 
-    let nvbind_path = which::which("nvbind")
-        .map_err(|_| anyhow::anyhow!("nvbind not found in PATH"))?;
+    let nvbind_path =
+        which::which("nvbind").map_err(|_| anyhow::anyhow!("nvbind not found in PATH"))?;
 
     // Create wrapper scripts
     create_docker_wrapper(&nvbind_path)?;
@@ -439,7 +455,10 @@ fi
     }
 
     std::fs::write("/usr/bin/docker", wrapper_content)?;
-    std::fs::set_permissions("/usr/bin/docker", std::os::unix::fs::PermissionsExt::from_mode(0o755))?;
+    std::fs::set_permissions(
+        "/usr/bin/docker",
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+    )?;
 
     Ok(())
 }
@@ -467,7 +486,10 @@ fi
     }
 
     std::fs::write("/usr/bin/podman", wrapper_content)?;
-    std::fs::set_permissions("/usr/bin/podman", std::os::unix::fs::PermissionsExt::from_mode(0o755))?;
+    std::fs::set_permissions(
+        "/usr/bin/podman",
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+    )?;
 
     Ok(())
 }
@@ -539,7 +561,8 @@ async fn benchmark_nvbind(image: &str, command: &[String]) -> Result<f64> {
         "all".to_string(),
         image.to_string(),
         command.to_vec(),
-    ).await?;
+    )
+    .await?;
 
     let elapsed = start.elapsed();
     Ok(elapsed.as_secs_f64() * 1000.0)

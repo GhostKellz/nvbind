@@ -2,8 +2,8 @@
 //! Focus on NVIDIA Open driver (version 580+) detection and validation
 
 use nvbind::gpu::{
-    discover_gpus, is_nvidia_driver_available, detect_driver_type,
-    get_driver_info, DriverType, check_nvidia_driver_status
+    DriverType, check_nvidia_driver_status, detect_driver_type, discover_gpus, get_driver_info,
+    is_nvidia_driver_available,
 };
 use std::fs;
 
@@ -29,14 +29,21 @@ async fn test_nvidia_open_driver_detection() {
                 // Try to extract numeric version
                 if let Some(captures) = regex::Regex::new(r"(\d{3}\.\d+)")
                     .ok()
-                    .and_then(|re| re.captures(&driver_info.version)) {
+                    .and_then(|re| re.captures(&driver_info.version))
+                {
                     if let Ok(version_num) = captures[1].parse::<f32>() {
                         if version_num >= 580.0 {
                             println!("✅ Version {} meets 580+ recommendation", version_num);
                         } else if version_num >= 515.0 {
-                            println!("⚠️  Version {} is supported but 580+ recommended", version_num);
+                            println!(
+                                "⚠️  Version {} is supported but 580+ recommended",
+                                version_num
+                            );
                         } else {
-                            println!("❌ Version {} may have limited open driver support", version_num);
+                            println!(
+                                "❌ Version {} may have limited open driver support",
+                                version_num
+                            );
                         }
                     }
                 }
@@ -51,7 +58,10 @@ async fn test_nvidia_open_driver_detection() {
     }
 
     // Validate that driver status check works
-    assert!(check_nvidia_driver_status().is_ok(), "NVIDIA driver status check should succeed");
+    assert!(
+        check_nvidia_driver_status().is_ok(),
+        "NVIDIA driver status check should succeed"
+    );
 }
 
 /// Test GPU discovery with different driver types
@@ -77,12 +87,21 @@ async fn test_gpu_discovery_across_drivers() {
 
                 // Validate basic GPU properties
                 assert!(!gpu.name.is_empty(), "GPU name should not be empty");
-                assert!(!gpu.pci_address.is_empty(), "PCI address should not be empty");
-                assert!(!gpu.device_path.is_empty(), "Device path should not be empty");
+                assert!(
+                    !gpu.pci_address.is_empty(),
+                    "PCI address should not be empty"
+                );
+                assert!(
+                    !gpu.device_path.is_empty(),
+                    "Device path should not be empty"
+                );
 
                 // Validate device path exists
-                assert!(std::path::Path::new(&gpu.device_path).exists(),
-                    "GPU device path should exist: {}", gpu.device_path);
+                assert!(
+                    std::path::Path::new(&gpu.device_path).exists(),
+                    "GPU device path should exist: {}",
+                    gpu.device_path
+                );
             }
 
             // Test driver-specific validations
@@ -112,7 +131,9 @@ async fn test_gpu_discovery_across_drivers() {
 /// Test Open driver specific features
 async fn test_open_driver_specific_features(gpus: &[nvbind::gpu::GpuDevice]) {
     // Test GSP firmware detection
-    if let Ok(gsp_content) = fs::read_to_string("/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware") {
+    if let Ok(gsp_content) =
+        fs::read_to_string("/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware")
+    {
         if gsp_content.trim() == "1" {
             println!("✅ GSP firmware enabled (Open driver feature)");
         }
@@ -132,8 +153,11 @@ async fn test_open_driver_specific_features(gpus: &[nvbind::gpu::GpuDevice]) {
 
     // Test for each GPU device
     for gpu in gpus {
-        assert!(std::path::Path::new(&gpu.device_path).exists(),
-            "GPU device {} should exist", gpu.device_path);
+        assert!(
+            std::path::Path::new(&gpu.device_path).exists(),
+            "GPU device {} should exist",
+            gpu.device_path
+        );
     }
 }
 
@@ -142,8 +166,11 @@ async fn test_proprietary_driver_features(gpus: &[nvbind::gpu::GpuDevice]) {
     // Proprietary driver specific tests
     for gpu in gpus {
         // Validate device access
-        assert!(std::path::Path::new(&gpu.device_path).exists(),
-            "GPU device {} should exist", gpu.device_path);
+        assert!(
+            std::path::Path::new(&gpu.device_path).exists(),
+            "GPU device {} should exist",
+            gpu.device_path
+        );
     }
 
     // Check for proprietary driver specific files
@@ -156,8 +183,11 @@ async fn test_proprietary_driver_features(gpus: &[nvbind::gpu::GpuDevice]) {
 async fn test_nouveau_driver_features(gpus: &[nvbind::gpu::GpuDevice]) {
     // Nouveau driver specific tests
     for gpu in gpus {
-        assert!(std::path::Path::new(&gpu.device_path).exists(),
-            "GPU device {} should exist", gpu.device_path);
+        assert!(
+            std::path::Path::new(&gpu.device_path).exists(),
+            "GPU device {} should exist",
+            gpu.device_path
+        );
     }
 
     // Check for nouveau specific paths
@@ -177,17 +207,16 @@ async fn test_driver_container_compatibility() {
     let driver_type = detect_driver_type();
 
     // Test basic device visibility
-    let essential_devices = [
-        "/dev/nvidiactl",
-        "/dev/nvidia-uvm",
-        "/dev/nvidia-modeset"
-    ];
+    let essential_devices = ["/dev/nvidiactl", "/dev/nvidia-uvm", "/dev/nvidia-modeset"];
 
     for device in &essential_devices {
         if std::path::Path::new(device).exists() {
             println!("✅ Essential device available: {}", device);
         } else {
-            println!("⚠️  Essential device missing: {} (may affect containers)", device);
+            println!(
+                "⚠️  Essential device missing: {} (may affect containers)",
+                device
+            );
         }
     }
 
@@ -225,7 +254,8 @@ async fn test_driver_version_compatibility() {
 
     match get_driver_info().await {
         Ok(driver_info) => {
-            println!("Driver: {} version {}",
+            println!(
+                "Driver: {} version {}",
                 match driver_info.driver_type {
                     DriverType::NvidiaOpen => "NVIDIA Open",
                     DriverType::NvidiaProprietary => "NVIDIA Proprietary",
@@ -237,7 +267,8 @@ async fn test_driver_version_compatibility() {
             // Version-specific validation
             if let Some(captures) = regex::Regex::new(r"(\d{3}\.\d+)")
                 .ok()
-                .and_then(|re| re.captures(&driver_info.version)) {
+                .and_then(|re| re.captures(&driver_info.version))
+            {
                 if let Ok(version_num) = captures[1].parse::<f32>() {
                     match driver_info.driver_type {
                         DriverType::NvidiaOpen => {
@@ -257,7 +288,9 @@ async fn test_driver_version_compatibility() {
                             }
                         }
                         DriverType::Nouveau => {
-                            println!("ℹ️  Nouveau driver - version compatibility varies by GPU generation");
+                            println!(
+                                "ℹ️  Nouveau driver - version compatibility varies by GPU generation"
+                            );
                         }
                     }
                 }
@@ -289,7 +322,10 @@ async fn test_driver_performance() {
     let detection_time = start.elapsed();
 
     println!("Driver detection time: {:?}", detection_time);
-    assert!(detection_time.as_millis() < 100, "Driver detection should be fast");
+    assert!(
+        detection_time.as_millis() < 100,
+        "Driver detection should be fast"
+    );
 
     // Test GPU discovery speed
     let start = Instant::now();
@@ -297,7 +333,10 @@ async fn test_driver_performance() {
     let discovery_time = start.elapsed();
 
     println!("GPU discovery time: {:?}", discovery_time);
-    assert!(discovery_time.as_millis() < 1000, "GPU discovery should complete within 1 second");
+    assert!(
+        discovery_time.as_millis() < 1000,
+        "GPU discovery should complete within 1 second"
+    );
 }
 
 /// Test error handling and recovery

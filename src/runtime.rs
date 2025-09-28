@@ -323,7 +323,8 @@ async fn run_bolt_with_config(
     }
 
     // Override with GPU-specific env vars
-    cmd.arg("--env").arg(format!("NVIDIA_VISIBLE_DEVICES={}", gpu));
+    cmd.arg("--env")
+        .arg(format!("NVIDIA_VISIBLE_DEVICES={}", gpu));
 
     // Add Bolt-specific GPU optimizations
     cmd.arg("--gpu").arg(&gpu);

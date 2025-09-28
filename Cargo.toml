@@ -30,7 +30,7 @@ async-trait = "0.1"
 
 # Additional dependencies for new modules
 chrono = { version = "0.4", features = ["serde"] }
-prometheus = "0.13"
+prometheus = "0.14"
 
 # CLI enhancement dependencies
 colored = "2.0"

@@ -3,8 +3,8 @@
 
 use nvbind::cdi::{CdiRegistry, generate_nvidia_cdi_spec};
 use nvbind::gpu::is_nvidia_driver_available;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 
 /// Test Docker runtime compatibility
 #[tokio::test]
@@ -28,10 +28,16 @@ async fn test_docker_runtime_integration() {
 
     // Test CDI spec generation for Docker
     let spec_result = generate_nvidia_cdi_spec().await;
-    assert!(spec_result.is_ok(), "CDI spec generation should succeed for Docker");
+    assert!(
+        spec_result.is_ok(),
+        "CDI spec generation should succeed for Docker"
+    );
 
     let spec = spec_result.unwrap();
-    assert!(!spec.devices.is_empty(), "CDI spec should contain GPU devices");
+    assert!(
+        !spec.devices.is_empty(),
+        "CDI spec should contain GPU devices"
+    );
 
     println!("✅ Docker runtime integration validated");
     println!("  CDI version: {}", spec.cdi_version);
@@ -69,23 +75,36 @@ async fn test_podman_runtime_integration() {
 
     // Test CDI spec generation for Podman
     let spec_result = generate_nvidia_cdi_spec().await;
-    assert!(spec_result.is_ok(), "CDI spec generation should succeed for Podman");
+    assert!(
+        spec_result.is_ok(),
+        "CDI spec generation should succeed for Podman"
+    );
 
     let spec = spec_result.unwrap();
-    assert!(!spec.devices.is_empty(), "CDI spec should contain GPU devices");
+    assert!(
+        !spec.devices.is_empty(),
+        "CDI spec should contain GPU devices"
+    );
 
     println!("✅ Podman runtime integration validated");
 
     // Test Podman-specific device access patterns
     let registry = CdiRegistry::new();
     let all_device = registry.get_device("nvidia.com/gpu=all");
-    assert!(all_device.is_some(), "Podman should support 'all' GPU device access");
+    assert!(
+        all_device.is_some(),
+        "Podman should support 'all' GPU device access"
+    );
 
     // Test individual device access
     for device in &spec.devices {
         let device_name = format!("nvidia.com/gpu={}", device.name);
         let device_handle = registry.get_device(&device_name);
-        assert!(device_handle.is_some(), "Individual GPU device '{}' should be accessible", device.name);
+        assert!(
+            device_handle.is_some(),
+            "Individual GPU device '{}' should be accessible",
+            device.name
+        );
     }
 }
 
@@ -98,15 +117,10 @@ async fn test_bolt_runtime_integration() {
     }
 
     // Check if Bolt is available (look for bolt binary or typical installation paths)
-    let bolt_paths = [
-        "/usr/local/bin/bolt",
-        "/usr/bin/bolt",
-        "/opt/bolt/bin/bolt",
-    ];
+    let bolt_paths = ["/usr/local/bin/bolt", "/usr/bin/bolt", "/opt/bolt/bin/bolt"];
 
-    let bolt_available = bolt_paths.iter()
-        .any(|path| Path::new(path).exists()) ||
-        Command::new("bolt")
+    let bolt_available = bolt_paths.iter().any(|path| Path::new(path).exists())
+        || Command::new("bolt")
             .arg("--version")
             .output()
             .map(|output| output.status.success())
@@ -119,10 +133,16 @@ async fn test_bolt_runtime_integration() {
 
     // Test CDI spec generation for Bolt
     let spec_result = generate_nvidia_cdi_spec().await;
-    assert!(spec_result.is_ok(), "CDI spec generation should succeed for Bolt");
+    assert!(
+        spec_result.is_ok(),
+        "CDI spec generation should succeed for Bolt"
+    );
 
     let spec = spec_result.unwrap();
-    assert!(!spec.devices.is_empty(), "CDI spec should contain GPU devices for Bolt");
+    assert!(
+        !spec.devices.is_empty(),
+        "CDI spec should contain GPU devices for Bolt"
+    );
 
     println!("✅ Bolt runtime integration validated");
 
@@ -140,7 +160,10 @@ async fn test_bolt_runtime_integration() {
 
     // Test Bolt CDI compliance
     assert_eq!(spec.cdi_version, "0.6.0", "Bolt should use CDI v0.6.0");
-    assert_eq!(spec.kind, "nvidia.com/gpu", "Bolt should use standard nvidia.com/gpu kind");
+    assert_eq!(
+        spec.kind, "nvidia.com/gpu",
+        "Bolt should use standard nvidia.com/gpu kind"
+    );
 }
 
 /// Test multi-runtime compatibility
@@ -159,21 +182,31 @@ async fn test_multi_runtime_compatibility() {
     let registry = CdiRegistry::new();
 
     // Test common device access patterns across runtimes
-    let test_patterns = [
-        "nvidia.com/gpu=all",
-        "nvidia.com/gpu=gpu0",
-    ];
+    let test_patterns = ["nvidia.com/gpu=all", "nvidia.com/gpu=gpu0"];
 
     for pattern in &test_patterns {
         let device = registry.get_device(pattern);
-        println!("Device pattern '{}': {}", pattern,
-            if device.is_some() { "✅ Available" } else { "❌ Not available" });
+        println!(
+            "Device pattern '{}': {}",
+            pattern,
+            if device.is_some() {
+                "✅ Available"
+            } else {
+                "❌ Not available"
+            }
+        );
     }
 
     // Validate that spec is portable across runtimes
     if let Some(device_nodes) = &spec.container_edits.device_nodes {
-        assert!(!device_nodes.is_empty(), "Device nodes should be defined for runtime compatibility");
-        println!("✅ Multi-runtime device nodes validated: {} devices", device_nodes.len());
+        assert!(
+            !device_nodes.is_empty(),
+            "Device nodes should be defined for runtime compatibility"
+        );
+        println!(
+            "✅ Multi-runtime device nodes validated: {} devices",
+            device_nodes.len()
+        );
     }
 
     if let Some(mounts) = &spec.container_edits.mounts {
@@ -207,14 +240,13 @@ async fn test_runtime_error_handling() {
     // Test behavior when no GPUs are available (should not panic)
     let registry = CdiRegistry::new();
     let non_existent_device = registry.get_device("nvidia.com/gpu=gpu999");
-    assert!(non_existent_device.is_none(), "Non-existent GPU device should return None");
+    assert!(
+        non_existent_device.is_none(),
+        "Non-existent GPU device should return None"
+    );
 
     // Test invalid device patterns
-    let invalid_patterns = [
-        "invalid/pattern",
-        "nvidia.com/gpu=",
-        "nvidia.com/gpu=gpu-1",
-    ];
+    let invalid_patterns = ["invalid/pattern", "nvidia.com/gpu=", "nvidia.com/gpu=gpu-1"];
 
     for pattern in &invalid_patterns {
         let _device = registry.get_device(pattern);
@@ -250,8 +282,10 @@ async fn test_container_security_isolation() {
             println!("Device: {} (mode: {:?})", device.path, device.file_mode);
 
             // Validate device paths are under /dev
-            assert!(device.path.starts_with("/dev/"),
-                "Device paths should be under /dev for security");
+            assert!(
+                device.path.starts_with("/dev/"),
+                "Device paths should be under /dev for security"
+            );
 
             // Validate permissions are reasonable (but allow typical GPU device permissions)
             if let Some(mode) = &device.file_mode {
@@ -271,8 +305,13 @@ async fn test_container_security_isolation() {
 
             // Validate mount sources are from system paths
             let secure_prefixes = ["/usr", "/lib", "/lib64", "/dev"];
-            assert!(secure_prefixes.iter().any(|prefix| mount.host_path.starts_with(prefix)),
-                "Mount source '{}' should be from secure system path", mount.host_path);
+            assert!(
+                secure_prefixes
+                    .iter()
+                    .any(|prefix| mount.host_path.starts_with(prefix)),
+                "Mount source '{}' should be from secure system path",
+                mount.host_path
+            );
         }
     }
 
