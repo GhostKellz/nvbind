@@ -93,6 +93,7 @@ pub mod bolt_adapter {
 
     pub struct BoltRuntimeAdapter {
         config: Option<RuntimeConfig>,
+        #[allow(dead_code)] // Reserved for future bolt integration
         bolt_config: BoltConfig,
     }
 
