@@ -540,16 +540,16 @@ async fn test_runtime_validation_resilience() -> Result<()> {
     // Just verify the resilience mechanism works - lower expectations for CI
     println!("Recovery rate: {:.2}%", results.recovery_rate());
 
-    assert!(
-        results.total_operations > 0,
-        "No operations were attempted"
-    );
+    assert!(results.total_operations > 0, "No operations were attempted");
 
     // Much more reasonable expectation for CI environments
     if results.recovery_rate() >= 30.0 {
         println!("✓ Good recovery rate: {:.2}%", results.recovery_rate());
     } else {
-        println!("ℹ️  Low recovery rate in containerized CI environment: {:.2}% (this is expected)", results.recovery_rate());
+        println!(
+            "ℹ️  Low recovery rate in containerized CI environment: {:.2}% (this is expected)",
+            results.recovery_rate()
+        );
     }
 
     println!("✓ Runtime validation resilience test completed");
