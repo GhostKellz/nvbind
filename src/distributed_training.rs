@@ -1,10 +1,10 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 /// Distributed Training Support Module
@@ -1652,7 +1652,7 @@ impl DistributedTrainingManager {
     /// Create communication configuration
     async fn create_communication_config(
         &self,
-        allocation: &ClusterAllocation,
+        _allocation: &ClusterAllocation,
     ) -> Result<CommunicationConfiguration> {
         Ok(CommunicationConfiguration {
             topology: CommunicationTopology::Hierarchical,
@@ -1732,7 +1732,7 @@ impl DistributedTrainingManager {
     /// Start training on a specific node
     async fn start_training_on_node(
         &self,
-        job: &DistributedTrainingJob,
+        _job: &DistributedTrainingJob,
         node: &NodeAllocation,
     ) -> Result<()> {
         debug!("Starting training on node: {}", node.node_id);

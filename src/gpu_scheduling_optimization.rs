@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
-use tokio::sync::{Mutex, mpsc};
-use tokio::time::{Duration, Instant};
-use tracing::{debug, error, info, warn};
+use tokio::sync::Mutex;
+use tokio::time::Duration;
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -521,6 +521,7 @@ pub struct ThermalMetrics {
     pub thermal_throttling: bool,
 }
 
+#[async_trait::async_trait]
 pub trait GpuScheduler: Send + Sync + std::fmt::Debug {
     async fn schedule(
         &self,
@@ -1249,7 +1250,7 @@ impl GpuSchedulingOptimizer {
         let preemption_result = scheduler.preempt_job(job_id).await?;
 
         let mut active_jobs = self.active_jobs.write().unwrap();
-        if let Some(mut active_job) = active_jobs.get_mut(job_id) {
+        if let Some(active_job) = active_jobs.get_mut(job_id) {
             active_job.status = JobStatus::Preempted;
 
             if preemption_result.checkpointed {
@@ -1469,7 +1470,7 @@ impl GpuScheduler for FifoScheduler {
 
     async fn migrate_job(
         &self,
-        job_id: &str,
+        _job_id: &str,
         _target_resources: &ResourceAllocation,
     ) -> Result<MigrationResult, Box<dyn std::error::Error>> {
         Ok(MigrationResult {
@@ -1640,7 +1641,7 @@ impl FragmentationMonitor {
 }
 
 impl WorkloadPredictor {
-    pub fn new(config: WorkloadPredictionConfig) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(_config: WorkloadPredictionConfig) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             prediction_models: Arc::new(RwLock::new(HashMap::new())),
             historical_data: Arc::new(RwLock::new(VecDeque::new())),
@@ -1719,7 +1720,7 @@ impl ThermalManager {
 }
 
 impl TenantManager {
-    pub fn new(config: MultiTenantConfig) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(_config: MultiTenantConfig) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             tenants: Arc::new(RwLock::new(HashMap::new())),
             quota_manager: Arc::new(QuotaManager::new()),
@@ -1746,7 +1747,7 @@ impl TenantManager {
     pub async fn update_usage(
         &self,
         tenant_id: &str,
-        active_job: &ActiveJob,
+        _active_job: &ActiveJob,
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Updating usage for tenant: {}", tenant_id);
         Ok(())

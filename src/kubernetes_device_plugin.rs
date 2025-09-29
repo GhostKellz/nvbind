@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::Mutex;
 use tokio::time::{Duration, Instant};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,8 +440,29 @@ impl KubernetesDevicePlugin {
 
         self.device_manager.discover_devices().await?;
 
-        tokio::spawn(self.health_monitoring_loop());
-        tokio::spawn(self.metrics_collection_loop());
+        let health_monitor = Arc::clone(&self.health_monitor);
+        let config = self.config.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(config.health_check_interval);
+            loop {
+                interval.tick().await;
+                if let Err(e) = health_monitor.check_all_devices().await {
+                    tracing::error!("Health check failed: {}", e);
+                }
+            }
+        });
+
+        let metrics_collector = Arc::clone(&self.metrics_collector);
+        let config = self.config.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(config.metrics_collection.collection_interval);
+            loop {
+                interval.tick().await;
+                if let Err(e) = metrics_collector.collect_all_metrics().await {
+                    tracing::error!("Metrics collection failed: {}", e);
+                }
+            }
+        });
 
         self.register_with_kubelet().await?;
 
@@ -507,7 +528,7 @@ impl KubernetesDevicePlugin {
         debug!("Handling ListAndWatch request");
 
         let devices = self.device_manager.get_available_devices().await?;
-        let device_list = self.convert_to_device_plugin_devices(devices).await?;
+        let _device_list = self.convert_to_device_plugin_devices(devices).await?;
 
         Ok(())
     }
@@ -624,7 +645,7 @@ impl KubernetesDevicePlugin {
 
     async fn generate_device_mounts(
         &self,
-        device_ids: &[String],
+        _device_ids: &[String],
     ) -> Result<Vec<Mount>, Box<dyn std::error::Error>> {
         let mut mounts = Vec::new();
 
@@ -809,7 +830,7 @@ pub struct MetricsSummary {
 }
 
 impl MetricsSummary {
-    pub fn from_metrics(metrics: HashMap<String, MetricValue>) -> Self {
+    pub fn from_metrics(_metrics: HashMap<String, MetricValue>) -> Self {
         Self {
             total_allocations: 0,
             total_deallocations: 0,
@@ -925,7 +946,7 @@ impl KubeletClient {
 
     pub async fn register_plugin(
         &self,
-        config: &KubernetesDevicePluginConfig,
+        _config: &KubernetesDevicePluginConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Registering plugin with kubelet");
 

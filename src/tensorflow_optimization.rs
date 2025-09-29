@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 /// TensorFlow GPU Allocation and Optimization Module
@@ -1015,7 +1015,7 @@ impl TensorFlowGpuManager {
     async fn create_performance_config(
         &self,
         session_type: &SessionType,
-        model_info: &Option<ModelInfo>,
+        _model_info: &Option<ModelInfo>,
     ) -> Result<TensorFlowPerformanceConfig> {
         let gpu_config = GpuConfig {
             allow_memory_growth: true,
@@ -1140,7 +1140,7 @@ impl TensorFlowGpuManager {
         info!("Terminating TensorFlow session: {}", session_id);
 
         let mut sessions = self.sessions.write().unwrap();
-        if let Some(mut session) = sessions.get_mut(session_id) {
+        if let Some(session) = sessions.get_mut(session_id) {
             session.status = SessionStatus::Terminating;
             session.last_activity = chrono::Utc::now();
 

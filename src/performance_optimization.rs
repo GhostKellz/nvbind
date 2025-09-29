@@ -10,8 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tokio::signal;
 use tokio::sync::{RwLock as AsyncRwLock, Semaphore};
-use tokio::time::timeout;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Performance optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

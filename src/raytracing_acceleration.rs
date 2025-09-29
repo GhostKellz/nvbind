@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -763,7 +763,7 @@ impl RayTracingAccelerationManager {
         context_id: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut active_contexts = self.active_contexts.write().unwrap();
-        if let Some(context) = active_contexts.remove(context_id) {
+        if let Some(_context) = active_contexts.remove(context_id) {
             info!("Cleaning up acceleration context: {}", context_id);
 
             self.memory_manager

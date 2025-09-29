@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -442,7 +442,7 @@ impl GamingOptimizationManager {
         current_metrics: &PerformanceMetric,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let active_sessions = self.active_sessions.read().unwrap();
-        let session = active_sessions.get(session_id).ok_or("Session not found")?;
+        let _session = active_sessions.get(session_id).ok_or("Session not found")?;
 
         let target_metrics = self.performance_monitor.target_metrics.read().unwrap();
         if let Some(targets) = target_metrics.get(session_id) {
@@ -717,7 +717,7 @@ impl RayTracingManager {
     pub async fn configure_for_game(
         &self,
         game_id: &str,
-        config: &RayTracingConfig,
+        _config: &RayTracingConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Configuring ray tracing for game: {}", game_id);
         Ok(())
@@ -726,7 +726,7 @@ impl RayTracingManager {
     pub async fn activate_for_session(
         &self,
         session_id: &str,
-        config: &RayTracingConfig,
+        _config: &RayTracingConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Activating ray tracing for session: {}", session_id);
         Ok(())

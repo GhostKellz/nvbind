@@ -3,13 +3,10 @@
 //! Provides comprehensive security validation and hardening measures
 //! for production deployments.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info};
 
 /// Security audit report
 #[derive(Debug, Clone, Serialize, Deserialize)]
