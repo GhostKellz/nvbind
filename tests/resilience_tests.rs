@@ -5,14 +5,13 @@
 
 use anyhow::Result;
 use nvbind::cdi;
-use nvbind::config::{Config, ConfigManager};
 use nvbind::gpu;
-use nvbind::graceful_degradation::GracefulDegradationHandler;
+use nvbind::graceful_degradation::GracefulDegradationManager;
 use nvbind::runtime;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::time::{sleep, timeout};
+use tokio::time::sleep;
 
 /// Failure injection modes
 #[derive(Debug, Clone)]
@@ -191,7 +190,8 @@ impl ResilienceTestRunner {
     pub async fn test_gpu_discovery_resilience(&self) -> Result<ResilienceTestResults> {
         println!("Testing GPU discovery resilience...");
 
-        let degradation_handler = Arc::new(GracefulDegradationHandler::new());
+        let degradation_config = nvbind::graceful_degradation::DegradationConfig::default();
+        let degradation_handler = Arc::new(GracefulDegradationManager::new(degradation_config).await?);
         let mut results = ResilienceTestResults::default();
         let mut recovery_times = Vec::new();
 
@@ -213,11 +213,11 @@ impl ResilienceTestRunner {
                 // Test recovery mechanism
                 let recovery_start = Instant::now();
 
-                let recovery_result = self
+                let recovery_result: Result<(), String> = self
                     .recovery_manager
                     .execute_with_recovery(|| {
                         // Simulate recovery attempt with simple mock result
-                        Ok(())
+                        Ok::<(), String>(())
                     })
                     .await;
 
@@ -297,7 +297,7 @@ impl ResilienceTestRunner {
                         .recovery_manager
                         .execute_with_recovery(|| {
                             // Simulate recovery attempt with fallback runtime
-                            runtime::validate_runtime("docker")
+                            runtime::validate_runtime("docker").map_err(|e| e.to_string())
                         })
                         .await;
 
@@ -383,7 +383,7 @@ impl ResilienceTestRunner {
                     .recovery_manager
                     .execute_with_recovery(|| {
                         // Simulate recovery attempt with simplified CDI spec
-                        futures::executor::block_on(cdi::generate_nvidia_cdi_spec())
+                        futures::executor::block_on(cdi::generate_nvidia_cdi_spec()).map_err(|e| e.to_string())
                     })
                     .await;
 
