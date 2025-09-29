@@ -2,7 +2,7 @@
 name = "nvbind"
 version = "0.1.0"
 edition = "2024"
-description = "A lightweight, Rust-based alternative to NVIDIA Container Toolkit"
+description = "High-performance NVIDIA container GPU runtime engineered in Rust"
 license = "MIT"
 repository = "https://github.com/ghostkellz/nvbind"
 authors = ["ghostkellz"]

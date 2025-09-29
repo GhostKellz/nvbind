@@ -391,34 +391,40 @@ impl PerformanceOptimizer {
         let shutdown_timeout = Duration::from_millis(self.config.shutdown_timeout_ms);
 
         tokio::spawn(async move {
-            // Listen for termination signals
-            let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate())
-                .expect("Failed to register SIGTERM handler");
-            let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt())
-                .expect("Failed to register SIGINT handler");
+            // Listen for termination signals - continue without signals if registration fails
+            let sigterm_result = signal::unix::signal(signal::unix::SignalKind::terminate());
+            let sigint_result = signal::unix::signal(signal::unix::SignalKind::interrupt());
 
-            tokio::select! {
-                _ = sigterm.recv() => {
-                    info!("Received SIGTERM, initiating graceful shutdown");
+            match (sigterm_result, sigint_result) {
+                (Ok(mut sigterm), Ok(mut sigint)) => {
+                    tokio::select! {
+                        _ = sigterm.recv() => {
+                            info!("Received SIGTERM, initiating graceful shutdown");
+                        }
+                        _ = sigint.recv() => {
+                            info!("Received SIGINT, initiating graceful shutdown");
+                        }
+                    }
+
+                    // Set shutdown signal
+                    {
+                        let mut shutdown = shutdown_signal.write().unwrap();
+                        *shutdown = true;
+                    }
+
+                    info!(
+                        "Graceful shutdown initiated, waiting up to {:?}",
+                        shutdown_timeout
+                    );
+
+                    // Wait for shutdown timeout
+                    tokio::time::sleep(shutdown_timeout).await;
                 }
-                _ = sigint.recv() => {
-                    info!("Received SIGINT, initiating graceful shutdown");
+                _ => {
+                    // Failed to register signal handlers - continue without them
+                    warn!("Failed to register signal handlers, graceful shutdown unavailable");
                 }
             }
-
-            // Set shutdown signal
-            {
-                let mut shutdown = shutdown_signal.write().unwrap();
-                *shutdown = true;
-            }
-
-            info!(
-                "Graceful shutdown initiated, waiting up to {:?}",
-                shutdown_timeout
-            );
-
-            // Wait for shutdown timeout
-            tokio::time::sleep(shutdown_timeout).await;
 
             warn!("Graceful shutdown timeout reached, forcing exit");
             std::process::exit(1);

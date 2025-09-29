@@ -1525,6 +1525,7 @@ impl AlertManager {
 
 impl Default for AdvancedMonitoringManager {
     fn default() -> Self {
+        // Use panic for Default trait as per Rust conventions - this indicates a programming error
         Self::new().expect("Failed to create AdvancedMonitoringManager")
     }
 }

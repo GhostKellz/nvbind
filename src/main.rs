@@ -23,7 +23,7 @@ use performance_optimization::PerformanceOptimizer;
 
 #[derive(Parser)]
 #[command(name = "nvbind")]
-#[command(about = "A lightweight, Rust-based alternative to NVIDIA Container Toolkit")]
+#[command(about = "High-performance NVIDIA container GPU runtime engineered in Rust")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
