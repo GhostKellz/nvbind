@@ -66,7 +66,7 @@ impl User {
             let ret = libc::getgroups(ngroups, group_list.as_mut_ptr() as *mut libc::gid_t);
             if ret > 0 {
                 group_list.truncate(ret as usize);
-                groups.extend(group_list.iter().map(|&g| g as u32));
+                groups.extend(group_list.iter().copied());
             }
         }
 
@@ -120,6 +120,7 @@ pub enum Permission {
 
 /// Resource limits for a role
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ResourceLimits {
     /// Maximum number of GPUs
     pub max_gpus: Option<u32>,
@@ -135,18 +136,6 @@ pub struct ResourceLimits {
     pub time_quotas: Option<TimeQuotas>,
 }
 
-impl Default for ResourceLimits {
-    fn default() -> Self {
-        Self {
-            max_gpus: None,
-            max_gpu_memory: None,
-            max_containers: None,
-            max_cpu_cores: None,
-            max_system_memory: None,
-            time_quotas: None,
-        }
-    }
-}
 
 /// Time-based resource quotas
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -414,17 +403,13 @@ impl RbacManager {
         }
 
         // Check metrics access
-        if resource == "metrics" && action == "read" {
-            if permissions.contains(&Permission::MetricsRead) {
-                return Ok(PolicyDecision::Allow);
-            }
+        if resource == "metrics" && action == "read" && permissions.contains(&Permission::MetricsRead) {
+            return Ok(PolicyDecision::Allow);
         }
 
         // Check configuration access
-        if resource == "config" && action == "write" {
-            if permissions.contains(&Permission::ConfigWrite) {
-                return Ok(PolicyDecision::Allow);
-            }
+        if resource == "config" && action == "write" && permissions.contains(&Permission::ConfigWrite) {
+            return Ok(PolicyDecision::Allow);
         }
 
         Ok(self.config.default_policy)
@@ -547,6 +532,7 @@ impl UsageTracker {
         self.user_usage.get(user).cloned().unwrap_or_default()
     }
 
+    #[allow(dead_code)]
     fn update_usage(&mut self, user: &User, usage: ResourceUsage) {
         self.user_usage.insert(user.clone(), usage);
     }

@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_lock)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -185,8 +187,10 @@ pub struct GamingSession {
 
 #[derive(Debug)]
 pub struct GamingPerformanceMonitor {
+    #[allow(dead_code)]
     metrics_sender: mpsc::UnboundedSender<PerformanceMetric>,
     target_metrics: Arc<RwLock<HashMap<String, TargetMetrics>>>,
+    #[allow(dead_code)]
     adaptive_scaling: bool,
 }
 
@@ -213,6 +217,7 @@ pub struct TargetMetrics {
 
 #[derive(Debug)]
 pub struct DlssManager {
+    #[allow(dead_code)]
     supported_games: Arc<RwLock<HashMap<String, DlssSupport>>>,
     runtime_configs: Arc<RwLock<HashMap<String, DlssRuntimeConfig>>>,
 }
@@ -245,6 +250,7 @@ pub enum PerformanceTarget {
 
 #[derive(Debug)]
 pub struct FsrManager {
+    #[allow(dead_code)]
     fsr_profiles: Arc<RwLock<HashMap<String, FsrProfile>>>,
     runtime_configs: Arc<RwLock<HashMap<String, FsrRuntimeConfig>>>,
 }
@@ -268,7 +274,9 @@ pub struct FsrRuntimeConfig {
 
 #[derive(Debug)]
 pub struct RayTracingManager {
+    #[allow(dead_code)]
     rt_profiles: Arc<RwLock<HashMap<String, RayTracingProfile>>>,
+    #[allow(dead_code)]
     gpu_capabilities: Arc<RwLock<RayTracingCapabilities>>,
 }
 
@@ -339,8 +347,10 @@ impl GamingOptimizationManager {
 
         self.validate_profile(&profile)?;
 
-        let mut profiles = self.profiles.write().unwrap();
-        profiles.insert(profile.profile_id.clone(), profile.clone());
+        {
+            let mut profiles = self.profiles.write().unwrap();
+            profiles.insert(profile.profile_id.clone(), profile.clone());
+        }
 
         if let Some(dlss_config) = &profile.dlss_config {
             self.dlss_manager
@@ -374,28 +384,32 @@ impl GamingOptimizationManager {
     ) -> Result<String, Box<dyn std::error::Error>> {
         let session_id = Uuid::new_v4().to_string();
 
-        let profiles = self.profiles.read().unwrap();
-        let profile = profiles.get(profile_id).ok_or("Gaming profile not found")?;
+        let session = {
+            let profiles = self.profiles.read().unwrap();
+            let profile = profiles.get(profile_id).ok_or("Gaming profile not found")?;
 
-        let session = GamingSession {
-            session_id: session_id.clone(),
-            profile_id: profile_id.to_string(),
-            container_id: container_id.to_string(),
-            game_process_id: None,
-            start_time: chrono::Utc::now(),
-            current_fps: 0.0,
-            target_fps: profile
-                .dlss_config
-                .as_ref()
-                .and_then(|c| c.target_fps)
-                .unwrap_or(60),
-            gpu_utilization: 0.0,
-            memory_usage: 0,
-            frame_times: Vec::new(),
+            GamingSession {
+                session_id: session_id.clone(),
+                profile_id: profile_id.to_string(),
+                container_id: container_id.to_string(),
+                game_process_id: None,
+                start_time: chrono::Utc::now(),
+                current_fps: 0.0,
+                target_fps: profile
+                    .dlss_config
+                    .as_ref()
+                    .and_then(|c| c.target_fps)
+                    .unwrap_or(60),
+                gpu_utilization: 0.0,
+                memory_usage: 0,
+                frame_times: Vec::new(),
+            }
         };
 
-        let mut active_sessions = self.active_sessions.write().unwrap();
-        active_sessions.insert(session_id.clone(), session);
+        {
+            let mut active_sessions = self.active_sessions.write().unwrap();
+            active_sessions.insert(session_id.clone(), session);
+        }
 
         self.apply_gaming_optimizations(profile_id, &session_id)
             .await?;
@@ -407,6 +421,7 @@ impl GamingOptimizationManager {
         Ok(session_id)
     }
 
+    #[allow(clippy::await_holding_lock)]
     async fn apply_gaming_optimizations(
         &self,
         profile_id: &str,
@@ -436,6 +451,7 @@ impl GamingOptimizationManager {
         Ok(())
     }
 
+    #[allow(clippy::await_holding_lock)]
     pub async fn optimize_runtime_performance(
         &self,
         session_id: &str,
@@ -585,7 +601,7 @@ impl DlssManager {
     pub async fn configure_for_game(
         &self,
         game_id: &str,
-        config: &DlssOptimizationConfig,
+        _config: &DlssOptimizationConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Configuring DLSS for game: {}", game_id);
         Ok(())
@@ -649,7 +665,7 @@ impl FsrManager {
     pub async fn configure_for_game(
         &self,
         game_id: &str,
-        config: &FsrOptimizationConfig,
+        _config: &FsrOptimizationConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Configuring FSR for game: {}", game_id);
         Ok(())

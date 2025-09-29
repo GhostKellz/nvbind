@@ -1,3 +1,9 @@
+#![allow(dead_code)]
+#![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(unused_imports)]
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use tracing::{debug, info};

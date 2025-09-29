@@ -640,7 +640,7 @@ impl CloudManager {
                 })?;
 
         let instance = provider_interface
-            .launch_instance(&selected_resource, &workload)
+            .launch_instance(selected_resource, &workload)
             .await?;
 
         // Track instance for cost optimization

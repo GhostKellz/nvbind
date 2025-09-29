@@ -18,6 +18,7 @@ pub struct PodmanCompat {
 
 /// Parsed Docker/Podman command arguments
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ContainerArgs {
     pub image: String,
     pub command: Vec<String>,
@@ -37,6 +38,7 @@ pub struct ContainerArgs {
 
 /// GPU arguments parsed from Docker/Podman commands
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct GpuArgs {
     pub enabled: bool,
     pub device_ids: Vec<String>,   // "all", "0", "1", etc.
@@ -240,8 +242,10 @@ impl DockerCompat {
     }
 
     fn parse_gpu_args(&self, gpu_spec: &str) -> Result<GpuArgs> {
-        let mut gpu_args = GpuArgs::default();
-        gpu_args.enabled = true;
+        let mut gpu_args = GpuArgs {
+            enabled: true,
+            ..Default::default()
+        };
 
         if gpu_spec == "all" {
             gpu_args.device_ids.push("all".to_string());
@@ -357,38 +361,7 @@ impl PodmanCompat {
     }
 }
 
-impl Default for ContainerArgs {
-    fn default() -> Self {
-        Self {
-            image: String::new(),
-            command: Vec::new(),
-            gpu_args: GpuArgs::default(),
-            volumes: Vec::new(),
-            environment: HashMap::new(),
-            ports: Vec::new(),
-            runtime_args: Vec::new(),
-            network_mode: None,
-            privileged: false,
-            remove_on_exit: false,
-            interactive: false,
-            tty: false,
-            detached: false,
-            name: None,
-        }
-    }
-}
 
-impl Default for GpuArgs {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            device_ids: Vec::new(),
-            capabilities: Vec::new(),
-            memory_limit: None,
-            driver: None,
-        }
-    }
-}
 
 /// Docker command wrapper that redirects to nvbind
 pub async fn handle_docker_command(args: Vec<String>) -> Result<()> {
@@ -522,7 +495,7 @@ async fn benchmark_docker(image: &str, command: &[String]) -> Result<f64> {
     let start = std::time::Instant::now();
 
     let output = Command::new("docker")
-        .args(&["run", "--rm", "--gpus", "all", image])
+        .args(["run", "--rm", "--gpus", "all", image])
         .args(command)
         .output()?;
 
@@ -539,7 +512,7 @@ async fn benchmark_podman(image: &str, command: &[String]) -> Result<f64> {
     let start = std::time::Instant::now();
 
     let output = Command::new("podman")
-        .args(&["run", "--rm", "--device", "nvidia.com/gpu=all", image])
+        .args(["run", "--rm", "--device", "nvidia.com/gpu=all", image])
         .args(command)
         .output()?;
 

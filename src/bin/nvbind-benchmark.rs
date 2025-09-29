@@ -4,6 +4,12 @@
 //! This binary validates the sub-microsecond GPU passthrough claims
 //! and compares performance against nvidia-docker2.
 
+#![allow(dead_code)]
+#![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(unused_imports)]
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use nvbind::cdi::generate_nvidia_cdi_spec;

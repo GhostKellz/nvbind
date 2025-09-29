@@ -303,7 +303,7 @@ impl MetricsCollector {
         use std::process::Command;
 
         let output = Command::new("nvidia-smi")
-            .args(&[
+            .args([
                 "--query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.current.graphics,fan.speed,encoder.stats.sessionCount,decoder.stats.sessionCount",
                 "--format=csv,noheader,nounits"
             ])
@@ -353,7 +353,7 @@ impl MetricsCollector {
 
         // Example: Check for running containers
         if let Ok(output) = std::process::Command::new("podman")
-            .args(&["ps", "--format", "{{.ID}},{{.Names}}"])
+            .args(["ps", "--format", "{{.ID}},{{.Names}}"])
             .output()
         {
             let output_str = String::from_utf8_lossy(&output.stdout);

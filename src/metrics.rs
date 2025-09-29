@@ -18,6 +18,7 @@ pub struct MetricsCollector {
     /// Active performance sessions
     active_sessions: Arc<Mutex<HashMap<String, PerformanceSession>>>,
     /// Collection configuration
+    #[allow(dead_code)]
     config: MetricsConfig,
 }
 
@@ -387,7 +388,7 @@ impl MetricsCollector {
     async fn get_gpu_utilization(&self, gpu_id: &str) -> Result<UtilizationMetric> {
         // Use nvidia-smi to get utilization data
         let output = std::process::Command::new("nvidia-smi")
-            .args(&[
+            .args([
                 "--query-gpu=utilization.gpu,utilization.memory,utilization.encoder,utilization.decoder,power.draw,clocks.gr,clocks.mem",
                 "--format=csv,noheader,nounits",
                 "--id", gpu_id

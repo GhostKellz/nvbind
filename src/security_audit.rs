@@ -64,6 +64,7 @@ pub struct ComplianceStatus {
 
 /// Security auditor
 pub struct SecurityAuditor {
+    #[allow(dead_code)]
     config: SecurityAuditConfig,
     findings: Vec<SecurityFinding>,
 }
@@ -130,7 +131,7 @@ impl SecurityAuditor {
 
         // Check for unsafe code blocks
         if let Ok(output) = Command::new("grep")
-            .args(&["-r", "unsafe", "src/"])
+            .args(["-r", "unsafe", "src/"])
             .output()
         {
             if !output.stdout.is_empty() {
@@ -183,7 +184,7 @@ impl SecurityAuditor {
 
         // Check setuid/setgid usage
         if let Ok(output) = Command::new("find")
-            .args(&["target/", "-perm", "/u+s,g+s", "-type", "f"])
+            .args(["target/", "-perm", "/u+s,g+s", "-type", "f"])
             .output()
         {
             if !output.stdout.is_empty() {
@@ -248,7 +249,7 @@ impl SecurityAuditor {
 
         // Check world-writable files
         if let Ok(output) = Command::new("find")
-            .args(&[".", "-type", "f", "-perm", "0002"])
+            .args([".", "-type", "f", "-perm", "0002"])
             .output()
         {
             if !output.stdout.is_empty() {
@@ -294,7 +295,7 @@ impl SecurityAuditor {
 
         // Run cargo audit if available
         if let Ok(output) = Command::new("cargo")
-            .args(&["audit", "--format", "json"])
+            .args(["audit", "--format", "json"])
             .output()
         {
             if output.status.success() {
@@ -317,7 +318,7 @@ impl SecurityAuditor {
         let patterns = vec!["strcpy", "strcat", "sprintf", "gets", "scanf"];
 
         for pattern in patterns {
-            if let Ok(output) = Command::new("grep").args(&["-r", pattern, "src/"]).output() {
+            if let Ok(output) = Command::new("grep").args(["-r", pattern, "src/"]).output() {
                 if !output.stdout.is_empty() {
                     self.add_finding(SecurityFinding {
                         severity: SecuritySeverity::High,
@@ -337,7 +338,7 @@ impl SecurityAuditor {
     async fn validate_pointer_safety(&mut self) -> Result<()> {
         // Check for raw pointer usage
         if let Ok(output) = Command::new("grep")
-            .args(&["-r", "\\*mut\\|\\*const", "src/"])
+            .args(["-r", "\\*mut\\|\\*const", "src/"])
             .output()
         {
             if !output.stdout.is_empty() {
@@ -380,7 +381,7 @@ impl SecurityAuditor {
         let dangerous_patterns = vec!["../", "..\\"];
 
         for pattern in dangerous_patterns {
-            if let Ok(output) = Command::new("grep").args(&["-r", pattern, "src/"]).output() {
+            if let Ok(output) = Command::new("grep").args(["-r", pattern, "src/"]).output() {
                 if !output.stdout.is_empty() {
                     self.add_finding(SecurityFinding {
                         severity: SecuritySeverity::High,
@@ -438,7 +439,7 @@ impl SecurityAuditor {
 
         for pattern in secret_patterns {
             if let Ok(output) = Command::new("grep")
-                .args(&["-rE", pattern, "src/"])
+                .args(["-rE", pattern, "src/"])
                 .output()
             {
                 if !output.stdout.is_empty() {

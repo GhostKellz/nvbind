@@ -346,7 +346,7 @@ impl WineOptimizer {
         for tweak in &self.profile.registry_tweaks {
             let output = Command::new(&self.wine_paths.wine_bin)
                 .env("WINEPREFIX", &self.wine_paths.wine_prefix)
-                .args(&[
+                .args([
                     "reg",
                     "add",
                     &tweak.key,
@@ -441,7 +441,7 @@ impl WineOptimizer {
         for (dll, override_mode) in &self.profile.dll_overrides {
             let output = Command::new(&self.wine_paths.wine_bin)
                 .env("WINEPREFIX", &self.wine_paths.wine_prefix)
-                .args(&[
+                .args([
                     "reg",
                     "add",
                     "HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides",
@@ -491,7 +491,7 @@ impl WineOptimizer {
 
         let output = Command::new(&self.wine_paths.wine_bin)
             .env("WINEPREFIX", &self.wine_paths.wine_prefix)
-            .args(&[
+            .args([
                 "reg",
                 "add",
                 "HKEY_CURRENT_USER\\Software\\Wine\\Direct3D",
@@ -535,7 +535,7 @@ impl WineOptimizer {
     async fn get_gpu_memory_size(&self, _gpu_id: &str) -> Result<u32> {
         // Query GPU memory using nvidia-smi
         let output = Command::new("nvidia-smi")
-            .args(&["--query-gpu=memory.total", "--format=csv,noheader,nounits"])
+            .args(["--query-gpu=memory.total", "--format=csv,noheader,nounits"])
             .output()
             .context("Failed to query GPU memory")?;
 

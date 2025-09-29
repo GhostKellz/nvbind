@@ -630,7 +630,7 @@ mod tests {
         let optimizer = PerformanceOptimizer::new(config)?;
 
         // Test optimized operations
-        let devices = optimizer.optimize_gpu_discovery().await?;
+        let _devices = optimizer.optimize_gpu_discovery().await?;
         let cdi_spec = optimizer.optimize_cdi_generation("test_cache_key").await?;
 
         assert!(!cdi_spec.is_empty());

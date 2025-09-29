@@ -112,8 +112,11 @@ pub enum RegistrationState {
 #[derive(Debug)]
 pub struct DeviceManager {
     devices: Arc<RwLock<HashMap<String, GpuDevice>>>,
+    #[allow(dead_code)]
     allocation_strategy: GpuAllocationStrategy,
+    #[allow(dead_code)]
     topology_manager: Arc<TopologyManager>,
+    #[allow(dead_code)]
     mig_manager: Option<Arc<MigManager>>,
 }
 
@@ -224,8 +227,11 @@ pub struct MigInstance {
 
 #[derive(Debug)]
 pub struct TopologyManager {
+    #[allow(dead_code)]
     numa_topology: Arc<RwLock<HashMap<u32, NumaNode>>>,
+    #[allow(dead_code)]
     device_affinity: Arc<RwLock<HashMap<String, Vec<u32>>>>,
+    #[allow(dead_code)]
     interconnect_matrix: Arc<RwLock<InterconnectMatrix>>,
 }
 
@@ -262,7 +268,9 @@ pub enum ConnectionType {
 
 #[derive(Debug)]
 pub struct MigManager {
+    #[allow(dead_code)]
     mig_profiles: Arc<RwLock<HashMap<String, MigProfile>>>,
+    #[allow(dead_code)]
     instance_tracker: Arc<RwLock<HashMap<String, Vec<MigInstance>>>>,
 }
 
@@ -278,9 +286,13 @@ pub struct MigProfile {
 
 #[derive(Debug)]
 pub struct KubeletClient {
+    #[allow(dead_code)]
     client: Arc<Mutex<Option<tokio::net::UnixStream>>>,
+    #[allow(dead_code)]
     socket_path: String,
+    #[allow(dead_code)]
     connection_timeout: Duration,
+    #[allow(dead_code)]
     retry_strategy: RetryStrategy,
 }
 
@@ -294,16 +306,23 @@ pub struct RetryStrategy {
 
 #[derive(Debug)]
 pub struct HealthMonitor {
+    #[allow(dead_code)]
     health_checkers: Arc<RwLock<HashMap<String, DeviceHealthChecker>>>,
+    #[allow(dead_code)]
     health_check_interval: Duration,
+    #[allow(dead_code)]
     unhealthy_threshold: u32,
 }
 
 #[derive(Debug)]
 pub struct DeviceHealthChecker {
+    #[allow(dead_code)]
     device_id: String,
+    #[allow(dead_code)]
     last_check: Instant,
+    #[allow(dead_code)]
     consecutive_failures: u32,
+    #[allow(dead_code)]
     health_tests: Vec<HealthTest>,
 }
 
@@ -321,6 +340,7 @@ pub enum HealthTest {
 pub struct AllocationTracker {
     allocations: Arc<RwLock<HashMap<String, PodAllocation>>>,
     allocation_history: Arc<RwLock<Vec<AllocationEvent>>>,
+    #[allow(dead_code)]
     resource_quotas: Arc<RwLock<HashMap<String, ResourceQuota>>>,
 }
 
@@ -374,8 +394,11 @@ pub struct ResourceQuota {
 #[derive(Debug)]
 pub struct MetricsCollector {
     metrics: Arc<RwLock<HashMap<String, MetricValue>>>,
+    #[allow(dead_code)]
     collection_interval: Duration,
+    #[allow(dead_code)]
     prometheus_registry: Option<Arc<PrometheusRegistry>>,
+    #[allow(dead_code)]
     custom_collectors: Vec<Box<dyn CustomMetricCollector>>,
 }
 
@@ -403,8 +426,11 @@ pub struct SummaryValue {
 
 #[derive(Debug)]
 pub struct PrometheusRegistry {
+    #[allow(dead_code)]
     endpoint: String,
+    #[allow(dead_code)]
     metrics_path: String,
+    #[allow(dead_code)]
     push_gateway: Option<String>,
 }
 
@@ -647,19 +673,18 @@ impl KubernetesDevicePlugin {
         &self,
         _device_ids: &[String],
     ) -> Result<Vec<Mount>, Box<dyn std::error::Error>> {
-        let mut mounts = Vec::new();
-
-        mounts.push(Mount {
-            container_path: "/dev/nvidia0".to_string(),
-            host_path: "/dev/nvidia0".to_string(),
-            read_only: false,
-        });
-
-        mounts.push(Mount {
-            container_path: "/dev/nvidiactl".to_string(),
-            host_path: "/dev/nvidiactl".to_string(),
-            read_only: false,
-        });
+        let mounts = vec![
+            Mount {
+                container_path: "/dev/nvidia0".to_string(),
+                host_path: "/dev/nvidia0".to_string(),
+                read_only: false,
+            },
+            Mount {
+                container_path: "/dev/nvidiactl".to_string(),
+                host_path: "/dev/nvidiactl".to_string(),
+                read_only: false,
+            },
+        ];
 
         Ok(mounts)
     }
@@ -710,6 +735,7 @@ impl KubernetesDevicePlugin {
         }
     }
 
+    #[allow(dead_code)]
     async fn health_monitoring_loop(&self) {
         let mut interval = tokio::time::interval(self.config.health_check_interval);
 
@@ -722,6 +748,7 @@ impl KubernetesDevicePlugin {
         }
     }
 
+    #[allow(dead_code)]
     async fn metrics_collection_loop(&self) {
         let mut interval =
             tokio::time::interval(self.config.metrics_collection.collection_interval);

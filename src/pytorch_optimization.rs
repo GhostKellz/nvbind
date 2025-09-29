@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_lock)]
+
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -8,18 +10,21 @@ use uuid::Uuid;
 
 /// PyTorch CUDA Optimization and GPU Management Module
 /// Provides optimized CUDA operations, distributed training, and memory management for PyTorch workloads
-
 /// PyTorch CUDA Manager
 pub struct PyTorchCudaManager {
     /// Active PyTorch sessions
     sessions: Arc<RwLock<HashMap<String, PyTorchSession>>>,
     /// CUDA optimization configurations
+    #[allow(dead_code)]
     cuda_configs: Arc<RwLock<HashMap<String, CudaOptimizationConfig>>>,
     /// Distributed training configurations
+    #[allow(dead_code)]
     distributed_configs: Arc<RwLock<HashMap<String, DistributedConfig>>>,
     /// Model optimization profiles
+    #[allow(dead_code)]
     model_profiles: Arc<RwLock<HashMap<String, ModelOptimizationProfile>>>,
     /// Memory manager
+    #[allow(dead_code)]
     memory_manager: Arc<CudaMemoryManager>,
 }
 
@@ -1263,6 +1268,7 @@ pub struct PerformanceTargets {
 /// CUDA Memory Manager
 pub struct CudaMemoryManager {
     /// Memory pools per device
+    #[allow(dead_code)]
     memory_pools: Arc<RwLock<HashMap<u32, MemoryPool>>>,
     /// Memory statistics
     memory_stats: Arc<RwLock<HashMap<u32, MemoryStatistics>>>,
@@ -1715,6 +1721,12 @@ impl PyTorchCudaManager {
         }
 
         Ok(config)
+    }
+}
+
+impl Default for CudaMemoryManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

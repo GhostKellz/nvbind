@@ -417,7 +417,7 @@ impl MigManager {
         let output = Command::new("nvidia-smi")
             .arg("mig")
             .arg("-cgi")
-            .arg(&profile.profile_id.to_string())
+            .arg(profile.profile_id.to_string())
             .output()?;
 
         if !output.status.success() {

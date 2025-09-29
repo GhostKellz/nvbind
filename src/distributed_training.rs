@@ -9,7 +9,6 @@ use uuid::Uuid;
 
 /// Distributed Training Support Module
 /// Provides comprehensive multi-node, multi-GPU distributed training coordination
-
 /// Distributed Training Manager
 pub struct DistributedTrainingManager {
     /// Active training jobs
@@ -17,10 +16,12 @@ pub struct DistributedTrainingManager {
     /// Cluster configuration
     cluster_config: Arc<RwLock<ClusterConfiguration>>,
     /// Node manager
+    #[allow(dead_code)]
     node_manager: Arc<NodeManager>,
     /// Communication coordinator
     communication_coordinator: Arc<CommunicationCoordinator>,
     /// Fault tolerance manager
+    #[allow(dead_code)]
     fault_tolerance: Arc<FaultToleranceManager>,
 }
 
@@ -1234,14 +1235,17 @@ pub enum SchedulingPolicy {
 /// Node Manager
 pub struct NodeManager {
     /// Cluster configuration
+    #[allow(dead_code)]
     cluster_config: Arc<RwLock<ClusterConfiguration>>,
     /// Node health monitoring
+    #[allow(dead_code)]
     health_monitor: Arc<NodeHealthMonitor>,
 }
 
 /// Node Health Monitor
 pub struct NodeHealthMonitor {
     /// Health status per node
+    #[allow(dead_code)]
     health_status: Arc<RwLock<HashMap<String, NodeHealthStatus>>>,
 }
 
@@ -1283,6 +1287,7 @@ pub struct NodeHealthMetrics {
 /// Communication Coordinator
 pub struct CommunicationCoordinator {
     /// Active communication groups
+    #[allow(dead_code)]
     communication_groups: Arc<RwLock<HashMap<String, CommunicationGroup>>>,
 }
 
@@ -1313,8 +1318,10 @@ pub struct CommunicationGroupConfig {
 /// Fault Tolerance Manager
 pub struct FaultToleranceManager {
     /// Active checkpoints
+    #[allow(dead_code)]
     checkpoints: Arc<RwLock<HashMap<String, CheckpointInfo>>>,
     /// Failure detector
+    #[allow(dead_code)]
     failure_detector: Arc<FailureDetector>,
 }
 
@@ -1336,6 +1343,7 @@ pub struct CheckpointInfo {
 /// Failure Detector
 pub struct FailureDetector {
     /// Detected failures
+    #[allow(dead_code)]
     failures: Arc<RwLock<HashMap<String, FailureInfo>>>,
 }
 
@@ -1699,23 +1707,40 @@ impl DistributedTrainingManager {
     pub async fn start_job(&self, job_id: &str) -> Result<()> {
         info!("Starting distributed training job: {}", job_id);
 
-        let mut jobs = self.training_jobs.write().unwrap();
-        let job = jobs
-            .get_mut(job_id)
-            .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
+        let cluster_allocation = {
+            let mut jobs = self.training_jobs.write().unwrap();
+            let job = jobs
+                .get_mut(job_id)
+                .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
 
-        job.status = JobStatus::Initializing;
-        job.started_at = Some(chrono::Utc::now());
+            job.status = JobStatus::Initializing;
+            job.started_at = Some(chrono::Utc::now());
+            job.cluster_allocation.clone()
+        };
 
         // Initialize communication groups
         self.communication_coordinator
-            .initialize_communication_groups(&job.cluster_allocation)
+            .initialize_communication_groups(&cluster_allocation)
             .await?;
 
-        // Start training on all nodes
-        self.start_training_on_nodes(job).await?;
+        // Get job again for training
+        let job_for_training = {
+            let jobs = self.training_jobs.read().unwrap();
+            jobs.get(job_id)
+                .ok_or_else(|| anyhow!("Job not found: {}", job_id))?
+                .clone()
+        };
 
-        job.status = JobStatus::Running;
+        // Start training on all nodes
+        self.start_training_on_nodes(&job_for_training).await?;
+
+        // Update job status
+        {
+            let mut jobs = self.training_jobs.write().unwrap();
+            if let Some(job) = jobs.get_mut(job_id) {
+                job.status = JobStatus::Running;
+            }
+        }
 
         info!("Started distributed training job: {}", job_id);
         Ok(())
@@ -1751,19 +1776,22 @@ impl DistributedTrainingManager {
     pub async fn stop_job(&self, job_id: &str) -> Result<()> {
         info!("Stopping distributed training job: {}", job_id);
 
-        let mut jobs = self.training_jobs.write().unwrap();
-        let job = jobs
-            .get_mut(job_id)
-            .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
+        let cluster_allocation = {
+            let mut jobs = self.training_jobs.write().unwrap();
+            let job = jobs
+                .get_mut(job_id)
+                .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
 
-        job.status = JobStatus::Cancelled;
-        job.completed_at = Some(chrono::Utc::now());
+            job.status = JobStatus::Cancelled;
+            job.completed_at = Some(chrono::Utc::now());
+            job.cluster_allocation.clone()
+        };
 
         // Stop training on all nodes
-        self.stop_training_on_nodes(&job.cluster_allocation).await?;
+        self.stop_training_on_nodes(&cluster_allocation).await?;
 
         // Deallocate resources
-        self.deallocate_cluster_resources(&job.cluster_allocation)
+        self.deallocate_cluster_resources(&cluster_allocation)
             .await?;
 
         info!("Stopped distributed training job: {}", job_id);
@@ -1810,6 +1838,12 @@ impl DistributedTrainingManager {
     }
 }
 
+impl Default for NodeManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NodeManager {
     pub fn new() -> Self {
         Self {
@@ -1828,11 +1862,23 @@ impl NodeManager {
     }
 }
 
+impl Default for NodeHealthMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NodeHealthMonitor {
     pub fn new() -> Self {
         Self {
             health_status: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+}
+
+impl Default for CommunicationCoordinator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1853,12 +1899,24 @@ impl CommunicationCoordinator {
     }
 }
 
+impl Default for FaultToleranceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FaultToleranceManager {
     pub fn new() -> Self {
         Self {
             checkpoints: Arc::new(RwLock::new(HashMap::new())),
             failure_detector: Arc::new(FailureDetector::new()),
         }
+    }
+}
+
+impl Default for FailureDetector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

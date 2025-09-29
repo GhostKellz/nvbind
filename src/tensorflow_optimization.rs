@@ -9,7 +9,6 @@ use uuid::Uuid;
 
 /// TensorFlow GPU Allocation and Optimization Module
 /// Provides optimized GPU allocation for TensorFlow Serving, training, and inference workloads
-
 /// TensorFlow GPU Manager
 pub struct TensorFlowGpuManager {
     /// Active TensorFlow sessions
@@ -17,8 +16,10 @@ pub struct TensorFlowGpuManager {
     /// GPU allocation policies
     allocation_policies: Arc<RwLock<HashMap<String, AllocationPolicy>>>,
     /// Model serving configurations
+    #[allow(dead_code)]
     serving_configs: Arc<RwLock<HashMap<String, ServingConfiguration>>>,
     /// Performance profiles
+    #[allow(dead_code)]
     performance_profiles: Arc<RwLock<HashMap<String, TensorFlowPerformanceProfile>>>,
     /// Resource monitoring
     resource_monitor: Arc<ResourceMonitor>,
@@ -648,8 +649,10 @@ pub struct ComputeOptimizationSettings {
 /// Resource Monitor
 pub struct ResourceMonitor {
     /// GPU utilization tracking
+    #[allow(dead_code)]
     gpu_utilization: Arc<RwLock<HashMap<String, f64>>>,
     /// Memory usage tracking
+    #[allow(dead_code)]
     memory_usage: Arc<RwLock<HashMap<String, u64>>>,
     /// Session metrics
     session_metrics: Arc<RwLock<HashMap<String, SessionMetrics>>>,
@@ -746,7 +749,7 @@ impl TensorFlowGpuManager {
         model_info: &Option<ModelInfo>,
         resource_requirements: &ResourceLimits,
     ) -> Result<AllocationStrategy> {
-        let policies = self.allocation_policies.read().unwrap();
+        let policies = self.allocation_policies.read().unwrap().clone();
 
         // Apply allocation policies in priority order
         for policy in policies.values() {
@@ -1139,19 +1142,28 @@ impl TensorFlowGpuManager {
     pub async fn terminate_session(&self, session_id: &str) -> Result<()> {
         info!("Terminating TensorFlow session: {}", session_id);
 
-        let mut sessions = self.sessions.write().unwrap();
-        if let Some(session) = sessions.get_mut(session_id) {
-            session.status = SessionStatus::Terminating;
-            session.last_activity = chrono::Utc::now();
+        let gpu_allocation = {
+            let mut sessions = self.sessions.write().unwrap();
+            if let Some(session) = sessions.get_mut(session_id) {
+                session.status = SessionStatus::Terminating;
+                session.last_activity = chrono::Utc::now();
+                session.gpu_allocation.clone()
+            } else {
+                return Ok(()); // Session not found
+            }
+        };
 
-            // Deallocate GPU resources
-            self.deallocate_gpu_resources(&session.gpu_allocation)
-                .await?;
+        // Deallocate GPU resources (without holding lock)
+        self.deallocate_gpu_resources(&gpu_allocation).await?;
 
-            session.status = SessionStatus::Terminated;
+        // Update session status and remove
+        {
+            let mut sessions = self.sessions.write().unwrap();
+            if let Some(session) = sessions.get_mut(session_id) {
+                session.status = SessionStatus::Terminated;
+            }
+            sessions.remove(session_id);
         }
-
-        sessions.remove(session_id);
         info!("Terminated TensorFlow session: {}", session_id);
         Ok(())
     }
@@ -1203,13 +1215,9 @@ impl TensorFlowGpuManager {
         }
 
         if let Some(fraction) = config.gpu_config.memory_fraction {
-            tf_config.push_str(&format!(
-                "    tf.config.experimental.set_memory_growth(gpus[0], False)\n"
-            ));
-            tf_config.push_str(&format!(
-                "    tf.config.experimental.set_virtual_device_configuration(\n"
-            ));
-            tf_config.push_str(&format!("        gpus[0],\n"));
+            tf_config.push_str("    tf.config.experimental.set_memory_growth(gpus[0], False)\n");
+            tf_config.push_str("    tf.config.experimental.set_virtual_device_configuration(\n");
+            tf_config.push_str("        gpus[0],\n");
             tf_config.push_str(&format!("        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=int({} * 1024))])\n", fraction * 16384.0));
         }
 
@@ -1233,6 +1241,12 @@ impl TensorFlowGpuManager {
         }
 
         Ok(tf_config)
+    }
+}
+
+impl Default for ResourceMonitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

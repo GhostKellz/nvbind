@@ -377,7 +377,7 @@ let has_permission = rbac.check_permission(user, "gpu.use").await?;
                     content.push_str(&format!("  - Default: `{}`\n", default));
                 }
             }
-            content.push_str("\n");
+            content.push('\n');
         }
 
         // Returns
@@ -389,7 +389,7 @@ let has_permission = rbac.check_permission(user, "gpu.use").await?;
             for error in &func.errors {
                 content.push_str(&format!("- {}\n", error));
             }
-            content.push_str("\n");
+            content.push('\n');
         }
 
         // Example
@@ -426,7 +426,7 @@ let has_permission = rbac.check_permission(user, "gpu.use").await?;
                     content.push_str(&format!("  - Default: `{}`\n", default));
                 }
             }
-            content.push_str("\n");
+            content.push('\n');
         }
 
         // Example
@@ -891,7 +891,7 @@ nvbind rbac assign-role --user bob --role ml_researcher
                 section.title.to_lowercase().replace(" ", "-")
             ));
         }
-        content.push_str("\n");
+        content.push('\n');
 
         // Sections
         for (i, section) in guide.sections.iter().enumerate() {
@@ -926,7 +926,7 @@ nvbind rbac assign-role --user bob --role ml_researcher
                 api_doc.name, api_doc.module, api_doc.description
             ));
         }
-        content.push_str("\n");
+        content.push('\n');
 
         // Examples
         content.push_str("## Examples\n\n");
@@ -948,7 +948,7 @@ nvbind rbac assign-role --user bob --role ml_researcher
                     example.description
                 ));
             }
-            content.push_str("\n");
+            content.push('\n');
         }
 
         // Guides
@@ -967,7 +967,7 @@ nvbind rbac assign-role --user bob --role ml_researcher
                 difficulty_badge
             ));
         }
-        content.push_str("\n");
+        content.push('\n');
 
         // System Requirements
         content.push_str("## System Requirements\n\n");
@@ -1319,6 +1319,12 @@ pub struct HelpTopic {
     pub content: String,
     pub examples: Vec<String>,
     pub related: Vec<String>,
+}
+
+impl Default for HelpSystem {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HelpSystem {

@@ -1008,7 +1008,7 @@ impl PerformanceProfiler {
                         session.status = ProfilingStatus::Completed;
 
                         if config_clone.flame_graphs {
-                            if let Err(e) = Self::generate_flame_graph(&session).await {
+                            if let Err(e) = Self::generate_flame_graph(session).await {
                                 error!("Failed to generate flame graph: {}", e);
                             }
                         }

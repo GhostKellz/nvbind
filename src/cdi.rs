@@ -104,7 +104,7 @@ impl Default for CdiRegistry {
 impl CdiRegistry {
     /// Create a new CDI registry
     pub fn new() -> Self {
-        let spec_dirs = CDI_SPEC_DIRS.iter().map(|dir| PathBuf::from(dir)).collect();
+        let spec_dirs = CDI_SPEC_DIRS.iter().map(PathBuf::from).collect();
 
         Self {
             spec_dirs,
@@ -140,7 +140,7 @@ impl CdiRegistry {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                 match self.load_spec_file(&path) {
                     Ok(spec) => {
                         if let Err(e) = self.register_spec(spec) {
@@ -628,7 +628,7 @@ mod tests {
     #[test]
     fn test_cdi_spec_save_load() {
         let temp_dir = TempDir::new().expect("Temp dir creation should work");
-        let mut registry = CdiRegistry::new();
+        let registry = CdiRegistry::new();
 
         let spec = CdiSpec {
             cdi_version: CDI_VERSION.to_string(),

@@ -226,15 +226,15 @@ impl GracefulDegradationManager {
     async fn apply_cpu_fallback(&self, context: &OperationContext) -> Result<DegradationResult> {
         warn!("Falling back to CPU-only mode");
 
-        let mut modifications = Vec::new();
+        let modifications = vec![
+            // Remove GPU-related environment variables
+            "Remove NVIDIA_VISIBLE_DEVICES environment variable".to_string(),
+            "Set CUDA_VISIBLE_DEVICES=-1 to disable CUDA".to_string(),
 
-        // Remove GPU-related environment variables
-        modifications.push("Remove NVIDIA_VISIBLE_DEVICES environment variable".to_string());
-        modifications.push("Set CUDA_VISIBLE_DEVICES=-1 to disable CUDA".to_string());
-
-        // Add CPU optimization flags
-        modifications.push("Add CPU optimization flags".to_string());
-        modifications.push("Enable multi-threading for CPU workloads".to_string());
+            // Add CPU optimization flags
+            "Add CPU optimization flags".to_string(),
+            "Enable multi-threading for CPU workloads".to_string(),
+        ];
 
         // Update container configuration
         let mut container_config = context.container_config.clone();
@@ -265,9 +265,10 @@ impl GracefulDegradationManager {
 
         warn!("Falling back to software rendering");
 
-        let mut modifications = Vec::new();
-        modifications.push("Enable software rendering mode".to_string());
-        modifications.push("Configure Mesa software renderer".to_string());
+        let modifications = vec![
+            "Enable software rendering mode".to_string(),
+            "Configure Mesa software renderer".to_string(),
+        ];
 
         let mut container_config = context.container_config.clone();
         container_config.insert("MESA_GL_VERSION_OVERRIDE".to_string(), "3.3".to_string());

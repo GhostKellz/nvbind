@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_lock)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -187,6 +189,7 @@ pub struct RtCustomProfile {
 pub struct RayTracingAccelerationManager {
     acceleration_configs: Arc<RwLock<HashMap<String, RayTracingAccelerationConfig>>>,
     active_contexts: Arc<RwLock<HashMap<String, RtAccelerationContext>>>,
+    #[allow(dead_code)]
     gpu_capabilities: Arc<RwLock<RtGpuCapabilities>>,
     performance_monitor: Arc<RtPerformanceMonitor>,
     memory_manager: Arc<RtMemoryManager>,
@@ -312,8 +315,10 @@ pub struct RtGpuCapabilities {
 
 #[derive(Debug)]
 pub struct RtPerformanceMonitor {
+    #[allow(dead_code)]
     metrics_sender: mpsc::UnboundedSender<RtPerformanceMetrics>,
     target_performance: Arc<RwLock<HashMap<String, RtPerformanceTargets>>>,
+    #[allow(dead_code)]
     adaptive_optimization: bool,
 }
 
@@ -328,8 +333,11 @@ pub struct RtPerformanceTargets {
 
 #[derive(Debug)]
 pub struct RtMemoryManager {
+    #[allow(dead_code)]
     memory_pools: Arc<RwLock<HashMap<String, RtMemoryPool>>>,
+    #[allow(dead_code)]
     allocation_strategy: RtAllocationStrategy,
+    #[allow(dead_code)]
     defragmentation_enabled: bool,
 }
 
@@ -365,7 +373,9 @@ pub enum RtAllocationStrategy {
 #[derive(Debug)]
 pub struct DenoisingEngine {
     denoising_contexts: Arc<RwLock<HashMap<String, DenoisingContext>>>,
+    #[allow(dead_code)]
     ai_models: Arc<RwLock<HashMap<String, AiDenoisingModel>>>,
+    #[allow(dead_code)]
     temporal_accumulator: Arc<TemporalAccumulator>,
 }
 
@@ -380,6 +390,7 @@ pub struct DenoisingContext {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct DenoisingBuffers {
     pub color_buffer: BufferHandle,
     pub normal_buffer: BufferHandle,
@@ -420,8 +431,11 @@ pub struct DenoisingMetrics {
 
 #[derive(Debug)]
 pub struct TemporalAccumulator {
+    #[allow(dead_code)]
     history_frames: Arc<RwLock<HashMap<String, Vec<AccumulatedFrame>>>>,
+    #[allow(dead_code)]
     max_history_length: u32,
+    #[allow(dead_code)]
     disocclusion_threshold: f32,
 }
 
@@ -945,6 +959,12 @@ impl DenoisingEngine {
     }
 }
 
+impl Default for TemporalAccumulator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TemporalAccumulator {
     pub fn new() -> Self {
         Self {
@@ -955,18 +975,6 @@ impl TemporalAccumulator {
     }
 }
 
-impl Default for DenoisingBuffers {
-    fn default() -> Self {
-        Self {
-            color_buffer: BufferHandle::default(),
-            normal_buffer: BufferHandle::default(),
-            albedo_buffer: BufferHandle::default(),
-            motion_vector_buffer: BufferHandle::default(),
-            depth_buffer: BufferHandle::default(),
-            variance_buffer: BufferHandle::default(),
-        }
-    }
-}
 
 impl Default for BufferHandle {
     fn default() -> Self {

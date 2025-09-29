@@ -1,5 +1,11 @@
-// Library interface for nvbind
-// This allows the modules to be used as a library and enables benchmarking
+//! Library interface for nvbind
+//! This allows the modules to be used as a library and enables benchmarking
+
+#![allow(dead_code)]
+#![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(unused_imports)]
 
 pub mod cdi;
 pub mod cloud;

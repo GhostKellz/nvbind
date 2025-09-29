@@ -189,7 +189,7 @@ fn bench_performance_claims_validation(c: &mut Criterion) {
     group.bench_function("string_operations", |b| {
         b.iter(|| {
             let start = Instant::now();
-            let device_name = format!("nvidia.com/gpu=gpu0");
+            let device_name = "nvidia.com/gpu=gpu0".to_string();
             let _processed = device_name.contains("gpu");
             let elapsed = start.elapsed();
 

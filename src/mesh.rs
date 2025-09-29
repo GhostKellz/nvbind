@@ -276,6 +276,7 @@ pub enum HealthCheckType {
 
 /// Metrics collector for service mesh observability
 pub struct MeshMetricsCollector {
+    #[allow(dead_code)]
     config: ObservabilityConfig,
     metrics: Arc<RwLock<MeshMetrics>>,
 }
@@ -545,6 +546,12 @@ impl CircuitBreaker {
     }
 }
 
+impl Default for TrafficRouter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrafficRouter {
     pub fn new() -> Self {
         TrafficRouter {
@@ -640,6 +647,12 @@ pub struct RoundRobinStrategy {
     _counter: Arc<RwLock<usize>>,
 }
 
+impl Default for RoundRobinStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RoundRobinStrategy {
     pub fn new() -> Self {
         RoundRobinStrategy {
@@ -671,6 +684,12 @@ impl LoadBalanceStrategy for RoundRobinStrategy {
 
 pub struct LeastConnectionsStrategy;
 
+impl Default for LeastConnectionsStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LeastConnectionsStrategy {
     pub fn new() -> Self {
         LeastConnectionsStrategy
@@ -693,6 +712,12 @@ impl LoadBalanceStrategy for LeastConnectionsStrategy {
 }
 
 pub struct RandomStrategy;
+
+impl Default for RandomStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl RandomStrategy {
     pub fn new() -> Self {
@@ -720,6 +745,12 @@ impl LoadBalanceStrategy for RandomStrategy {
 }
 
 pub struct ResourceAwareStrategy;
+
+impl Default for ResourceAwareStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ResourceAwareStrategy {
     pub fn new() -> Self {

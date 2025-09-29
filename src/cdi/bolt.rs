@@ -5,7 +5,6 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tracing::debug;
 
 use super::{CdiDevice, CdiSpec, ContainerEdits, DeviceNode, Mount};
@@ -331,8 +330,8 @@ fn generate_bolt_hooks(config: &BoltCapsuleConfig) -> Result<Vec<super::Hook>> {
 /// Generate CDI device specification for a specific GPU
 fn generate_bolt_gpu_device(
     index: usize,
-    gpu: &GpuDevice,
-    config: &BoltCapsuleConfig,
+    _gpu: &GpuDevice,
+    _config: &BoltCapsuleConfig,
 ) -> Result<CdiDevice> {
     let device_name = format!("gpu{}", index);
 
@@ -384,7 +383,7 @@ fn generate_bolt_gpu_device(
 }
 
 /// Generate CDI device specification for all GPUs
-fn generate_bolt_all_device(gpus: &[GpuDevice], config: &BoltCapsuleConfig) -> Result<CdiDevice> {
+fn generate_bolt_all_device(gpus: &[GpuDevice], _config: &BoltCapsuleConfig) -> Result<CdiDevice> {
     let mut device_nodes = Vec::new();
     let mut env_vars = vec![
         "NVIDIA_VISIBLE_DEVICES=all".to_string(),

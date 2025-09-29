@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_lock)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
@@ -229,6 +231,7 @@ pub struct MigrationCostModel {
 
 #[derive(Debug, Clone)]
 pub struct GpuSchedulingOptimizer {
+    #[allow(dead_code)]
     config: GpuSchedulingConfig,
     scheduler: Arc<Mutex<GpuSchedulerImpl>>,
     resource_manager: Arc<ResourceManager>,
@@ -610,9 +613,13 @@ pub struct MigrationResult {
 
 #[derive(Debug)]
 pub struct ResourceManager {
+    #[allow(dead_code)]
     available_resources: Arc<RwLock<HashMap<String, NodeResources>>>,
+    #[allow(dead_code)]
     resource_reservations: Arc<RwLock<HashMap<String, ResourceReservation>>>,
+    #[allow(dead_code)]
     allocation_history: Arc<RwLock<Vec<AllocationEvent>>>,
+    #[allow(dead_code)]
     fragmentation_monitor: Arc<FragmentationMonitor>,
 }
 
@@ -706,7 +713,9 @@ pub enum AllocationEventType {
 
 #[derive(Debug)]
 pub struct FragmentationMonitor {
+    #[allow(dead_code)]
     fragmentation_metrics: Arc<RwLock<HashMap<String, FragmentationMetrics>>>,
+    #[allow(dead_code)]
     defragmentation_strategy: DefragmentationStrategy,
 }
 
@@ -729,8 +738,11 @@ pub enum DefragmentationStrategy {
 
 #[derive(Debug)]
 pub struct WorkloadPredictor {
+    #[allow(dead_code)]
     prediction_models: Arc<RwLock<HashMap<String, PredictionModel>>>,
+    #[allow(dead_code)]
     historical_data: Arc<RwLock<VecDeque<WorkloadSample>>>,
+    #[allow(dead_code)]
     prediction_cache: Arc<RwLock<HashMap<String, WorkloadPrediction>>>,
 }
 
@@ -764,9 +776,13 @@ pub struct WorkloadPrediction {
 
 #[derive(Debug)]
 pub struct LoadBalancer {
+    #[allow(dead_code)]
     balancing_algorithm: LoadBalancingAlgorithm,
+    #[allow(dead_code)]
     load_metrics: Arc<RwLock<HashMap<String, LoadMetrics>>>,
+    #[allow(dead_code)]
     migration_planner: Arc<MigrationPlanner>,
+    #[allow(dead_code)]
     thermal_manager: Arc<ThermalManager>,
 }
 
@@ -784,8 +800,11 @@ pub struct LoadMetrics {
 
 #[derive(Debug)]
 pub struct MigrationPlanner {
+    #[allow(dead_code)]
     migration_queue: Arc<Mutex<VecDeque<MigrationPlan>>>,
+    #[allow(dead_code)]
     migration_history: Arc<RwLock<Vec<MigrationResult>>>,
+    #[allow(dead_code)]
     cost_model: MigrationCostModel,
 }
 
@@ -809,8 +828,11 @@ pub enum MigrationType {
 
 #[derive(Debug)]
 pub struct ThermalManager {
+    #[allow(dead_code)]
     thermal_monitors: Arc<RwLock<HashMap<String, ThermalMonitor>>>,
+    #[allow(dead_code)]
     cooling_strategies: Vec<CoolingStrategy>,
+    #[allow(dead_code)]
     thermal_policies: Arc<RwLock<ThermalPolicy>>,
 }
 
@@ -842,8 +864,11 @@ pub struct ThermalPolicy {
 
 #[derive(Debug)]
 pub struct TenantManager {
+    #[allow(dead_code)]
     tenants: Arc<RwLock<HashMap<String, TenantInfo>>>,
+    #[allow(dead_code)]
     quota_manager: Arc<QuotaManager>,
+    #[allow(dead_code)]
     billing_integration: Arc<BillingIntegration>,
 }
 
@@ -868,7 +893,9 @@ pub struct TenantUsage {
 
 #[derive(Debug)]
 pub struct QuotaManager {
+    #[allow(dead_code)]
     quota_enforcement: Arc<RwLock<HashMap<String, QuotaEnforcement>>>,
+    #[allow(dead_code)]
     quota_history: Arc<RwLock<Vec<QuotaEvent>>>,
 }
 
@@ -935,8 +962,11 @@ pub enum QuotaEventType {
 
 #[derive(Debug)]
 pub struct BillingIntegration {
+    #[allow(dead_code)]
     billing_records: Arc<RwLock<Vec<BillingRecord>>>,
+    #[allow(dead_code)]
     pricing_model: PricingModel,
+    #[allow(dead_code)]
     billing_interval: Duration,
 }
 
@@ -978,8 +1008,11 @@ pub struct VolumeDiscount {
 
 #[derive(Debug)]
 pub struct SchedulingMetrics {
+    #[allow(dead_code)]
     metrics: Arc<RwLock<HashMap<String, MetricValue>>>,
+    #[allow(dead_code)]
     metrics_history: Arc<RwLock<VecDeque<MetricSnapshot>>>,
+    #[allow(dead_code)]
     performance_targets: PerformanceTargets,
 }
 
@@ -1418,6 +1451,12 @@ impl Default for JobPerformanceMetrics {
 #[derive(Debug)]
 pub struct FifoScheduler;
 
+impl Default for FifoScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FifoScheduler {
     pub fn new() -> Self {
         Self
@@ -1498,6 +1537,12 @@ macro_rules! impl_scheduler {
     ($scheduler:ident) => {
         #[derive(Debug)]
         pub struct $scheduler;
+
+        impl Default for $scheduler {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
 
         impl $scheduler {
             pub fn new() -> Self {
@@ -1631,6 +1676,12 @@ impl ResourceManager {
     }
 }
 
+impl Default for FragmentationMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FragmentationMonitor {
     pub fn new() -> Self {
         Self {
@@ -1704,6 +1755,12 @@ impl MigrationPlanner {
     }
 }
 
+impl Default for ThermalManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ThermalManager {
     pub fn new() -> Self {
         Self {
@@ -1751,6 +1808,12 @@ impl TenantManager {
     ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Updating usage for tenant: {}", tenant_id);
         Ok(())
+    }
+}
+
+impl Default for QuotaManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

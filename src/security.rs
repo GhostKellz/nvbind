@@ -558,8 +558,10 @@ impl SecurityManager {
         if Path::new("/sys/fs/selinux").exists() {
             info!("SELinux detected");
             if self.selinux_manager.is_none() {
-                let mut selinux_config = SeLinuxConfig::default();
-                selinux_config.enabled = true;
+                let selinux_config = SeLinuxConfig {
+                    enabled: true,
+                    ..Default::default()
+                };
                 self.selinux_manager = Some(SeLinuxManager::new(selinux_config));
 
                 if let Some(ref mut selinux) = self.selinux_manager {
@@ -572,8 +574,10 @@ impl SecurityManager {
         if Path::new("/sys/kernel/security/apparmor").exists() {
             info!("AppArmor detected");
             if self.apparmor_manager.is_none() {
-                let mut apparmor_config = AppArmorConfig::default();
-                apparmor_config.enabled = true;
+                let apparmor_config = AppArmorConfig {
+                    enabled: true,
+                    ..Default::default()
+                };
                 self.apparmor_manager = Some(AppArmorManager::new(apparmor_config));
 
                 if let Some(ref mut apparmor) = self.apparmor_manager {

@@ -394,7 +394,7 @@ impl HaClusterManager {
 
         // Schedule workload on selected node
         let assignment = self
-            .assign_workload_to_node(&workload, &selected_node)
+            .assign_workload_to_node(&workload, selected_node)
             .await?;
 
         info!(

@@ -385,7 +385,7 @@ impl GpuSnapshotManager {
 
         // Use nvidia-ml-py equivalent or nvidia-smi to get memory info
         let output = Command::new("nvidia-smi")
-            .args(&[
+            .args([
                 "--query-gpu=memory.total,memory.used",
                 "--format=csv,noheader,nounits",
             ])
@@ -420,7 +420,7 @@ impl GpuSnapshotManager {
 
         // Query GPU utilization and power
         let output = Command::new("nvidia-smi")
-            .args(&[
+            .args([
                 "--query-gpu=utilization.gpu,utilization.memory,power.draw",
                 "--format=csv,noheader,nounits",
             ])
@@ -471,7 +471,7 @@ impl GpuSnapshotManager {
     /// Get thermal state for GPU
     async fn get_thermal_state(&self, _gpu_id: &str) -> Result<ThermalState> {
         let output = Command::new("nvidia-smi")
-            .args(&[
+            .args([
                 "--query-gpu=temperature.gpu",
                 "--format=csv,noheader,nounits",
             ])
@@ -492,7 +492,7 @@ impl GpuSnapshotManager {
     /// Get fan state for GPU
     async fn get_fan_state(&self, _gpu_id: &str) -> Result<FanState> {
         let output = Command::new("nvidia-smi")
-            .args(&["--query-gpu=fan.speed", "--format=csv,noheader,nounits"])
+            .args(["--query-gpu=fan.speed", "--format=csv,noheader,nounits"])
             .output()
             .context("Failed to query fan speed")?;
 
@@ -632,7 +632,7 @@ mod tests {
     #[tokio::test]
     async fn test_snapshot_manager_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = GpuSnapshotManager::new(temp_dir.path()).unwrap();
+        let _manager = GpuSnapshotManager::new(temp_dir.path()).unwrap();
 
         // Test directory creation
         assert!(temp_dir.path().exists());

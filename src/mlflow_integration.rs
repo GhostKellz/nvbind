@@ -8,7 +8,6 @@ use uuid::Uuid;
 
 /// MLflow Experiment Integration Module
 /// Provides comprehensive experiment tracking, model management, and GPU-aware MLops workflows
-
 /// MLflow Integration Manager
 pub struct MlflowIntegrationManager {
     /// MLflow configuration
@@ -722,6 +721,7 @@ pub enum ModelVersionStatus {
 /// Artifact Store
 pub struct ArtifactStore {
     /// Artifact configurations
+    #[allow(dead_code)]
     artifact_configs: Arc<RwLock<HashMap<String, ArtifactStoreConfig>>>,
 }
 
@@ -1250,6 +1250,12 @@ impl MlflowIntegrationManager {
     }
 }
 
+impl Default for ModelRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModelRegistry {
     pub fn new() -> Self {
         Self {
@@ -1308,7 +1314,7 @@ impl ModelRegistry {
         // Store model version
         {
             let mut model_versions = self.model_versions.write().unwrap();
-            let versions = model_versions.entry(model_name).or_insert_with(Vec::new);
+            let versions = model_versions.entry(model_name).or_default();
             versions.push(model_version);
         }
 
@@ -1348,6 +1354,12 @@ impl ModelRegistry {
     }
 }
 
+impl Default for ArtifactStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ArtifactStore {
     pub fn new() -> Self {
         Self {
@@ -1359,6 +1371,12 @@ impl ArtifactStore {
         debug!("Storing artifact: {} from: {:?}", artifact_path, local_path);
         // Implementation would copy file to artifact store
         Ok(())
+    }
+}
+
+impl Default for GpuExperimentTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

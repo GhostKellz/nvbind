@@ -310,10 +310,10 @@ async fn run_bolt_with_config(
     // Add security options from config (adapted for Bolt's capsule security model)
     for opt in &config.security.security_opts {
         // Convert Docker/Podman security opts to Bolt capsule format
-        if opt.starts_with("seccomp=") {
-            cmd.arg("--seccomp").arg(&opt[8..]);
-        } else if opt.starts_with("apparmor=") {
-            cmd.arg("--apparmor").arg(&opt[9..]);
+        if let Some(seccomp_val) = opt.strip_prefix("seccomp=") {
+            cmd.arg("--seccomp").arg(seccomp_val);
+        } else if let Some(apparmor_val) = opt.strip_prefix("apparmor=") {
+            cmd.arg("--apparmor").arg(apparmor_val);
         }
     }
 
@@ -366,10 +366,10 @@ async fn run_bolt_with_cdi(
 
     // Add security options from config (adapted for Bolt's capsule security model)
     for opt in &config.security.security_opts {
-        if opt.starts_with("seccomp=") {
-            cmd.arg("--seccomp").arg(&opt[8..]);
-        } else if opt.starts_with("apparmor=") {
-            cmd.arg("--apparmor").arg(&opt[9..]);
+        if let Some(seccomp_val) = opt.strip_prefix("seccomp=") {
+            cmd.arg("--seccomp").arg(seccomp_val);
+        } else if let Some(apparmor_val) = opt.strip_prefix("apparmor=") {
+            cmd.arg("--apparmor").arg(apparmor_val);
         }
     }
 

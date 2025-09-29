@@ -602,12 +602,12 @@ pub mod wsl2 {
 
         info!("Configuring GPU isolation for WSL2");
 
-        let mut config = IsolationConfig::default();
-
-        // WSL2 has different isolation requirements
-        config.enable_cgroups = false; // WSL2 manages cgroups differently
-        config.enable_namespaces = false; // Limited namespace support
-        config.enable_device_whitelist = false; // Windows handles device access
+        let mut config = IsolationConfig {
+            enable_cgroups: false, // WSL2 manages cgroups differently
+            enable_namespaces: false, // Limited namespace support
+            enable_device_whitelist: false, // Windows handles device access
+            ..Default::default()
+        };
 
         // Add WSL2-specific profiles
         config.profiles.insert(
@@ -643,7 +643,6 @@ pub mod wsl2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
 
     #[test]
     fn test_isolation_config_default() {

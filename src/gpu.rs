@@ -244,11 +244,9 @@ pub async fn get_driver_info() -> Result<DriverInfo> {
     if matches!(
         driver_type,
         DriverType::NvidiaProprietary | DriverType::NvidiaOpen
-    ) {
-        if validate_proprietary_container_support() {
-            let prop_libraries = get_proprietary_driver_libraries();
-            libraries.extend(prop_libraries);
-        }
+    ) && validate_proprietary_container_support() {
+        let prop_libraries = get_proprietary_driver_libraries();
+        libraries.extend(prop_libraries);
     }
 
     Ok(DriverInfo {
@@ -456,7 +454,7 @@ fn validate_proprietary_driver() -> Result<String> {
 
     // Method 2: Try nvidia-smi for version detection
     if let Ok(output) = std::process::Command::new("nvidia-smi")
-        .args(&[
+        .args([
             "--query-gpu=driver_version",
             "--format=csv,noheader,nounits",
         ])
@@ -495,7 +493,7 @@ fn validate_proprietary_driver() -> Result<String> {
 
     // Method 4: Check nvidia-ml library version
     if let Ok(output) = std::process::Command::new("nvidia-ml-py3")
-        .args(&[
+        .args([
             "-c",
             "import pynvml; pynvml.nvmlInit(); print(pynvml.nvmlSystemGetDriverVersion())",
         ])
@@ -544,9 +542,10 @@ fn validate_proprietary_container_support() -> bool {
     }
 
     // Check for CUDA runtime support
-    if let Ok(_) = std::process::Command::new("nvidia-smi")
+    if std::process::Command::new("nvidia-smi")
         .arg("--list-gpus")
         .output()
+        .is_ok()
     {
         debug!("nvidia-smi available, proprietary driver has basic GPU management");
         return true;
@@ -637,7 +636,7 @@ fn get_nvidia_version() -> Result<String> {
             if line.contains("Kernel Module") {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if let Some(version) = parts.iter().find(|&s| {
-                    s.contains('.') && s.chars().next().map_or(false, |c| c.is_ascii_digit())
+                    s.contains('.') && s.chars().next().is_some_and(|c| c.is_ascii_digit())
                 }) {
                     return Ok(version.to_string());
                 }

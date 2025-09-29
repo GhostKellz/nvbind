@@ -484,6 +484,12 @@ pub struct ConfigMigrator {
     migrations: Vec<Box<dyn Migration>>,
 }
 
+impl Default for ConfigMigrator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfigMigrator {
     /// Create new migrator
     pub fn new() -> Self {
@@ -525,6 +531,7 @@ impl ConfigMigrator {
 
 /// Migration trait
 trait Migration {
+    #[allow(clippy::wrong_self_convention)]
     fn from_version(&self) -> &str;
     fn to_version(&self) -> &str;
     fn should_apply(&self, current_version: &str) -> bool;

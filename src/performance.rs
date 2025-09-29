@@ -434,22 +434,22 @@ impl PerformanceOptimizer {
         let mut patterns = HashMap::new();
 
         // Analyze CPU patterns
-        let cpu_pattern = self.analyze_cpu_pattern(&history);
+        let cpu_pattern = self.analyze_cpu_pattern(history);
         patterns.insert("cpu".to_string(), cpu_pattern);
 
         // Analyze GPU patterns
-        if let Some(gpu_pattern) = self.analyze_gpu_pattern(&history) {
+        if let Some(gpu_pattern) = self.analyze_gpu_pattern(history) {
             patterns.insert("gpu".to_string(), gpu_pattern);
         }
 
         // Analyze memory patterns
-        let memory_pattern = self.analyze_memory_pattern(&history);
+        let memory_pattern = self.analyze_memory_pattern(history);
         patterns.insert("memory".to_string(), memory_pattern);
 
         Ok(WorkloadAnalysis {
             patterns,
-            peak_hours: self.identify_peak_hours(&history),
-            resource_correlation: self.calculate_resource_correlation(&history),
+            peak_hours: self.identify_peak_hours(history),
+            resource_correlation: self.calculate_resource_correlation(history),
         })
     }
 
@@ -515,10 +515,9 @@ impl PerformanceOptimizer {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance =
-            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
+        
 
-        variance
+        values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64
     }
 
     fn calculate_trend(&self, values: Vec<f64>) -> Trend {
