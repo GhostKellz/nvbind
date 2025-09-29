@@ -191,7 +191,8 @@ impl ResilienceTestRunner {
         println!("Testing GPU discovery resilience...");
 
         let degradation_config = nvbind::graceful_degradation::DegradationConfig::default();
-        let degradation_handler = Arc::new(GracefulDegradationManager::new(degradation_config).await?);
+        let _degradation_handler =
+            Arc::new(GracefulDegradationManager::new(degradation_config).await?);
         let mut results = ResilienceTestResults::default();
         let mut recovery_times = Vec::new();
 
@@ -383,7 +384,8 @@ impl ResilienceTestRunner {
                     .recovery_manager
                     .execute_with_recovery(|| {
                         // Simulate recovery attempt with simplified CDI spec
-                        futures::executor::block_on(cdi::generate_nvidia_cdi_spec()).map_err(|e| e.to_string())
+                        futures::executor::block_on(cdi::generate_nvidia_cdi_spec())
+                            .map_err(|e| e.to_string())
                     })
                     .await;
 

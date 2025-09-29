@@ -1358,7 +1358,7 @@ mod tests {
 
     #[test]
     fn test_compliance_frameworks() {
-        let frameworks = vec![
+        let frameworks = [
             ComplianceFramework::SOC2,
             ComplianceFramework::Fips140_2,
             ComplianceFramework::Iso27001,
@@ -1369,7 +1369,7 @@ mod tests {
 
     #[test]
     fn test_vulnerability_severity() {
-        let severities = vec![
+        let severities = [
             VulnerabilitySeverity::Low,
             VulnerabilitySeverity::Medium,
             VulnerabilitySeverity::High,

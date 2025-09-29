@@ -230,7 +230,6 @@ impl GracefulDegradationManager {
             // Remove GPU-related environment variables
             "Remove NVIDIA_VISIBLE_DEVICES environment variable".to_string(),
             "Set CUDA_VISIBLE_DEVICES=-1 to disable CUDA".to_string(),
-
             // Add CPU optimization flags
             "Add CPU optimization flags".to_string(),
             "Enable multi-threading for CPU workloads".to_string(),

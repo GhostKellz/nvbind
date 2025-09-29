@@ -775,7 +775,7 @@ mod tests {
         let result = Wsl2Manager::new();
         assert!(result.is_ok());
 
-        let manager = result.unwrap();
+        let _manager = result.unwrap();
         // Verify manager is created without panicking
         println!("WSL2 manager created successfully");
     }

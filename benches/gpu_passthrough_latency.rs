@@ -1,4 +1,4 @@
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use nvbind::cdi::{CdiRegistry, generate_nvidia_cdi_spec};
 use nvbind::gpu::{discover_gpus, is_nvidia_driver_available};
 use std::process::Command;
@@ -63,7 +63,7 @@ fn bench_gpu_passthrough_latency(c: &mut Criterion) {
 fn bench_nvidia_docker_comparison(c: &mut Criterion) {
     // Check if nvidia-docker2 is available
     let nvidia_docker_available = Command::new("docker")
-        .args(&[
+        .args([
             "run",
             "--rm",
             "--gpus",
@@ -86,7 +86,7 @@ fn bench_nvidia_docker_comparison(c: &mut Criterion) {
     group.bench_function("nvidia_docker_cmd_prep", |b| {
         b.iter(|| {
             let start = Instant::now();
-            let _cmd = Command::new("docker").args(&[
+            let _cmd = Command::new("docker").args([
                 "run",
                 "--rm",
                 "--gpus",

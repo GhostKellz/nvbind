@@ -5,7 +5,6 @@
 
 use anyhow::Result;
 use nvbind::cdi;
-use nvbind::config::{Config, RuntimeConfig};
 use nvbind::gpu;
 use nvbind::metrics::{MetricsCollector, MetricsConfig};
 use nvbind::runtime;
@@ -42,6 +41,12 @@ pub struct MemoryStats {
     pub current_mb: u64,
     pub peak_mb: u64,
     pub growth_mb: u64,
+}
+
+impl Default for MemoryStats {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MemoryStats {
@@ -140,7 +145,7 @@ impl StabilityTestRunner {
 
         let mut handles = Vec::new();
 
-        for i in 0..self.config.stress_concurrency {
+        for _i in 0..self.config.stress_concurrency {
             let handle = tokio::spawn(async move {
                 // Simulate runtime operations
                 for _ in 0..100 {

@@ -389,8 +389,7 @@ pub struct DenoisingContext {
     pub performance_metrics: DenoisingMetrics,
 }
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct DenoisingBuffers {
     pub color_buffer: BufferHandle,
     pub normal_buffer: BufferHandle,
@@ -974,7 +973,6 @@ impl TemporalAccumulator {
         }
     }
 }
-
 
 impl Default for BufferHandle {
     fn default() -> Self {

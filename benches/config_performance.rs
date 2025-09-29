@@ -5,7 +5,7 @@ use tempfile::NamedTempFile;
 
 fn bench_config_creation(c: &mut Criterion) {
     c.bench_function("config_default", |b| {
-        b.iter(|| Config::default());
+        b.iter(Config::default);
     });
 }
 

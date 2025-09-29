@@ -100,7 +100,6 @@ fn test_runtime_validation() {
         }
 
         // Should not panic
-        assert!(true);
     }
 }
 
@@ -122,7 +121,6 @@ async fn test_gpu_discovery() {
     }
 
     // Should not panic regardless of hardware availability
-    assert!(true);
 }
 
 /// Test configuration file operations

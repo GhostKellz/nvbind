@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     admin_permissions.insert(Permission::ManageUsers);
     admin_permissions.insert(Permission::OverrideLimits);
 
-    let admin_role = Role {
+    let _admin_role = Role {
         name: "admin".to_string(),
         description: "System administrator with full access".to_string(),
         permissions: admin_permissions,
@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     ml_permissions.insert(Permission::ContainerGpu);
     ml_permissions.insert(Permission::MetricsRead);
 
-    let ml_role = Role {
+    let _ml_role = Role {
         name: "ml_researcher".to_string(),
         description: "Machine learning researcher".to_string(),
         permissions: ml_permissions,
@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
     user_permissions.insert(Permission::ContainerGpu);
     user_permissions.insert(Permission::MetricsRead);
 
-    let user_role = Role {
+    let _user_role = Role {
         name: "gpu_user".to_string(),
         description: "Regular user with basic GPU access".to_string(),
         permissions: user_permissions,

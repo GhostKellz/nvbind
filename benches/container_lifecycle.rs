@@ -7,7 +7,6 @@ use std::time::{Duration, Instant};
 
 /// High-frequency container lifecycle benchmarks
 fn bench_high_frequency_container_lifecycle(c: &mut Criterion) {
-    let rt = tokio::runtime::Runtime::new().unwrap();
     let mut group = c.benchmark_group("container_lifecycle");
 
     // Configure for high-frequency testing

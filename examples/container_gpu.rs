@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
     println!("🐳 Creating container with GPU access...\n");
 
     // Load configuration (or use defaults)
-    let config = Config::load_from_file(Path::new("/etc/nvbind/config.toml")).unwrap_or_default();
+    let _config = Config::load_from_file(Path::new("/etc/nvbind/config.toml")).unwrap_or_default();
 
     // Create container specification
     let mut environment = HashMap::new();

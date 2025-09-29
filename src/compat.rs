@@ -17,8 +17,7 @@ pub struct PodmanCompat {
 }
 
 /// Parsed Docker/Podman command arguments
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ContainerArgs {
     pub image: String,
     pub command: Vec<String>,
@@ -37,8 +36,7 @@ pub struct ContainerArgs {
 }
 
 /// GPU arguments parsed from Docker/Podman commands
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct GpuArgs {
     pub enabled: bool,
     pub device_ids: Vec<String>,   // "all", "0", "1", etc.
@@ -360,8 +358,6 @@ impl PodmanCompat {
         docker_compat.run_container(args).await
     }
 }
-
-
 
 /// Docker command wrapper that redirects to nvbind
 pub async fn handle_docker_command(args: Vec<String>) -> Result<()> {

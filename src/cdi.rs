@@ -26,7 +26,7 @@ pub struct CdiSpec {
 }
 
 /// Container edits for CDI
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ContainerEdits {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<Vec<String>>,
@@ -87,6 +87,17 @@ pub struct Hook {
     pub env: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout: Option<u32>,
+}
+
+impl Default for CdiSpec {
+    fn default() -> Self {
+        Self {
+            cdi_version: CDI_VERSION.to_string(),
+            kind: "nvidia.com/gpu".to_string(),
+            container_edits: ContainerEdits::default(),
+            devices: Vec::new(),
+        }
+    }
 }
 
 /// CDI registry for managing device specifications

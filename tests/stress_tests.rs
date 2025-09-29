@@ -13,6 +13,12 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::{sleep, timeout};
 
+/// Type aliases for complex types
+type OperationResult = Result<(Duration, String), (Duration, String)>;
+type OperationHandle = tokio::task::JoinHandle<OperationResult>;
+type OperationHandles = Vec<OperationHandle>;
+type BatchResults = Vec<Result<OperationResult, tokio::task::JoinError>>;
+
 /// Stress test configuration
 #[derive(Debug, Clone)]
 pub struct StressTestConfig {
@@ -89,12 +95,11 @@ impl StressTestRunner {
         println!("Running GPU discovery stress test...");
 
         let mut results = StressTestResults::default();
-        let mut handles: Vec<tokio::task::JoinHandle<Result<(Duration, String), (Duration, String)>>> = Vec::new();
+        let mut handles: OperationHandles = Vec::new();
         let mut latencies = Vec::new();
 
         let operations_per_batch = self.config.max_concurrent_operations;
-        let total_batches =
-            (self.config.total_operations + operations_per_batch - 1) / operations_per_batch;
+        let total_batches = self.config.total_operations.div_ceil(operations_per_batch);
 
         for batch in 0..total_batches {
             let batch_size = std::cmp::min(
@@ -176,7 +181,7 @@ impl StressTestRunner {
         println!("Running CDI generation stress test...");
 
         let mut results = StressTestResults::default();
-        let mut handles: Vec<tokio::task::JoinHandle<Result<(Duration, String), (Duration, String)>>> = Vec::new();
+        let mut handles: OperationHandles = Vec::new();
         let mut latencies = Vec::new();
 
         for _ in 0..self.config.total_operations {
@@ -227,7 +232,7 @@ impl StressTestRunner {
         println!("Running configuration management stress test...");
 
         let mut results = StressTestResults::default();
-        let mut handles: Vec<tokio::task::JoinHandle<Result<(Duration, String), (Duration, String)>>> = Vec::new();
+        let mut handles: OperationHandles = Vec::new();
         let mut latencies = Vec::new();
 
         for _ in 0..self.config.total_operations {
@@ -279,7 +284,7 @@ impl StressTestRunner {
         println!("Running runtime validation stress test...");
 
         let mut results = StressTestResults::default();
-        let mut handles: Vec<tokio::task::JoinHandle<Result<(Duration, String), (Duration, String)>>> = Vec::new();
+        let mut handles: OperationHandles = Vec::new();
         let mut latencies = Vec::new();
 
         // Test various runtime scenarios
@@ -348,9 +353,7 @@ impl StressTestRunner {
         &self,
         results: &mut StressTestResults,
         latencies: &mut Vec<u64>,
-        batch_results: Vec<
-            Result<Result<(Duration, String), (Duration, String)>, tokio::task::JoinError>,
-        >,
+        batch_results: BatchResults,
     ) {
         for batch_result in batch_results {
             results.total_operations += 1;

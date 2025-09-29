@@ -119,8 +119,7 @@ pub enum Permission {
 }
 
 /// Resource limits for a role
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceLimits {
     /// Maximum number of GPUs
     pub max_gpus: Option<u32>,
@@ -135,7 +134,6 @@ pub struct ResourceLimits {
     /// Time-based quotas
     pub time_quotas: Option<TimeQuotas>,
 }
-
 
 /// Time-based resource quotas
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -403,12 +401,18 @@ impl RbacManager {
         }
 
         // Check metrics access
-        if resource == "metrics" && action == "read" && permissions.contains(&Permission::MetricsRead) {
+        if resource == "metrics"
+            && action == "read"
+            && permissions.contains(&Permission::MetricsRead)
+        {
             return Ok(PolicyDecision::Allow);
         }
 
         // Check configuration access
-        if resource == "config" && action == "write" && permissions.contains(&Permission::ConfigWrite) {
+        if resource == "config"
+            && action == "write"
+            && permissions.contains(&Permission::ConfigWrite)
+        {
             return Ok(PolicyDecision::Allow);
         }
 
@@ -625,7 +629,7 @@ mod tests {
     #[test]
     fn test_user_creation() {
         let user = User::current().unwrap();
-        assert!(user.uid > 0 || user.uid == 0); // Valid UID
+        // UID is valid by type constraint (u32 is always >= 0)
         assert!(!user.username.is_empty());
     }
 

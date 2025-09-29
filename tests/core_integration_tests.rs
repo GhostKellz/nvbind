@@ -123,7 +123,7 @@ async fn test_cdi_spec_generation_and_registry() -> Result<()> {
             assert_eq!(spec.kind, "nvidia.com/gpu");
 
             // Save spec to temp directory
-            let mut registry = CdiRegistry::new();
+            let registry = CdiRegistry::new();
             let spec_path = registry.save_spec(&spec, Some(spec_dir))?;
             assert!(spec_path.exists());
 
@@ -399,7 +399,6 @@ async fn test_concurrent_cdi_access() {
 async fn test_performance_profiling() -> Result<()> {
     // Performance profiling module exists and can be imported
     // Actual profiling requires privileged access
-    use nvbind::performance::PerformanceProfiler;
 
     // Simulate some work
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

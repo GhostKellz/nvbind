@@ -123,8 +123,10 @@ async fn test_runtime_fallback() {
 /// Test max attempts enforcement
 #[tokio::test]
 async fn test_max_attempts_enforcement() {
-    let mut config = DegradationConfig::default();
-    config.max_attempts = 2; // Low limit for testing
+    let config = DegradationConfig {
+        max_attempts: 2, // Low limit for testing
+        ..Default::default()
+    };
 
     let mut manager = GracefulDegradationManager::new(config).await.unwrap();
 
@@ -198,8 +200,10 @@ async fn test_preferred_strategy_override() {
 /// Test degradation disabled
 #[tokio::test]
 async fn test_degradation_disabled() {
-    let mut config = DegradationConfig::default();
-    config.enabled = false;
+    let config = DegradationConfig {
+        enabled: false,
+        ..Default::default()
+    };
 
     let mut manager = GracefulDegradationManager::new(config).await.unwrap();
 

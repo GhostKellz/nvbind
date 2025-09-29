@@ -603,8 +603,8 @@ pub mod wsl2 {
         info!("Configuring GPU isolation for WSL2");
 
         let mut config = IsolationConfig {
-            enable_cgroups: false, // WSL2 manages cgroups differently
-            enable_namespaces: false, // Limited namespace support
+            enable_cgroups: false,          // WSL2 manages cgroups differently
+            enable_namespaces: false,       // Limited namespace support
             enable_device_whitelist: false, // Windows handles device access
             ..Default::default()
         };

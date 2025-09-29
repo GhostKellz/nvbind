@@ -160,6 +160,20 @@ pub struct BoltGpuCompatibility {
     pub bolt_optimizations_available: bool,
 }
 
+#[cfg(feature = "bolt")]
+impl Default for BoltGpuCompatibility {
+    fn default() -> Self {
+        Self {
+            gpus_available: false,
+            gpu_count: 0,
+            driver_version: "unknown".to_string(),
+            nvidia_open_driver: false,
+            wsl2_mode: false,
+            bolt_optimizations_available: false,
+        }
+    }
+}
+
 /// Convenience functions for Bolt integration
 #[cfg(feature = "bolt")]
 pub mod utils {

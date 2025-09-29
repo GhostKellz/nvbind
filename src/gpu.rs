@@ -59,6 +59,17 @@ pub struct DriverInfo {
     pub libraries: Vec<String>,
 }
 
+impl Default for DriverInfo {
+    fn default() -> Self {
+        Self {
+            version: "unknown".to_string(),
+            driver_type: DriverType::Nouveau,
+            cuda_version: None,
+            libraries: Vec::new(),
+        }
+    }
+}
+
 pub async fn info() -> Result<()> {
     // Enhanced driver availability check with diagnostics
     match check_nvidia_driver_status() {
@@ -244,7 +255,8 @@ pub async fn get_driver_info() -> Result<DriverInfo> {
     if matches!(
         driver_type,
         DriverType::NvidiaProprietary | DriverType::NvidiaOpen
-    ) && validate_proprietary_container_support() {
+    ) && validate_proprietary_container_support()
+    {
         let prop_libraries = get_proprietary_driver_libraries();
         libraries.extend(prop_libraries);
     }

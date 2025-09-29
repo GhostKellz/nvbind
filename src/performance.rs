@@ -515,7 +515,6 @@ impl PerformanceOptimizer {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        
 
         values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64
     }

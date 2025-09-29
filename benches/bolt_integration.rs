@@ -31,9 +31,7 @@ fn benchmark_bolt_cdi_generation(c: &mut Criterion) {
 
                 #[cfg(feature = "bolt")]
                 {
-                    use nvbind::cdi::bolt::{
-                        BoltCapsuleConfig, BoltGpuIsolation, generate_bolt_gaming_cdi_spec,
-                    };
+                    use nvbind::cdi::bolt::generate_bolt_gaming_cdi_spec;
                     let _spec = generate_bolt_gaming_cdi_spec().await.unwrap_or_default();
                 }
 
@@ -54,7 +52,7 @@ fn benchmark_bolt_container_startup(c: &mut Criterion) {
                 let start = Instant::now();
 
                 // Simulate Bolt container startup with GPU passthrough
-                let config = nvbind::config::Config::default();
+                let _config = nvbind::config::Config::default();
 
                 // This would normally execute: bolt surge run --gpu all ubuntu nvidia-smi
                 // For benchmarking, we measure the setup overhead only

@@ -130,10 +130,7 @@ impl SecurityAuditor {
         info!("Auditing memory safety");
 
         // Check for unsafe code blocks
-        if let Ok(output) = Command::new("grep")
-            .args(["-r", "unsafe", "src/"])
-            .output()
-        {
+        if let Ok(output) = Command::new("grep").args(["-r", "unsafe", "src/"]).output() {
             if !output.stdout.is_empty() {
                 let unsafe_count = String::from_utf8_lossy(&output.stdout).lines().count();
 
@@ -438,10 +435,7 @@ impl SecurityAuditor {
         ];
 
         for pattern in secret_patterns {
-            if let Ok(output) = Command::new("grep")
-                .args(["-rE", pattern, "src/"])
-                .output()
-            {
+            if let Ok(output) = Command::new("grep").args(["-rE", pattern, "src/"]).output() {
                 if !output.stdout.is_empty() {
                     self.add_finding(SecurityFinding {
                         severity: SecuritySeverity::Critical,
