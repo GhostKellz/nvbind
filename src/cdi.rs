@@ -339,7 +339,9 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
                     env.push(format!("GPU_MEMORY_SIZE_MB={}", memory / 1024 / 1024));
                 }
 
-                if let (Some(driver_version), Some(env)) = (&gpu.driver_version, &mut device_edits.env) {
+                if let (Some(driver_version), Some(env)) =
+                    (&gpu.driver_version, &mut device_edits.env)
+                {
                     env.push(format!("GPU_DRIVER_VERSION={}", driver_version));
                 }
 
