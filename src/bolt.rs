@@ -208,11 +208,11 @@ pub mod utils {
         let mut config = BoltConfig::default();
 
         // Adjust for WSL2 if detected
-        if wsl2_detected {
-            if let Some(gaming) = &mut config.gaming {
-                gaming.wine_optimizations = true;
-                gaming.performance_profile = "balanced".to_string();
-            }
+        if !wsl2_detected {
+            // No WSL2 optimizations needed
+        } else if let Some(gaming) = &mut config.gaming {
+            gaming.wine_optimizations = true;
+            gaming.performance_profile = "balanced".to_string();
         }
 
         // Adjust for GPU count

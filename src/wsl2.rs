@@ -164,9 +164,7 @@ impl Wsl2Manager {
 
         // Check for WSL-specific mount points
         if let Ok(mounts) = fs::read_to_string("/proc/mounts") {
-            if mounts.contains("9p") && mounts.contains("C:") {
-                return true;
-            }
+            return mounts.contains("9p") && mounts.contains("C:");
         }
 
         false
@@ -222,41 +220,41 @@ impl Wsl2Manager {
         };
 
         // Check for CUDA support
-        if self.check_cuda_support()? {
-            if let Wsl2GpuSupport::Available { ref mut cuda, .. } = support {
-                *cuda = true;
-            }
+        if !self.check_cuda_support()? {
+            // CUDA not available
+        } else if let Wsl2GpuSupport::Available { ref mut cuda, .. } = support {
+            *cuda = true;
         }
 
         // Check for OpenCL support
-        if self.check_opencl_support()? {
-            if let Wsl2GpuSupport::Available { ref mut opencl, .. } = support {
-                *opencl = true;
-            }
+        if !self.check_opencl_support()? {
+            // OpenCL not available
+        } else if let Wsl2GpuSupport::Available { ref mut opencl, .. } = support {
+            *opencl = true;
         }
 
         // Check for DirectX support
-        if self.check_directx_support()? {
-            if let Wsl2GpuSupport::Available {
-                ref mut directx, ..
-            } = support
-            {
-                *directx = true;
-            }
+        if !self.check_directx_support()? {
+            // DirectX not available
+        } else if let Wsl2GpuSupport::Available {
+            ref mut directx, ..
+        } = support
+        {
+            *directx = true;
         }
 
         // Check for OpenGL support
-        if self.check_opengl_support()? {
-            if let Wsl2GpuSupport::Available { ref mut opengl, .. } = support {
-                *opengl = true;
-            }
+        if !self.check_opengl_support()? {
+            // OpenGL not available
+        } else if let Wsl2GpuSupport::Available { ref mut opengl, .. } = support {
+            *opengl = true;
         }
 
         // Check for Vulkan support
-        if self.check_vulkan_support()? {
-            if let Wsl2GpuSupport::Available { ref mut vulkan, .. } = support {
-                *vulkan = true;
-            }
+        if !self.check_vulkan_support()? {
+            // Vulkan not available
+        } else if let Wsl2GpuSupport::Available { ref mut vulkan, .. } = support {
+            *vulkan = true;
         }
 
         Ok(support)
@@ -279,11 +277,12 @@ impl Wsl2Manager {
         }
 
         // Check for nvidia-smi
-        if which::which("nvidia-smi").is_ok() {
-            if let Ok(output) = Command::new("nvidia-smi").output() {
-                if output.status.success() {
-                    return Ok(true);
-                }
+        if which::which("nvidia-smi").is_err() {
+            return Ok(false);
+        }
+        if let Ok(output) = Command::new("nvidia-smi").output() {
+            if output.status.success() {
+                return Ok(true);
             }
         }
 

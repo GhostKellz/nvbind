@@ -352,17 +352,14 @@ fn is_nvidia_open_driver() -> bool {
             );
 
             // Extract version number to validate 580+
-            if let Some(version_line) = version_content.lines().next() {
-                if let Some(version_match) = Regex::new(r"(\d{3}\.\d+)")
-                    .ok()
-                    .and_then(|re| re.captures(version_line))
-                {
-                    if let Ok(version_num) = version_match[1].parse::<f32>() {
-                        debug!("Detected NVIDIA driver version: {}", version_num);
-                        // Open driver is fully supported from 515+, excellent from 580+
-                        return version_num >= 515.0;
-                    }
-                }
+            let Some(version_line) = version_content.lines().next() else { return true };
+            let Some(version_match) = Regex::new(r"(\d{3}\.\d+)")
+                .ok()
+                .and_then(|re| re.captures(version_line)) else { return true };
+            if let Ok(version_num) = version_match[1].parse::<f32>() {
+                debug!("Detected NVIDIA driver version: {}", version_num);
+                // Open driver is fully supported from 515+, excellent from 580+
+                return version_num >= 515.0;
             }
             return true;
         }
@@ -372,6 +369,7 @@ fn is_nvidia_open_driver() -> bool {
     if let Ok(gsp_content) =
         fs::read_to_string("/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware")
     {
+        #[allow(clippy::collapsible_if)]
         if gsp_content.trim() == "1" {
             debug!("Detected NVIDIA Open driver via GSP firmware enablement");
             return true;
@@ -419,13 +417,14 @@ fn is_nvidia_open_driver() -> bool {
 
     // Check module info for open source indicators
     if let Ok(output) = std::process::Command::new("modinfo").arg("nvidia").output() {
-        if output.status.success() {
-            let modinfo = String::from_utf8_lossy(&output.stdout);
-            if modinfo.contains("open-gpu-kernel-modules")
-                || modinfo.contains("NVIDIA Open GPU Kernel Module")
-            {
-                return true;
-            }
+        if !output.status.success() {
+            return false;
+        }
+        let modinfo = String::from_utf8_lossy(&output.stdout);
+        if modinfo.contains("open-gpu-kernel-modules")
+            || modinfo.contains("NVIDIA Open GPU Kernel Module")
+        {
+            return true;
         }
     }
 
@@ -472,32 +471,25 @@ fn validate_proprietary_driver() -> Result<String> {
         ])
         .output()
     {
-        if output.status.success() {
-            let version_str = String::from_utf8_lossy(&output.stdout);
-            if !version_str.trim().is_empty() {
-                let version = version_str.trim().to_string();
-                debug!(
-                    "Detected NVIDIA Proprietary driver via nvidia-smi: {}",
-                    version
-                );
-                return Ok(version);
-            }
+        if output.status.success() && !String::from_utf8_lossy(&output.stdout).trim().is_empty() {
+            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            debug!("Detected NVIDIA Proprietary driver via nvidia-smi: {}", version);
+            return Ok(version);
         }
     }
 
     // Method 3: Check modinfo for proprietary driver information
     if let Ok(output) = std::process::Command::new("modinfo").arg("nvidia").output() {
-        if output.status.success() {
+        if !output.status.success() {
+            // Continue to next method
+        } else {
             let modinfo_str = String::from_utf8_lossy(&output.stdout);
             if let Some(version_match) = Regex::new(r"version:\s*([^\s]+)")
                 .ok()
                 .and_then(|re| re.captures(&modinfo_str))
             {
                 let version = version_match[1].to_string();
-                debug!(
-                    "Detected NVIDIA Proprietary driver via modinfo: {}",
-                    version
-                );
+                debug!("Detected NVIDIA Proprietary driver via modinfo: {}", version);
                 return Ok(version);
             }
         }

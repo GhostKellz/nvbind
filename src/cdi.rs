@@ -334,17 +334,13 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
                 };
 
                 // Add GPU-specific environment variables
-                if let Some(memory) = gpu.memory {
-                    if let Some(env) = &mut device_edits.env {
-                        env.push(format!("GPU_MEMORY_SIZE={}", memory));
-                        env.push(format!("GPU_MEMORY_SIZE_MB={}", memory / 1024 / 1024));
-                    }
+                if let (Some(memory), Some(env)) = (gpu.memory, &mut device_edits.env) {
+                    env.push(format!("GPU_MEMORY_SIZE={}", memory));
+                    env.push(format!("GPU_MEMORY_SIZE_MB={}", memory / 1024 / 1024));
                 }
 
-                if let Some(driver_version) = &gpu.driver_version {
-                    if let Some(env) = &mut device_edits.env {
-                        env.push(format!("GPU_DRIVER_VERSION={}", driver_version));
-                    }
+                if let (Some(driver_version), Some(env)) = (&gpu.driver_version, &mut device_edits.env) {
+                    env.push(format!("GPU_DRIVER_VERSION={}", driver_version));
                 }
 
                 devices.push(CdiDevice {

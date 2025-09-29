@@ -209,25 +209,23 @@ impl ConfigValidator {
     ) -> Option<ValidationError> {
         match validator {
             FieldValidator::MinValue(min) => {
-                if let Some(num) = value.as_integer() {
-                    if num < *min {
-                        return Some(ValidationError {
-                            field: field_path.to_string(),
-                            message: format!("Value {} is less than minimum {}", num, min),
-                            error_type: ErrorType::InvalidValue,
-                        });
-                    }
+                let num = value.as_integer()?;
+                if num < *min {
+                    return Some(ValidationError {
+                        field: field_path.to_string(),
+                        message: format!("Value {} is less than minimum {}", num, min),
+                        error_type: ErrorType::InvalidValue,
+                    });
                 }
             }
             FieldValidator::MaxValue(max) => {
-                if let Some(num) = value.as_integer() {
-                    if num > *max {
-                        return Some(ValidationError {
-                            field: field_path.to_string(),
-                            message: format!("Value {} is greater than maximum {}", num, max),
-                            error_type: ErrorType::InvalidValue,
-                        });
-                    }
+                let num = value.as_integer()?;
+                if num > *max {
+                    return Some(ValidationError {
+                        field: field_path.to_string(),
+                        message: format!("Value {} is greater than maximum {}", num, max),
+                        error_type: ErrorType::InvalidValue,
+                    });
                 }
             }
             FieldValidator::OneOf(choices) => {
@@ -258,14 +256,13 @@ impl ConfigValidator {
                 }
             }
             FieldValidator::PathExists => {
-                if let Some(path_str) = value.as_str() {
-                    if !Path::new(path_str).exists() {
-                        return Some(ValidationError {
-                            field: field_path.to_string(),
-                            message: format!("Path '{}' does not exist", path_str),
-                            error_type: ErrorType::InvalidValue,
-                        });
-                    }
+                let path_str = value.as_str()?;
+                if !Path::new(path_str).exists() {
+                    return Some(ValidationError {
+                        field: field_path.to_string(),
+                        message: format!("Path '{}' does not exist", path_str),
+                        error_type: ErrorType::InvalidValue,
+                    });
                 }
             }
         }

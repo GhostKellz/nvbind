@@ -295,11 +295,12 @@ impl SecurityAuditor {
             .args(["audit", "--format", "json"])
             .output()
         {
-            if output.status.success() {
-                // Parse audit results
-                if let Ok(audit_str) = String::from_utf8(output.stdout) {
-                    self.parse_cargo_audit_results(&audit_str).await?;
-                }
+            if !output.status.success() {
+                return Ok(());
+            }
+            // Parse audit results
+            if let Ok(audit_str) = String::from_utf8(output.stdout) {
+                self.parse_cargo_audit_results(&audit_str).await?;
             }
         }
 
@@ -338,19 +339,20 @@ impl SecurityAuditor {
             .args(["-r", "\\*mut\\|\\*const", "src/"])
             .output()
         {
-            if !output.stdout.is_empty() {
-                let count = String::from_utf8_lossy(&output.stdout).lines().count();
-                if count > 5 {
-                    // Allow some raw pointer usage
-                    self.add_finding(SecurityFinding {
-                        severity: SecuritySeverity::Medium,
-                        category: SecurityCategory::MemorySafety,
-                        title: "Extensive raw pointer usage".to_string(),
-                        description: format!("Found {} raw pointer usages", count),
-                        remediation: "Consider using safe abstractions".to_string(),
-                        cve_ids: vec![],
-                    });
-                }
+            if output.stdout.is_empty() {
+                return Ok(());
+            }
+            let count = String::from_utf8_lossy(&output.stdout).lines().count();
+            if count > 5 {
+                // Allow some raw pointer usage
+                self.add_finding(SecurityFinding {
+                    severity: SecuritySeverity::Medium,
+                    category: SecurityCategory::MemorySafety,
+                    title: "Extensive raw pointer usage".to_string(),
+                    description: format!("Found {} raw pointer usages", count),
+                    remediation: "Consider using safe abstractions".to_string(),
+                    cve_ids: vec![],
+                });
             }
         }
 
@@ -436,17 +438,18 @@ impl SecurityAuditor {
 
         for pattern in secret_patterns {
             if let Ok(output) = Command::new("grep").args(["-rE", pattern, "src/"]).output() {
-                if !output.stdout.is_empty() {
-                    self.add_finding(SecurityFinding {
-                        severity: SecuritySeverity::Critical,
-                        category: SecurityCategory::ConfigurationSecurity,
-                        title: "Potential hardcoded secret detected".to_string(),
-                        description: "Found patterns matching hardcoded secrets".to_string(),
-                        remediation: "Move secrets to environment variables or secure storage"
-                            .to_string(),
-                        cve_ids: vec![],
-                    });
+                if output.stdout.is_empty() {
+                    continue;
                 }
+                self.add_finding(SecurityFinding {
+                    severity: SecuritySeverity::Critical,
+                    category: SecurityCategory::ConfigurationSecurity,
+                    title: "Potential hardcoded secret detected".to_string(),
+                    description: "Found patterns matching hardcoded secrets".to_string(),
+                    remediation: "Move secrets to environment variables or secure storage"
+                        .to_string(),
+                    cve_ids: vec![],
+                });
             }
         }
 

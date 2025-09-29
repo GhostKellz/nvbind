@@ -799,15 +799,11 @@ impl TensorFlowGpuManager {
             } => {
                 if let Some(model) = model_info {
                     let size = model.model_size_bytes;
-                    if let Some(min) = min_bytes {
-                        if size < *min {
-                            return Ok(false);
-                        }
+                    if min_bytes.is_some_and(|min| size < min) {
+                        return Ok(false);
                     }
-                    if let Some(max) = max_bytes {
-                        if size > *max {
-                            return Ok(false);
-                        }
+                    if max_bytes.is_some_and(|max| size > max) {
+                        return Ok(false);
                     }
                     Ok(true)
                 } else {
