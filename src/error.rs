@@ -280,11 +280,12 @@ impl ErrorRecoveryManager {
             }
 
             NvbindError::Runtime { runtime, .. } => {
-                if let Some(fallback) = &self.fallback_runtime {
-                    if runtime != fallback {
+                match &self.fallback_runtime {
+                    Some(fallback) if runtime != fallback => {
                         tracing::warn!("Runtime {} failed, falling back to {}", runtime, fallback);
                         return RecoveryAction::FallbackRuntime(fallback.clone());
                     }
+                    _ => {}
                 }
                 RecoveryAction::Fail
             }

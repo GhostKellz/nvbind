@@ -696,10 +696,11 @@ fn get_nouveau_version() -> Result<String> {
 
     // Fallback: get kernel version as Nouveau is built into kernel
     if let Ok(output) = std::process::Command::new("uname").arg("-r").output() {
-        if output.status.success() {
-            let kernel_version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            return Ok(format!("nouveau (kernel {})", kernel_version));
+        if !output.status.success() {
+            return Ok("nouveau (unknown version)".to_string());
         }
+        let kernel_version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        return Ok(format!("nouveau (kernel {})", kernel_version));
     }
 
     Ok("nouveau (unknown version)".to_string())
