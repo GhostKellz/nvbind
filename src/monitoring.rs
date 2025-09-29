@@ -643,7 +643,10 @@ mod tests {
             Err(e) => {
                 // Check if it's a registration error (acceptable in tests)
                 let error_msg = e.to_string();
-                if error_msg.contains("duplicate") || error_msg.contains("already") || error_msg.contains("Duplicate") {
+                if error_msg.contains("duplicate")
+                    || error_msg.contains("already")
+                    || error_msg.contains("Duplicate")
+                {
                     println!("✓ MetricsCollector handles duplicate registration correctly");
                 } else {
                     panic!("Unexpected error creating MetricsCollector: {}", e);
