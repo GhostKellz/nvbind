@@ -241,7 +241,10 @@ pub async fn get_driver_info() -> Result<DriverInfo> {
     let mut libraries = find_nvidia_libraries()?;
 
     // Add proprietary driver libraries if available
-    if matches!(driver_type, DriverType::NvidiaProprietary | DriverType::NvidiaOpen) {
+    if matches!(
+        driver_type,
+        DriverType::NvidiaProprietary | DriverType::NvidiaOpen
+    ) {
         if validate_proprietary_container_support() {
             let prop_libraries = get_proprietary_driver_libraries();
             libraries.extend(prop_libraries);

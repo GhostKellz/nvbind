@@ -876,7 +876,13 @@ impl GcpProvider {
 #[async_trait::async_trait]
 impl CloudProviderInterface for GcpProvider {
     async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing GCP provider with region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
+        info!(
+            "Initializing GCP provider with region: {}",
+            self.config
+                .regions
+                .first()
+                .unwrap_or(&"default".to_string())
+        );
         Ok(())
     }
 
@@ -885,8 +891,14 @@ impl CloudProviderInterface for GcpProvider {
         _requirements: &ResourceRequirements,
     ) -> Result<Vec<CloudResource>> {
         // Use config to filter resources by region and zone
-        info!("Getting GCP resources for region: {} zone: {:?}",
-              self.config.regions.first().unwrap_or(&"default".to_string()), "default-zone");
+        info!(
+            "Getting GCP resources for region: {} zone: {:?}",
+            self.config
+                .regions
+                .first()
+                .unwrap_or(&"default".to_string()),
+            "default-zone"
+        );
         // Simplified - would implement actual GCP Compute Engine API calls
         Ok(Vec::new())
     }
@@ -933,7 +945,13 @@ impl AzureProvider {
 #[async_trait::async_trait]
 impl CloudProviderInterface for AzureProvider {
     async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing Azure provider with region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
+        info!(
+            "Initializing Azure provider with region: {}",
+            self.config
+                .regions
+                .first()
+                .unwrap_or(&"default".to_string())
+        );
         Ok(())
     }
 
@@ -941,8 +959,14 @@ impl CloudProviderInterface for AzureProvider {
         &self,
         _requirements: &ResourceRequirements,
     ) -> Result<Vec<CloudResource>> {
-        info!("Getting Azure resources for region: {} zone: {:?}",
-              self.config.regions.first().unwrap_or(&"default".to_string()), "default-zone");
+        info!(
+            "Getting Azure resources for region: {} zone: {:?}",
+            self.config
+                .regions
+                .first()
+                .unwrap_or(&"default".to_string()),
+            "default-zone"
+        );
         Ok(Vec::new())
     }
 
@@ -988,7 +1012,13 @@ impl OnPremisesProvider {
 #[async_trait::async_trait]
 impl CloudProviderInterface for OnPremisesProvider {
     async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing on-premises provider with region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
+        info!(
+            "Initializing on-premises provider with region: {}",
+            self.config
+                .regions
+                .first()
+                .unwrap_or(&"default".to_string())
+        );
         Ok(())
     }
 
@@ -997,7 +1027,13 @@ impl CloudProviderInterface for OnPremisesProvider {
         requirements: &ResourceRequirements,
     ) -> Result<Vec<CloudResource>> {
         // Query local GPU resources in configured region
-        info!("Discovering on-premises resources in region: {}", self.config.regions.first().unwrap_or(&"default".to_string()));
+        info!(
+            "Discovering on-premises resources in region: {}",
+            self.config
+                .regions
+                .first()
+                .unwrap_or(&"default".to_string())
+        );
         let gpus = crate::gpu::discover_gpus().await?;
         let mut resources = Vec::new();
 

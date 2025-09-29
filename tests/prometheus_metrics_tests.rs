@@ -44,11 +44,13 @@ async fn test_gpu_discovery_measurement() -> Result<()> {
     let collector = MetricsCollector::new(config);
 
     // Measure a mock GPU discovery operation
-    let (result, latency) = collector.measure_gpu_discovery(|| {
-        // Simulate GPU discovery work
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        Ok("mock_result")
-    }).await?;
+    let (result, latency) = collector
+        .measure_gpu_discovery(|| {
+            // Simulate GPU discovery work
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            Ok("mock_result")
+        })
+        .await?;
 
     println!("GPU discovery took {} nanoseconds", latency);
     assert_eq!(result, "mock_result");
@@ -63,11 +65,13 @@ async fn test_container_creation_measurement() -> Result<()> {
     let collector = MetricsCollector::new(config);
 
     // Measure a mock container creation operation
-    let (result, startup_metric) = collector.measure_container_creation("test-container", "docker", || {
-        // Simulate container creation work
-        std::thread::sleep(std::time::Duration::from_millis(2));
-        Ok("container_id")
-    }).await?;
+    let (result, startup_metric) = collector
+        .measure_container_creation("test-container", "docker", || {
+            // Simulate container creation work
+            std::thread::sleep(std::time::Duration::from_millis(2));
+            Ok("container_id")
+        })
+        .await?;
 
     println!("Container creation took {:?}", startup_metric);
     assert_eq!(result, "container_id");
@@ -87,7 +91,10 @@ async fn test_gpu_utilization_collection() -> Result<()> {
             println!("Collected {} GPU utilization metrics", metrics.len());
         }
         Err(e) => {
-            println!("GPU utilization collection failed (expected without GPU): {}", e);
+            println!(
+                "GPU utilization collection failed (expected without GPU): {}",
+                e
+            );
         }
     }
 
@@ -106,7 +113,9 @@ async fn test_metrics_export() -> Result<()> {
     let export_path = temp_dir.path().join("metrics.json");
 
     // Export metrics to file
-    collector.export_metrics(export_path.to_str().unwrap()).await?;
+    collector
+        .export_metrics(export_path.to_str().unwrap())
+        .await?;
 
     // Verify file exists
     assert!(export_path.exists());
@@ -126,8 +135,14 @@ async fn test_performance_summary() -> Result<()> {
 
     println!("Performance summary:");
     println!("  Total containers: {}", summary.total_containers_created);
-    println!("  Average GPU latency: {} ns", summary.average_gpu_latency_ns);
-    println!("  Sub-microsecond achieved: {}", summary.sub_microsecond_achieved);
+    println!(
+        "  Average GPU latency: {} ns",
+        summary.average_gpu_latency_ns
+    );
+    println!(
+        "  Sub-microsecond achieved: {}",
+        summary.sub_microsecond_achieved
+    );
 
     Ok(())
 }

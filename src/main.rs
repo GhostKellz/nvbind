@@ -720,12 +720,13 @@ async fn handle_mesh_command(command: MeshCommands) -> Result<()> {
     Ok(())
 }
 
-
-
 async fn handle_security_command(strict: bool, report: bool) -> Result<()> {
     use nvbind::security_audit::run_security_audit_cli;
 
-    info!("Running security audit (strict: {}, report: {})", strict, report);
+    info!(
+        "Running security audit (strict: {}, report: {})",
+        strict, report
+    );
 
     // Run the comprehensive security audit
     run_security_audit_cli(strict).await?;
@@ -740,11 +741,14 @@ async fn handle_security_command(strict: bool, report: bool) -> Result<()> {
 
 async fn handle_performance_command(command: PerformanceCommands) -> Result<()> {
     use performance_optimization::{
-        PerformanceConfig, PerformanceOptimizer, benchmark_sub_microsecond_performance
+        PerformanceConfig, PerformanceOptimizer, benchmark_sub_microsecond_performance,
     };
 
     match command {
-        PerformanceCommands::Benchmark { iterations, detailed } => {
+        PerformanceCommands::Benchmark {
+            iterations,
+            detailed,
+        } => {
             info!("Starting performance benchmark ({} iterations)", iterations);
 
             let results = benchmark_sub_microsecond_performance().await?;
@@ -776,7 +780,9 @@ async fn handle_performance_command(command: PerformanceCommands) -> Result<()> 
             } else if success_rate >= 70.0 {
                 println!("⚡ Good! nvbind achieves sub-microsecond performance most of the time");
             } else {
-                println!("⚠️  Performance optimization needed to achieve consistent sub-microsecond latency");
+                println!(
+                    "⚠️  Performance optimization needed to achieve consistent sub-microsecond latency"
+                );
             }
 
             if detailed {
@@ -817,7 +823,10 @@ async fn handle_performance_command(command: PerformanceCommands) -> Result<()> 
             }
         }
         PerformanceCommands::Optimize { target_latency_ns } => {
-            info!("Optimizing nvbind for {}ns target latency", target_latency_ns);
+            info!(
+                "Optimizing nvbind for {}ns target latency",
+                target_latency_ns
+            );
 
             let mut config = PerformanceConfig::default();
             config.target_gpu_latency_ns = target_latency_ns;
@@ -832,10 +841,15 @@ async fn handle_performance_command(command: PerformanceCommands) -> Result<()> 
             // Run optimization benchmark
             println!("⚡ Testing optimized GPU discovery...");
             let devices = optimizer.optimize_gpu_discovery().await?;
-            println!("✅ GPU discovery optimized: {} devices detected", devices.len());
+            println!(
+                "✅ GPU discovery optimized: {} devices detected",
+                devices.len()
+            );
 
             println!("🚀 Testing optimized CDI generation...");
-            let _cdi_spec = optimizer.optimize_cdi_generation("performance_test").await?;
+            let _cdi_spec = optimizer
+                .optimize_cdi_generation("performance_test")
+                .await?;
             println!("✅ CDI generation optimized with caching");
 
             let metrics = optimizer.get_metrics();
@@ -851,7 +865,9 @@ async fn handle_performance_command(command: PerformanceCommands) -> Result<()> 
                 println!("⚠️  Target latency not achieved, consider hardware/system optimization");
             }
         }
-        PerformanceCommands::Daemon { config: _config_path } => {
+        PerformanceCommands::Daemon {
+            config: _config_path,
+        } => {
             info!("Starting nvbind performance daemon with graceful termination");
 
             let config = PerformanceConfig::default();
@@ -864,7 +880,10 @@ async fn handle_performance_command(command: PerformanceCommands) -> Result<()> 
             println!("============================");
             println!("Status: Running");
             println!("Graceful shutdown: Enabled");
-            println!("Target latency: {}ns", optimizer.config.target_gpu_latency_ns);
+            println!(
+                "Target latency: {}ns",
+                optimizer.config.target_gpu_latency_ns
+            );
             println!();
             println!("📡 Monitoring performance metrics...");
             println!("Press Ctrl+C for graceful shutdown");

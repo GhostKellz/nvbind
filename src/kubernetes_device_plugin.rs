@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tokio::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -433,7 +433,10 @@ impl KubernetesDevicePlugin {
     }
 
     pub async fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Starting Kubernetes device plugin: {}", self.config.plugin_name);
+        info!(
+            "Starting Kubernetes device plugin: {}",
+            self.config.plugin_name
+        );
 
         self.device_manager.discover_devices().await?;
 
@@ -546,7 +549,9 @@ impl KubernetesDevicePlugin {
         };
 
         for device_id in device_ids {
-            self.device_manager.allocate_device(device_id, &allocation_info).await?;
+            self.device_manager
+                .allocate_device(device_id, &allocation_info)
+                .await?;
         }
 
         let allocation = PodAllocation {
@@ -558,7 +563,9 @@ impl KubernetesDevicePlugin {
             resource_usage: ResourceUsage::default(),
         };
 
-        self.allocation_tracker.record_allocation(allocation).await?;
+        self.allocation_tracker
+            .record_allocation(allocation)
+            .await?;
 
         let response = AllocationResponse {
             container_responses: vec![ContainerAllocateResponse {
@@ -607,7 +614,10 @@ impl KubernetesDevicePlugin {
         let mut envs = HashMap::new();
 
         envs.insert("NVIDIA_VISIBLE_DEVICES".to_string(), device_ids.join(","));
-        envs.insert("NVIDIA_DRIVER_CAPABILITIES".to_string(), "compute,utility".to_string());
+        envs.insert(
+            "NVIDIA_DRIVER_CAPABILITIES".to_string(),
+            "compute,utility".to_string(),
+        );
 
         Ok(envs)
     }
@@ -657,8 +667,9 @@ impl KubernetesDevicePlugin {
         let mut plugin_devices = Vec::new();
 
         for device in devices {
-            if matches!(device.health_status, DeviceHealth::Healthy) &&
-               matches!(device.allocation_status, AllocationStatus::Available) {
+            if matches!(device.health_status, DeviceHealth::Healthy)
+                && matches!(device.allocation_status, AllocationStatus::Available)
+            {
                 plugin_devices.push(Device {
                     id: device.device_id.clone(),
                     health: "Healthy".to_string(),
@@ -691,7 +702,8 @@ impl KubernetesDevicePlugin {
     }
 
     async fn metrics_collection_loop(&self) {
-        let mut interval = tokio::time::interval(self.config.metrics_collection.collection_interval);
+        let mut interval =
+            tokio::time::interval(self.config.metrics_collection.collection_interval);
 
         loop {
             interval.tick().await;
@@ -702,7 +714,9 @@ impl KubernetesDevicePlugin {
         }
     }
 
-    pub async fn get_device_status(&self) -> Result<DevicePluginStatus, Box<dyn std::error::Error>> {
+    pub async fn get_device_status(
+        &self,
+    ) -> Result<DevicePluginStatus, Box<dyn std::error::Error>> {
         let devices = self.device_manager.get_all_devices().await?;
         let allocations = self.allocation_tracker.get_all_allocations().await?;
         let metrics = self.metrics_collector.get_current_metrics().await?;
@@ -714,8 +728,14 @@ impl KubernetesDevicePlugin {
                 format!("{:?}", *state)
             },
             total_devices: devices.len(),
-            healthy_devices: devices.iter().filter(|d| matches!(d.health_status, DeviceHealth::Healthy)).count(),
-            allocated_devices: devices.iter().filter(|d| matches!(d.allocation_status, AllocationStatus::Allocated(_))).count(),
+            healthy_devices: devices
+                .iter()
+                .filter(|d| matches!(d.health_status, DeviceHealth::Healthy))
+                .count(),
+            allocated_devices: devices
+                .iter()
+                .filter(|d| matches!(d.allocation_status, AllocationStatus::Allocated(_)))
+                .count(),
             active_allocations: allocations.len(),
             metrics_summary: MetricsSummary::from_metrics(metrics),
         };
@@ -828,7 +848,9 @@ impl DeviceManager {
         Ok(())
     }
 
-    pub async fn get_available_devices(&self) -> Result<Vec<GpuDevice>, Box<dyn std::error::Error>> {
+    pub async fn get_available_devices(
+        &self,
+    ) -> Result<Vec<GpuDevice>, Box<dyn std::error::Error>> {
         let devices = self.devices.read().unwrap();
         let available: Vec<GpuDevice> = devices
             .values()
@@ -859,7 +881,10 @@ impl DeviceManager {
         Ok(())
     }
 
-    pub async fn deallocate_device(&self, device_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn deallocate_device(
+        &self,
+        device_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Deallocating device: {}", device_id);
 
         let mut devices = self.devices.write().unwrap();
@@ -953,7 +978,9 @@ impl AllocationTracker {
         Ok(allocations.get(pod_uid).cloned())
     }
 
-    pub async fn get_all_allocations(&self) -> Result<Vec<PodAllocation>, Box<dyn std::error::Error>> {
+    pub async fn get_all_allocations(
+        &self,
+    ) -> Result<Vec<PodAllocation>, Box<dyn std::error::Error>> {
         let allocations = self.allocations.read().unwrap();
         Ok(allocations.values().cloned().collect())
     }
@@ -967,7 +994,10 @@ impl AllocationTracker {
         Ok(())
     }
 
-    pub async fn record_event(&self, event: AllocationEvent) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn record_event(
+        &self,
+        event: AllocationEvent,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Recording allocation event: {}", event.event_id);
 
         let mut history = self.allocation_history.write().unwrap();
@@ -993,7 +1023,9 @@ impl MetricsCollector {
         Ok(())
     }
 
-    pub async fn get_current_metrics(&self) -> Result<HashMap<String, MetricValue>, Box<dyn std::error::Error>> {
+    pub async fn get_current_metrics(
+        &self,
+    ) -> Result<HashMap<String, MetricValue>, Box<dyn std::error::Error>> {
         let metrics = self.metrics.read().unwrap();
         Ok(metrics.clone())
     }

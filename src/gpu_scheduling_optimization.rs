@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tokio::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -522,10 +522,23 @@ pub struct ThermalMetrics {
 }
 
 pub trait GpuScheduler: Send + Sync + std::fmt::Debug {
-    async fn schedule(&self, jobs: &[SchedulingJob]) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>>;
-    async fn update_schedule(&self, job_updates: &[JobUpdate]) -> Result<(), Box<dyn std::error::Error>>;
-    async fn preempt_job(&self, job_id: &str) -> Result<PreemptionResult, Box<dyn std::error::Error>>;
-    async fn migrate_job(&self, job_id: &str, target_resources: &ResourceAllocation) -> Result<MigrationResult, Box<dyn std::error::Error>>;
+    async fn schedule(
+        &self,
+        jobs: &[SchedulingJob],
+    ) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>>;
+    async fn update_schedule(
+        &self,
+        job_updates: &[JobUpdate],
+    ) -> Result<(), Box<dyn std::error::Error>>;
+    async fn preempt_job(
+        &self,
+        job_id: &str,
+    ) -> Result<PreemptionResult, Box<dyn std::error::Error>>;
+    async fn migrate_job(
+        &self,
+        job_id: &str,
+        target_resources: &ResourceAllocation,
+    ) -> Result<MigrationResult, Box<dyn std::error::Error>>;
     fn get_scheduler_type(&self) -> SchedulerType;
 }
 
@@ -995,7 +1008,10 @@ pub enum GpuSchedulerImpl {
 
 #[async_trait::async_trait]
 impl GpuScheduler for GpuSchedulerImpl {
-    async fn schedule(&self, jobs: &[SchedulingJob]) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>> {
+    async fn schedule(
+        &self,
+        jobs: &[SchedulingJob],
+    ) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>> {
         match self {
             Self::Fifo(s) => s.schedule(jobs).await,
             Self::RoundRobin(s) => s.schedule(jobs).await,
@@ -1007,7 +1023,10 @@ impl GpuScheduler for GpuSchedulerImpl {
         }
     }
 
-    async fn update_schedule(&self, job_updates: &[JobUpdate]) -> Result<(), Box<dyn std::error::Error>> {
+    async fn update_schedule(
+        &self,
+        job_updates: &[JobUpdate],
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match self {
             Self::Fifo(s) => s.update_schedule(job_updates).await,
             Self::RoundRobin(s) => s.update_schedule(job_updates).await,
@@ -1019,7 +1038,10 @@ impl GpuScheduler for GpuSchedulerImpl {
         }
     }
 
-    async fn preempt_job(&self, job_id: &str) -> Result<PreemptionResult, Box<dyn std::error::Error>> {
+    async fn preempt_job(
+        &self,
+        job_id: &str,
+    ) -> Result<PreemptionResult, Box<dyn std::error::Error>> {
         match self {
             Self::Fifo(s) => s.preempt_job(job_id).await,
             Self::RoundRobin(s) => s.preempt_job(job_id).await,
@@ -1031,7 +1053,11 @@ impl GpuScheduler for GpuSchedulerImpl {
         }
     }
 
-    async fn migrate_job(&self, job_id: &str, target_resources: &ResourceAllocation) -> Result<MigrationResult, Box<dyn std::error::Error>> {
+    async fn migrate_job(
+        &self,
+        job_id: &str,
+        target_resources: &ResourceAllocation,
+    ) -> Result<MigrationResult, Box<dyn std::error::Error>> {
         match self {
             Self::Fifo(s) => s.migrate_job(job_id, target_resources).await,
             Self::RoundRobin(s) => s.migrate_job(job_id, target_resources).await,
@@ -1060,7 +1086,8 @@ impl GpuSchedulingOptimizer {
     pub fn new(config: GpuSchedulingConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let scheduler = Self::create_scheduler(&config.scheduler_type)?;
         let resource_manager = Arc::new(ResourceManager::new()?);
-        let workload_predictor = Arc::new(WorkloadPredictor::new(config.workload_prediction.clone())?);
+        let workload_predictor =
+            Arc::new(WorkloadPredictor::new(config.workload_prediction.clone())?);
         let load_balancer = Arc::new(LoadBalancer::new(config.load_balancing.clone())?);
         let tenant_manager = Arc::new(TenantManager::new(config.multi_tenant_support.clone())?);
         let metrics_collector = Arc::new(SchedulingMetrics::new()?);
@@ -1078,27 +1105,51 @@ impl GpuSchedulingOptimizer {
         })
     }
 
-    fn create_scheduler(scheduler_type: &SchedulerType) -> Result<GpuSchedulerImpl, Box<dyn std::error::Error>> {
+    fn create_scheduler(
+        scheduler_type: &SchedulerType,
+    ) -> Result<GpuSchedulerImpl, Box<dyn std::error::Error>> {
         match scheduler_type {
             SchedulerType::FIFO => Ok(GpuSchedulerImpl::Fifo(FifoScheduler::new())),
-            SchedulerType::RoundRobin => Ok(GpuSchedulerImpl::RoundRobin(RoundRobinScheduler::new())),
-            SchedulerType::WeightedFairQueuing => Ok(GpuSchedulerImpl::WeightedFairQueuing(WeightedFairQueuingScheduler::new())),
-            SchedulerType::ProportionalShare => Ok(GpuSchedulerImpl::ProportionalShare(ProportionalShareScheduler::new())),
-            SchedulerType::DeficitRoundRobin => Ok(GpuSchedulerImpl::DeficitRoundRobin(DeficitRoundRobinScheduler::new())),
-            SchedulerType::CompleteFairScheduler => Ok(GpuSchedulerImpl::CompleteFair(CompleteFairScheduler::new())),
-            SchedulerType::MultiLevelFeedback => Ok(GpuSchedulerImpl::MultiLevelFeedback(MultiLevelFeedbackScheduler::new())),
-            SchedulerType::Custom(name) => Err(format!("Custom scheduler '{}' not implemented", name).into()),
+            SchedulerType::RoundRobin => {
+                Ok(GpuSchedulerImpl::RoundRobin(RoundRobinScheduler::new()))
+            }
+            SchedulerType::WeightedFairQueuing => Ok(GpuSchedulerImpl::WeightedFairQueuing(
+                WeightedFairQueuingScheduler::new(),
+            )),
+            SchedulerType::ProportionalShare => Ok(GpuSchedulerImpl::ProportionalShare(
+                ProportionalShareScheduler::new(),
+            )),
+            SchedulerType::DeficitRoundRobin => Ok(GpuSchedulerImpl::DeficitRoundRobin(
+                DeficitRoundRobinScheduler::new(),
+            )),
+            SchedulerType::CompleteFairScheduler => {
+                Ok(GpuSchedulerImpl::CompleteFair(CompleteFairScheduler::new()))
+            }
+            SchedulerType::MultiLevelFeedback => Ok(GpuSchedulerImpl::MultiLevelFeedback(
+                MultiLevelFeedbackScheduler::new(),
+            )),
+            SchedulerType::Custom(name) => {
+                Err(format!("Custom scheduler '{}' not implemented", name).into())
+            }
         }
     }
 
-    pub async fn submit_job(&self, job: SchedulingJob) -> Result<String, Box<dyn std::error::Error>> {
-        info!("Submitting job: {} for user: {} tenant: {}", job.job_id, job.user_id, job.tenant_id);
+    pub async fn submit_job(
+        &self,
+        job: SchedulingJob,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        info!(
+            "Submitting job: {} for user: {} tenant: {}",
+            job.job_id, job.user_id, job.tenant_id
+        );
 
         self.tenant_manager.validate_job_submission(&job).await?;
 
         if let Some(prediction) = self.workload_predictor.predict_workload(&job).await? {
-            info!("Job duration prediction: {:?} with confidence: {}",
-                  prediction.predicted_duration, prediction.confidence_score);
+            info!(
+                "Job duration prediction: {:?} with confidence: {}",
+                prediction.predicted_duration, prediction.confidence_score
+            );
         }
 
         let mut job_queue = self.job_queue.lock().await;
@@ -1156,7 +1207,10 @@ impl GpuSchedulingOptimizer {
         job_id: &str,
         allocation: ResourceAllocation,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Starting job: {} with allocation: {}", job_id, allocation.allocation_id);
+        info!(
+            "Starting job: {} with allocation: {}",
+            job_id, allocation.allocation_id
+        );
 
         let mut job_queue = self.job_queue.lock().await;
         if let Some(job_index) = job_queue.iter().position(|j| j.job_id == job_id) {
@@ -1180,7 +1234,9 @@ impl GpuSchedulingOptimizer {
             let mut active_jobs = self.active_jobs.write().unwrap();
             active_jobs.insert(job_id.to_string(), active_job);
 
-            self.resource_manager.allocate_resources(&allocation).await?;
+            self.resource_manager
+                .allocate_resources(&allocation)
+                .await?;
         }
 
         Ok(())
@@ -1200,7 +1256,9 @@ impl GpuSchedulingOptimizer {
                 active_job.progress.checkpoints_created += 1;
             }
 
-            self.resource_manager.deallocate_resources(&active_job.allocation).await?;
+            self.resource_manager
+                .deallocate_resources(&active_job.allocation)
+                .await?;
         }
 
         Ok(())
@@ -1211,7 +1269,10 @@ impl GpuSchedulingOptimizer {
         job_id: &str,
         target_allocation: ResourceAllocation,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Migrating job: {} to new allocation: {}", job_id, target_allocation.allocation_id);
+        info!(
+            "Migrating job: {} to new allocation: {}",
+            job_id, target_allocation.allocation_id
+        );
 
         let scheduler = self.scheduler.lock().await;
         let migration_result = scheduler.migrate_job(job_id, &target_allocation).await?;
@@ -1219,9 +1280,13 @@ impl GpuSchedulingOptimizer {
         if migration_result.success {
             let mut active_jobs = self.active_jobs.write().unwrap();
             if let Some(active_job) = active_jobs.get_mut(job_id) {
-                self.resource_manager.deallocate_resources(&active_job.allocation).await?;
+                self.resource_manager
+                    .deallocate_resources(&active_job.allocation)
+                    .await?;
                 active_job.allocation = target_allocation.clone();
-                self.resource_manager.allocate_resources(&target_allocation).await?;
+                self.resource_manager
+                    .allocate_resources(&target_allocation)
+                    .await?;
             }
         }
 
@@ -1233,17 +1298,25 @@ impl GpuSchedulingOptimizer {
 
         let mut active_jobs = self.active_jobs.write().unwrap();
         if let Some(active_job) = active_jobs.remove(job_id) {
-            self.resource_manager.deallocate_resources(&active_job.allocation).await?;
+            self.resource_manager
+                .deallocate_resources(&active_job.allocation)
+                .await?;
 
-            self.tenant_manager.update_usage(&active_job.job.tenant_id, &active_job).await?;
+            self.tenant_manager
+                .update_usage(&active_job.job.tenant_id, &active_job)
+                .await?;
 
-            self.metrics_collector.record_job_completion(&active_job).await?;
+            self.metrics_collector
+                .record_job_completion(&active_job)
+                .await?;
         }
 
         Ok(())
     }
 
-    pub async fn get_scheduling_status(&self) -> Result<SchedulingStatus, Box<dyn std::error::Error>> {
+    pub async fn get_scheduling_status(
+        &self,
+    ) -> Result<SchedulingStatus, Box<dyn std::error::Error>> {
         let job_queue = self.job_queue.lock().await;
         let active_jobs = self.active_jobs.read().unwrap();
         let resource_status = self.resource_manager.get_resource_status().await?;
@@ -1352,7 +1425,10 @@ impl FifoScheduler {
 
 #[async_trait::async_trait]
 impl GpuScheduler for FifoScheduler {
-    async fn schedule(&self, jobs: &[SchedulingJob]) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>> {
+    async fn schedule(
+        &self,
+        jobs: &[SchedulingJob],
+    ) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>> {
         debug!("FIFO scheduling {} jobs", jobs.len());
         let mut decisions = Vec::new();
 
@@ -1372,11 +1448,17 @@ impl GpuScheduler for FifoScheduler {
         Ok(decisions)
     }
 
-    async fn update_schedule(&self, _job_updates: &[JobUpdate]) -> Result<(), Box<dyn std::error::Error>> {
+    async fn update_schedule(
+        &self,
+        _job_updates: &[JobUpdate],
+    ) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
 
-    async fn preempt_job(&self, job_id: &str) -> Result<PreemptionResult, Box<dyn std::error::Error>> {
+    async fn preempt_job(
+        &self,
+        job_id: &str,
+    ) -> Result<PreemptionResult, Box<dyn std::error::Error>> {
         Ok(PreemptionResult {
             preempted_job_id: job_id.to_string(),
             preemption_type: PreemptionType::Kill,
@@ -1385,7 +1467,11 @@ impl GpuScheduler for FifoScheduler {
         })
     }
 
-    async fn migrate_job(&self, job_id: &str, _target_resources: &ResourceAllocation) -> Result<MigrationResult, Box<dyn std::error::Error>> {
+    async fn migrate_job(
+        &self,
+        job_id: &str,
+        _target_resources: &ResourceAllocation,
+    ) -> Result<MigrationResult, Box<dyn std::error::Error>> {
         Ok(MigrationResult {
             migration_id: Uuid::new_v4().to_string(),
             source_allocation: ResourceAllocation {
@@ -1420,16 +1506,25 @@ macro_rules! impl_scheduler {
 
         #[async_trait::async_trait]
         impl GpuScheduler for $scheduler {
-            async fn schedule(&self, jobs: &[SchedulingJob]) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>> {
+            async fn schedule(
+                &self,
+                jobs: &[SchedulingJob],
+            ) -> Result<Vec<SchedulingDecision>, Box<dyn std::error::Error>> {
                 debug!("{} scheduling {} jobs", stringify!($scheduler), jobs.len());
                 Ok(Vec::new())
             }
 
-            async fn update_schedule(&self, _job_updates: &[JobUpdate]) -> Result<(), Box<dyn std::error::Error>> {
+            async fn update_schedule(
+                &self,
+                _job_updates: &[JobUpdate],
+            ) -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             }
 
-            async fn preempt_job(&self, job_id: &str) -> Result<PreemptionResult, Box<dyn std::error::Error>> {
+            async fn preempt_job(
+                &self,
+                job_id: &str,
+            ) -> Result<PreemptionResult, Box<dyn std::error::Error>> {
                 Ok(PreemptionResult {
                     preempted_job_id: job_id.to_string(),
                     preemption_type: PreemptionType::Kill,
@@ -1438,7 +1533,11 @@ macro_rules! impl_scheduler {
                 })
             }
 
-            async fn migrate_job(&self, _job_id: &str, target_resources: &ResourceAllocation) -> Result<MigrationResult, Box<dyn std::error::Error>> {
+            async fn migrate_job(
+                &self,
+                _job_id: &str,
+                target_resources: &ResourceAllocation,
+            ) -> Result<MigrationResult, Box<dyn std::error::Error>> {
                 Ok(MigrationResult {
                     migration_id: Uuid::new_v4().to_string(),
                     source_allocation: ResourceAllocation {
@@ -1487,12 +1586,18 @@ impl ResourceManager {
         })
     }
 
-    pub async fn allocate_resources(&self, allocation: &ResourceAllocation) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn allocate_resources(
+        &self,
+        allocation: &ResourceAllocation,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Allocating resources: {}", allocation.allocation_id);
         Ok(())
     }
 
-    pub async fn deallocate_resources(&self, allocation: &ResourceAllocation) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn deallocate_resources(
+        &self,
+        allocation: &ResourceAllocation,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Deallocating resources: {}", allocation.allocation_id);
         Ok(())
     }
@@ -1508,7 +1613,9 @@ impl ResourceManager {
         })
     }
 
-    pub async fn check_fragmentation(&self) -> Result<FragmentationStatus, Box<dyn std::error::Error>> {
+    pub async fn check_fragmentation(
+        &self,
+    ) -> Result<FragmentationStatus, Box<dyn std::error::Error>> {
         Ok(FragmentationStatus {
             needs_defragmentation: false,
             fragmentation_ratio: 0.1,
@@ -1541,7 +1648,10 @@ impl WorkloadPredictor {
         })
     }
 
-    pub async fn predict_workload(&self, job: &SchedulingJob) -> Result<Option<WorkloadPrediction>, Box<dyn std::error::Error>> {
+    pub async fn predict_workload(
+        &self,
+        job: &SchedulingJob,
+    ) -> Result<Option<WorkloadPrediction>, Box<dyn std::error::Error>> {
         debug!("Predicting workload for job: {}", job.job_id);
         Ok(None)
     }
@@ -1625,12 +1735,19 @@ impl TenantManager {
         })
     }
 
-    pub async fn validate_job_submission(&self, job: &SchedulingJob) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn validate_job_submission(
+        &self,
+        job: &SchedulingJob,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Validating job submission for tenant: {}", job.tenant_id);
         Ok(())
     }
 
-    pub async fn update_usage(&self, tenant_id: &str, active_job: &ActiveJob) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn update_usage(
+        &self,
+        tenant_id: &str,
+        active_job: &ActiveJob,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Updating usage for tenant: {}", tenant_id);
         Ok(())
     }
@@ -1669,8 +1786,14 @@ impl SchedulingMetrics {
         })
     }
 
-    pub async fn record_job_completion(&self, active_job: &ActiveJob) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("Recording job completion metrics for: {}", active_job.job.job_id);
+    pub async fn record_job_completion(
+        &self,
+        active_job: &ActiveJob,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        debug!(
+            "Recording job completion metrics for: {}",
+            active_job.job.job_id
+        );
         Ok(())
     }
 }

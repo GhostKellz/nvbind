@@ -67,7 +67,8 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
     let error_str = error.to_string();
 
     // NVIDIA driver errors
-    if error_str.contains("NVIDIA driver not found") || error_str.contains("no GPU driver modules") {
+    if error_str.contains("NVIDIA driver not found") || error_str.contains("no GPU driver modules")
+    {
         return (
             "NVIDIA GPU driver is not installed or not loaded".to_string(),
             Some("Install NVIDIA drivers: sudo apt install nvidia-driver-535 (Ubuntu) or follow your distribution's guide".to_string())
@@ -92,14 +93,17 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
     if error_str.contains("podman") && error_str.contains("not available") {
         return (
             "Podman runtime is not installed".to_string(),
-            Some("Install Podman: sudo apt install podman (Ubuntu) or dnf install podman (Fedora)".to_string())
+            Some(
+                "Install Podman: sudo apt install podman (Ubuntu) or dnf install podman (Fedora)"
+                    .to_string(),
+            ),
         );
     }
 
     if error_str.contains("bolt") && error_str.contains("not available") {
         return (
             "Bolt runtime is not installed".to_string(),
-            Some("Install Bolt from: https://github.com/your-bolt-repo".to_string())
+            Some("Install Bolt from: https://github.com/your-bolt-repo".to_string()),
         );
     }
 
@@ -119,7 +123,7 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
         }
         return (
             "Permission denied - insufficient privileges".to_string(),
-            Some("Try running with sudo or check file permissions".to_string())
+            Some("Try running with sudo or check file permissions".to_string()),
         );
     }
 
@@ -127,7 +131,7 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
     if error_str.contains("CDI") && error_str.contains("not found") {
         return (
             "CDI specifications not found".to_string(),
-            Some("Generate CDI specs: nvbind cdi generate".to_string())
+            Some("Generate CDI specs: nvbind cdi generate".to_string()),
         );
     }
 
@@ -143,7 +147,7 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
     if error_str.contains("Failed to read config file") {
         return (
             "Configuration file not found or invalid".to_string(),
-            Some("Generate default config: nvbind config --output nvbind.toml".to_string())
+            Some("Generate default config: nvbind config --output nvbind.toml".to_string()),
         );
     }
 
@@ -151,7 +155,7 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
     if error_str.contains("Connection refused") || error_str.contains("NetworkError") {
         return (
             "Network connection failed".to_string(),
-            Some("Check network connectivity and firewall settings".to_string())
+            Some("Check network connectivity and firewall settings".to_string()),
         );
     }
 
@@ -159,14 +163,17 @@ fn analyze_error(error: &anyhow::Error) -> (String, Option<String>) {
     if error_str.contains("out of memory") || error_str.contains("OOM") {
         return (
             "Out of memory - insufficient GPU or system memory".to_string(),
-            Some("Reduce batch size, close other applications, or use a GPU with more memory".to_string())
+            Some(
+                "Reduce batch size, close other applications, or use a GPU with more memory"
+                    .to_string(),
+            ),
         );
     }
 
     // Default fallback
     (
         error_str.clone(),
-        Some("Check the error message and ensure all requirements are met".to_string())
+        Some("Check the error message and ensure all requirements are met".to_string()),
     )
 }
 
@@ -244,7 +251,8 @@ pub async fn run_diagnostics() -> Result<String> {
     report.push_str("GPU Driver Status:\n");
     match crate::gpu::get_driver_info().await {
         Ok(info) => {
-            report.push_str(&format!("  ✅ Driver: {} ({})\n",
+            report.push_str(&format!(
+                "  ✅ Driver: {} ({})\n",
                 info.version,
                 info.driver_type.name()
             ));
@@ -265,10 +273,9 @@ pub async fn run_diagnostics() -> Result<String> {
                 report.push_str("  ⚠️  No GPUs detected\n");
             } else {
                 for gpu in gpus {
-                    report.push_str(&format!("  ✅ {}: {} ({})\n",
-                        gpu.id,
-                        gpu.name,
-                        gpu.pci_address
+                    report.push_str(&format!(
+                        "  ✅ {}: {} ({})\n",
+                        gpu.id, gpu.name, gpu.pci_address
                     ));
                 }
             }

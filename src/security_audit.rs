@@ -119,7 +119,10 @@ impl SecurityAuditor {
 
         // Generate report
         let report = self.generate_report();
-        info!("Security audit completed with score: {}", report.overall_score);
+        info!(
+            "Security audit completed with score: {}",
+            report.overall_score
+        );
 
         Ok(report)
     }
@@ -134,9 +137,7 @@ impl SecurityAuditor {
             .output()
         {
             if !output.stdout.is_empty() {
-                let unsafe_count = String::from_utf8_lossy(&output.stdout)
-                    .lines()
-                    .count();
+                let unsafe_count = String::from_utf8_lossy(&output.stdout).lines().count();
 
                 if unsafe_count > 0 {
                     self.add_finding(SecurityFinding {
@@ -316,15 +317,10 @@ impl SecurityAuditor {
     /// Helper methods for specific checks
     async fn check_buffer_overflow_patterns(&mut self) -> Result<()> {
         // Static analysis for buffer overflow patterns
-        let patterns = vec![
-            "strcpy", "strcat", "sprintf", "gets", "scanf",
-        ];
+        let patterns = vec!["strcpy", "strcat", "sprintf", "gets", "scanf"];
 
         for pattern in patterns {
-            if let Ok(output) = Command::new("grep")
-                .args(&["-r", pattern, "src/"])
-                .output()
-            {
+            if let Ok(output) = Command::new("grep").args(&["-r", pattern, "src/"]).output() {
                 if !output.stdout.is_empty() {
                     self.add_finding(SecurityFinding {
                         severity: SecuritySeverity::High,
@@ -349,7 +345,8 @@ impl SecurityAuditor {
         {
             if !output.stdout.is_empty() {
                 let count = String::from_utf8_lossy(&output.stdout).lines().count();
-                if count > 5 { // Allow some raw pointer usage
+                if count > 5 {
+                    // Allow some raw pointer usage
                     self.add_finding(SecurityFinding {
                         severity: SecuritySeverity::Medium,
                         category: SecurityCategory::MemorySafety,
@@ -386,10 +383,7 @@ impl SecurityAuditor {
         let dangerous_patterns = vec!["../", "..\\"];
 
         for pattern in dangerous_patterns {
-            if let Ok(output) = Command::new("grep")
-                .args(&["-r", pattern, "src/"])
-                .output()
-            {
+            if let Ok(output) = Command::new("grep").args(&["-r", pattern, "src/"]).output() {
                 if !output.stdout.is_empty() {
                     self.add_finding(SecurityFinding {
                         severity: SecuritySeverity::High,
@@ -456,7 +450,8 @@ impl SecurityAuditor {
                         category: SecurityCategory::ConfigurationSecurity,
                         title: "Potential hardcoded secret detected".to_string(),
                         description: "Found patterns matching hardcoded secrets".to_string(),
-                        remediation: "Move secrets to environment variables or secure storage".to_string(),
+                        remediation: "Move secrets to environment variables or secure storage"
+                            .to_string(),
                         cve_ids: vec![],
                     });
                 }
@@ -516,14 +511,25 @@ impl SecurityAuditor {
     }
 
     fn generate_report(&self) -> SecurityAuditReport {
-        let critical_count = self.findings.iter().filter(|f| f.severity == SecuritySeverity::Critical).count();
-        let high_count = self.findings.iter().filter(|f| f.severity == SecuritySeverity::High).count();
-        let medium_count = self.findings.iter().filter(|f| f.severity == SecuritySeverity::Medium).count();
+        let critical_count = self
+            .findings
+            .iter()
+            .filter(|f| f.severity == SecuritySeverity::Critical)
+            .count();
+        let high_count = self
+            .findings
+            .iter()
+            .filter(|f| f.severity == SecuritySeverity::High)
+            .count();
+        let medium_count = self
+            .findings
+            .iter()
+            .filter(|f| f.severity == SecuritySeverity::Medium)
+            .count();
 
         // Calculate security score (100 - penalty for findings)
-        let score = 100u8.saturating_sub(
-            (critical_count * 25 + high_count * 10 + medium_count * 5) as u8
-        );
+        let score =
+            100u8.saturating_sub((critical_count * 25 + high_count * 10 + medium_count * 5) as u8);
 
         let recommendations = self.generate_recommendations();
         let compliance_status = self.assess_compliance();
@@ -540,15 +546,27 @@ impl SecurityAuditor {
     fn generate_recommendations(&self) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        if self.findings.iter().any(|f| f.severity == SecuritySeverity::Critical) {
+        if self
+            .findings
+            .iter()
+            .any(|f| f.severity == SecuritySeverity::Critical)
+        {
             recommendations.push("Address all critical security findings immediately".to_string());
         }
 
-        if self.findings.iter().any(|f| matches!(f.category, SecurityCategory::MemorySafety)) {
+        if self
+            .findings
+            .iter()
+            .any(|f| matches!(f.category, SecurityCategory::MemorySafety))
+        {
             recommendations.push("Run additional memory safety tools (Miri, Valgrind)".to_string());
         }
 
-        if self.findings.iter().any(|f| matches!(f.category, SecurityCategory::PrivilegeEscalation)) {
+        if self
+            .findings
+            .iter()
+            .any(|f| matches!(f.category, SecurityCategory::PrivilegeEscalation))
+        {
             recommendations.push("Implement principle of least privilege".to_string());
         }
 
@@ -560,8 +578,16 @@ impl SecurityAuditor {
     }
 
     fn assess_compliance(&self) -> ComplianceStatus {
-        let critical_findings = self.findings.iter().filter(|f| f.severity == SecuritySeverity::Critical).count();
-        let high_findings = self.findings.iter().filter(|f| f.severity == SecuritySeverity::High).count();
+        let critical_findings = self
+            .findings
+            .iter()
+            .filter(|f| f.severity == SecuritySeverity::Critical)
+            .count();
+        let high_findings = self
+            .findings
+            .iter()
+            .filter(|f| f.severity == SecuritySeverity::High)
+            .count();
 
         // Basic compliance assessment (would be more sophisticated in practice)
         let meets_basic_security = critical_findings == 0 && high_findings < 3;
@@ -590,7 +616,10 @@ pub async fn run_security_audit_cli(strict_mode: bool) -> Result<()> {
     println!("🔒 Security Audit Report");
     println!("========================");
     println!("Overall Score: {}/100", report.overall_score);
-    println!("Timestamp: {}", report.timestamp.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "Timestamp: {}",
+        report.timestamp.format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!();
 
     if report.findings.is_empty() {
@@ -607,7 +636,10 @@ pub async fn run_security_audit_cli(strict_mode: bool) -> Result<()> {
                 SecuritySeverity::Info => "ℹ️",
             };
 
-            println!("{} [{:?}] {}", severity_emoji, finding.severity, finding.title);
+            println!(
+                "{} [{:?}] {}",
+                severity_emoji, finding.severity, finding.title
+            );
             println!("   {}", finding.description);
             println!("   Remediation: {}", finding.remediation);
             println!();
@@ -621,9 +653,30 @@ pub async fn run_security_audit_cli(strict_mode: bool) -> Result<()> {
 
     println!();
     println!("✅ Compliance Status:");
-    println!("  CIS Benchmark: {}", if report.compliance_status.cis_benchmark { "PASS" } else { "FAIL" });
-    println!("  NIST Framework: {}", if report.compliance_status.nist_framework { "PASS" } else { "FAIL" });
-    println!("  GDPR: {}", if report.compliance_status.gdpr { "PASS" } else { "FAIL" });
+    println!(
+        "  CIS Benchmark: {}",
+        if report.compliance_status.cis_benchmark {
+            "PASS"
+        } else {
+            "FAIL"
+        }
+    );
+    println!(
+        "  NIST Framework: {}",
+        if report.compliance_status.nist_framework {
+            "PASS"
+        } else {
+            "FAIL"
+        }
+    );
+    println!(
+        "  GDPR: {}",
+        if report.compliance_status.gdpr {
+            "PASS"
+        } else {
+            "FAIL"
+        }
+    );
 
     if report.overall_score < 80 {
         error!("Security score below recommended threshold (80)");

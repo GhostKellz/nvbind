@@ -484,15 +484,21 @@ impl RayTracingAccelerationManager {
         let context_id = Uuid::new_v4().to_string();
 
         let configs = self.acceleration_configs.read().unwrap();
-        let config = configs.get(config_id)
+        let config = configs
+            .get(config_id)
             .ok_or("Acceleration config not found")?;
 
-        let context = self.create_acceleration_context(&context_id, session_id, config).await?;
+        let context = self
+            .create_acceleration_context(&context_id, session_id, config)
+            .await?;
 
         let mut active_contexts = self.active_contexts.write().unwrap();
         active_contexts.insert(context_id.clone(), context);
 
-        info!("Initialized acceleration context: {} for session: {}", context_id, session_id);
+        info!(
+            "Initialized acceleration context: {} for session: {}",
+            context_id, session_id
+        );
         Ok(context_id)
     }
 
@@ -502,7 +508,10 @@ impl RayTracingAccelerationManager {
         session_id: &str,
         config: &RayTracingAccelerationConfig,
     ) -> Result<RtAccelerationContext, Box<dyn std::error::Error>> {
-        let memory_allocation = self.memory_manager.allocate_for_context(context_id, config).await?;
+        let memory_allocation = self
+            .memory_manager
+            .allocate_for_context(context_id, config)
+            .await?;
 
         let context = RtAccelerationContext {
             context_id: context_id.to_string(),
@@ -526,26 +535,33 @@ impl RayTracingAccelerationManager {
     ) -> Result<String, Box<dyn std::error::Error>> {
         let structure_id = Uuid::new_v4().to_string();
 
-        info!("Building acceleration structure: {} for context: {}", structure_id, context_id);
+        info!(
+            "Building acceleration structure: {} for context: {}",
+            structure_id, context_id
+        );
 
         let mut active_contexts = self.active_contexts.write().unwrap();
-        let context = active_contexts.get_mut(context_id)
+        let context = active_contexts
+            .get_mut(context_id)
             .ok_or("Acceleration context not found")?;
 
         let start_time = std::time::Instant::now();
-        let acceleration_structure = self.build_structure(
-            &structure_id,
-            geometry_data,
-            build_options,
-        ).await?;
+        let acceleration_structure = self
+            .build_structure(&structure_id, geometry_data, build_options)
+            .await?;
 
         let build_time = start_time.elapsed().as_secs_f32() * 1000.0;
         let mut final_structure = acceleration_structure;
         final_structure.build_time_ms = build_time;
 
-        context.acceleration_structures.insert(structure_id.clone(), final_structure);
+        context
+            .acceleration_structures
+            .insert(structure_id.clone(), final_structure);
 
-        info!("Built acceleration structure: {} in {:.2}ms", structure_id, build_time);
+        info!(
+            "Built acceleration structure: {} in {:.2}ms",
+            structure_id, build_time
+        );
         Ok(structure_id)
     }
 
@@ -579,11 +595,16 @@ impl RayTracingAccelerationManager {
         debug!("Optimizing ray generation for context: {}", context_id);
 
         let mut active_contexts = self.active_contexts.write().unwrap();
-        let context = active_contexts.get_mut(context_id)
+        let context = active_contexts
+            .get_mut(context_id)
             .ok_or("Context not found")?;
 
-        let optimized_program = self.create_optimized_ray_generation_program(ray_gen_config).await?;
-        context.ray_generation_programs.insert("main".to_string(), optimized_program);
+        let optimized_program = self
+            .create_optimized_ray_generation_program(ray_gen_config)
+            .await?;
+        context
+            .ray_generation_programs
+            .insert("main".to_string(), optimized_program);
 
         Ok(())
     }
@@ -608,14 +629,22 @@ impl RayTracingAccelerationManager {
         context_id: &str,
         intersection_config: &IntersectionConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("Optimizing intersection performance for context: {}", context_id);
+        debug!(
+            "Optimizing intersection performance for context: {}",
+            context_id
+        );
 
         let mut active_contexts = self.active_contexts.write().unwrap();
-        let context = active_contexts.get_mut(context_id)
+        let context = active_contexts
+            .get_mut(context_id)
             .ok_or("Context not found")?;
 
-        let optimized_program = self.create_optimized_intersection_program(intersection_config).await?;
-        context.intersection_programs.insert("main".to_string(), optimized_program);
+        let optimized_program = self
+            .create_optimized_intersection_program(intersection_config)
+            .await?;
+        context
+            .intersection_programs
+            .insert("main".to_string(), optimized_program);
 
         Ok(())
     }
@@ -648,17 +677,20 @@ impl RayTracingAccelerationManager {
         input_buffers: &DenoisingBuffers,
         denoising_config: &DenoisingAcceleration,
     ) -> Result<DenoisingBuffers, Box<dyn std::error::Error>> {
-        debug!("Applying denoising acceleration for context: {}", context_id);
+        debug!(
+            "Applying denoising acceleration for context: {}",
+            context_id
+        );
 
-        let denoising_context = self.denoising_engine.create_context(
-            context_id,
-            denoising_config,
-        ).await?;
+        let denoising_context = self
+            .denoising_engine
+            .create_context(context_id, denoising_config)
+            .await?;
 
-        let denoised_buffers = self.denoising_engine.denoise(
-            &denoising_context,
-            input_buffers,
-        ).await?;
+        let denoised_buffers = self
+            .denoising_engine
+            .denoise(&denoising_context, input_buffers)
+            .await?;
 
         Ok(denoised_buffers)
     }
@@ -678,8 +710,7 @@ impl RayTracingAccelerationManager {
         context_id: &str,
     ) -> Result<RtPerformanceMetrics, Box<dyn std::error::Error>> {
         let active_contexts = self.active_contexts.read().unwrap();
-        let context = active_contexts.get(context_id)
-            .ok_or("Context not found")?;
+        let context = active_contexts.get(context_id).ok_or("Context not found")?;
 
         Ok(context.performance_metrics.clone())
     }
@@ -735,7 +766,9 @@ impl RayTracingAccelerationManager {
         if let Some(context) = active_contexts.remove(context_id) {
             info!("Cleaning up acceleration context: {}", context_id);
 
-            self.memory_manager.deallocate_for_context(context_id).await?;
+            self.memory_manager
+                .deallocate_for_context(context_id)
+                .await?;
             self.denoising_engine.cleanup_context(context_id).await?;
         }
 
@@ -780,7 +813,10 @@ impl GeometryData {
     }
 
     pub fn total_triangles(&self) -> u64 {
-        self.geometries.iter().map(|g| g.triangle_count as u64).sum()
+        self.geometries
+            .iter()
+            .map(|g| g.triangle_count as u64)
+            .sum()
     }
 }
 
@@ -837,12 +873,12 @@ impl RtMemoryManager {
             geometry_memory: config.memory_management.geometry_memory,
             shader_tables: config.memory_management.shader_table_memory,
             scratch_space: config.memory_management.scratch_memory,
-            total_allocated: config.memory_management.acceleration_structure_memory +
-                           config.memory_management.ray_buffer_size +
-                           config.memory_management.texture_memory +
-                           config.memory_management.geometry_memory +
-                           config.memory_management.shader_table_memory +
-                           config.memory_management.scratch_memory,
+            total_allocated: config.memory_management.acceleration_structure_memory
+                + config.memory_management.ray_buffer_size
+                + config.memory_management.texture_memory
+                + config.memory_management.geometry_memory
+                + config.memory_management.shader_table_memory
+                + config.memory_management.scratch_memory,
         };
 
         Ok(allocation)

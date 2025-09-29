@@ -36,7 +36,10 @@ async fn main() -> Result<()> {
             gpu.memory.unwrap_or(0) as f64 / 1024.0 / 1024.0 / 1024.0
         );
         println!("   PCI Address: {}", gpu.pci_address);
-        println!("   Driver Version: {}", gpu.driver_version.as_deref().unwrap_or("Unknown"));
+        println!(
+            "   Driver Version: {}",
+            gpu.driver_version.as_deref().unwrap_or("Unknown")
+        );
         println!("   Device Path: {}", gpu.device_path);
 
         println!();

@@ -1,9 +1,9 @@
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -1400,16 +1400,21 @@ impl DistributedTrainingManager {
         info!("Submitting distributed training job: {}", job_id);
 
         // Validate resource requirements
-        self.validate_resource_requirements(&job_config.resource_requirements).await?;
+        self.validate_resource_requirements(&job_config.resource_requirements)
+            .await?;
 
         // Allocate cluster resources
-        let cluster_allocation = self.allocate_cluster_resources(&job_config.resource_requirements).await?;
+        let cluster_allocation = self
+            .allocate_cluster_resources(&job_config.resource_requirements)
+            .await?;
 
         // Create framework configuration
         let framework_config = self.create_framework_config(&job_config).await?;
 
         // Create communication configuration
-        let communication_config = self.create_communication_config(&cluster_allocation).await?;
+        let communication_config = self
+            .create_communication_config(&cluster_allocation)
+            .await?;
 
         // Create fault tolerance configuration
         let fault_tolerance_config = self.create_fault_tolerance_config(&job_config).await?;
@@ -1469,11 +1474,16 @@ impl DistributedTrainingManager {
     }
 
     /// Validate resource requirements
-    async fn validate_resource_requirements(&self, requirements: &ResourceRequirements) -> Result<()> {
+    async fn validate_resource_requirements(
+        &self,
+        requirements: &ResourceRequirements,
+    ) -> Result<()> {
         let cluster_config = self.cluster_config.read().unwrap();
 
         // Check if cluster has enough resources
-        let available_nodes = cluster_config.nodes.iter()
+        let available_nodes = cluster_config
+            .nodes
+            .iter()
             .filter(|node| matches!(node.status, NodeStatus::Available))
             .count();
 
@@ -1486,7 +1496,9 @@ impl DistributedTrainingManager {
         }
 
         // Check GPU availability
-        let total_gpus: u32 = cluster_config.nodes.iter()
+        let total_gpus: u32 = cluster_config
+            .nodes
+            .iter()
             .map(|node| node.available_resources.gpus.len() as u32)
             .sum();
 
@@ -1503,19 +1515,27 @@ impl DistributedTrainingManager {
     }
 
     /// Allocate cluster resources
-    async fn allocate_cluster_resources(&self, requirements: &ResourceRequirements) -> Result<ClusterAllocation> {
+    async fn allocate_cluster_resources(
+        &self,
+        requirements: &ResourceRequirements,
+    ) -> Result<ClusterAllocation> {
         let cluster_config = self.cluster_config.read().unwrap();
 
         let mut allocated_nodes = Vec::new();
         let mut total_gpus = 0;
 
         // Select nodes for allocation
-        for (rank, node) in cluster_config.nodes.iter()
+        for (rank, node) in cluster_config
+            .nodes
+            .iter()
             .filter(|node| matches!(node.status, NodeStatus::Available))
             .take(requirements.num_nodes as usize)
             .enumerate()
         {
-            let gpu_allocation: Vec<GpuAllocation> = node.available_resources.gpus.iter()
+            let gpu_allocation: Vec<GpuAllocation> = node
+                .available_resources
+                .gpus
+                .iter()
                 .take(requirements.gpus_per_node as usize)
                 .map(|&device_id| GpuAllocation {
                     device_id,
@@ -1558,17 +1578,18 @@ impl DistributedTrainingManager {
     }
 
     /// Create framework configuration
-    async fn create_framework_config(&self, job_config: &TrainingJobConfig) -> Result<FrameworkConfig> {
+    async fn create_framework_config(
+        &self,
+        job_config: &TrainingJobConfig,
+    ) -> Result<FrameworkConfig> {
         let framework_settings = match job_config.framework {
-            TrainingFramework::PyTorchDDP => {
-                FrameworkSettings::PyTorch(PyTorchSettings {
-                    cuda_version: "11.8".to_string(),
-                    pytorch_version: "2.0".to_string(),
-                    distributed_backend: "nccl".to_string(),
-                    enable_jit: true,
-                    cudnn_benchmark: true,
-                })
-            },
+            TrainingFramework::PyTorchDDP => FrameworkSettings::PyTorch(PyTorchSettings {
+                cuda_version: "11.8".to_string(),
+                pytorch_version: "2.0".to_string(),
+                distributed_backend: "nccl".to_string(),
+                enable_jit: true,
+                cudnn_benchmark: true,
+            }),
             TrainingFramework::TensorFlowMultiWorker => {
                 FrameworkSettings::TensorFlow(TensorFlowSettings {
                     tensorflow_version: "2.13".to_string(),
@@ -1576,10 +1597,8 @@ impl DistributedTrainingManager {
                     enable_xla: true,
                     mixed_precision_policy: Some("mixed_float16".to_string()),
                 })
-            },
-            _ => {
-                FrameworkSettings::Custom(HashMap::new())
             }
+            _ => FrameworkSettings::Custom(HashMap::new()),
         };
 
         let container_config = ContainerConfig {
@@ -1587,10 +1606,17 @@ impl DistributedTrainingManager {
                 TrainingFramework::PyTorchDDP => "pytorch/pytorch:latest",
                 TrainingFramework::TensorFlowMultiWorker => "tensorflow/tensorflow:latest-gpu",
                 _ => "nvidia/cuda:11.8-devel-ubuntu20.04",
-            }.to_string(),
+            }
+            .to_string(),
             resource_limits: ContainerResourceLimits {
-                cpu_limit: format!("{}m", job_config.resource_requirements.cpu_cores_per_node * 1000),
-                memory_limit: format!("{}Gi", job_config.resource_requirements.memory_per_node_bytes / (1024 * 1024 * 1024)),
+                cpu_limit: format!(
+                    "{}m",
+                    job_config.resource_requirements.cpu_cores_per_node * 1000
+                ),
+                memory_limit: format!(
+                    "{}Gi",
+                    job_config.resource_requirements.memory_per_node_bytes / (1024 * 1024 * 1024)
+                ),
                 gpu_limit: job_config.resource_requirements.gpus_per_node,
             },
             volume_mounts: vec![
@@ -1624,7 +1650,10 @@ impl DistributedTrainingManager {
     }
 
     /// Create communication configuration
-    async fn create_communication_config(&self, allocation: &ClusterAllocation) -> Result<CommunicationConfiguration> {
+    async fn create_communication_config(
+        &self,
+        allocation: &ClusterAllocation,
+    ) -> Result<CommunicationConfiguration> {
         Ok(CommunicationConfiguration {
             topology: CommunicationTopology::Hierarchical,
             bandwidth_optimization: BandwidthOptimization {
@@ -1645,7 +1674,10 @@ impl DistributedTrainingManager {
     }
 
     /// Create fault tolerance configuration
-    async fn create_fault_tolerance_config(&self, job_config: &TrainingJobConfig) -> Result<FaultToleranceConfig> {
+    async fn create_fault_tolerance_config(
+        &self,
+        job_config: &TrainingJobConfig,
+    ) -> Result<FaultToleranceConfig> {
         Ok(FaultToleranceConfig {
             enabled: true,
             checkpointing_strategy: if job_config.model_config.checkpointing_config.enabled {
@@ -1668,14 +1700,17 @@ impl DistributedTrainingManager {
         info!("Starting distributed training job: {}", job_id);
 
         let mut jobs = self.training_jobs.write().unwrap();
-        let job = jobs.get_mut(job_id)
+        let job = jobs
+            .get_mut(job_id)
             .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
 
         job.status = JobStatus::Initializing;
         job.started_at = Some(chrono::Utc::now());
 
         // Initialize communication groups
-        self.communication_coordinator.initialize_communication_groups(&job.cluster_allocation).await?;
+        self.communication_coordinator
+            .initialize_communication_groups(&job.cluster_allocation)
+            .await?;
 
         // Start training on all nodes
         self.start_training_on_nodes(job).await?;
@@ -1695,7 +1730,11 @@ impl DistributedTrainingManager {
     }
 
     /// Start training on a specific node
-    async fn start_training_on_node(&self, job: &DistributedTrainingJob, node: &NodeAllocation) -> Result<()> {
+    async fn start_training_on_node(
+        &self,
+        job: &DistributedTrainingJob,
+        node: &NodeAllocation,
+    ) -> Result<()> {
         debug!("Starting training on node: {}", node.node_id);
 
         // Implementation would start the actual training process on the node
@@ -1713,7 +1752,8 @@ impl DistributedTrainingManager {
         info!("Stopping distributed training job: {}", job_id);
 
         let mut jobs = self.training_jobs.write().unwrap();
-        let job = jobs.get_mut(job_id)
+        let job = jobs
+            .get_mut(job_id)
             .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
 
         job.status = JobStatus::Cancelled;
@@ -1723,7 +1763,8 @@ impl DistributedTrainingManager {
         self.stop_training_on_nodes(&job.cluster_allocation).await?;
 
         // Deallocate resources
-        self.deallocate_cluster_resources(&job.cluster_allocation).await?;
+        self.deallocate_cluster_resources(&job.cluster_allocation)
+            .await?;
 
         info!("Stopped distributed training job: {}", job_id);
         Ok(())
@@ -1760,7 +1801,8 @@ impl DistributedTrainingManager {
     /// Update job metrics
     pub async fn update_job_metrics(&self, job_id: &str, metrics: JobMetrics) -> Result<()> {
         let mut jobs = self.training_jobs.write().unwrap();
-        let job = jobs.get_mut(job_id)
+        let job = jobs
+            .get_mut(job_id)
             .ok_or_else(|| anyhow!("Job not found: {}", job_id))?;
 
         job.metrics = metrics;
@@ -1801,7 +1843,10 @@ impl CommunicationCoordinator {
         }
     }
 
-    pub async fn initialize_communication_groups(&self, _allocation: &ClusterAllocation) -> Result<()> {
+    pub async fn initialize_communication_groups(
+        &self,
+        _allocation: &ClusterAllocation,
+    ) -> Result<()> {
         debug!("Initializing communication groups");
         // Implementation would set up communication groups for distributed training
         Ok(())

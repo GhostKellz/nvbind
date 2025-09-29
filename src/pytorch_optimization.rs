@@ -1,8 +1,8 @@
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -302,7 +302,12 @@ pub struct MixedPrecisionConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LossScalingStrategy {
     /// Dynamic loss scaling
-    Dynamic { init_scale: f32, growth_factor: f32, backoff_factor: f32, growth_interval: u32 },
+    Dynamic {
+        init_scale: f32,
+        growth_factor: f32,
+        backoff_factor: f32,
+        growth_interval: u32,
+    },
     /// Static loss scaling
     Static(f32),
     /// No loss scaling
@@ -815,13 +820,29 @@ pub struct PyTorchModelInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ModelArchitecture {
     /// Transformer architecture
-    Transformer { num_layers: u32, hidden_size: u32, num_attention_heads: u32 },
+    Transformer {
+        num_layers: u32,
+        hidden_size: u32,
+        num_attention_heads: u32,
+    },
     /// Convolutional Neural Network
-    CNN { num_layers: u32, input_channels: u32, output_channels: u32 },
+    CNN {
+        num_layers: u32,
+        input_channels: u32,
+        output_channels: u32,
+    },
     /// Recurrent Neural Network
-    RNN { num_layers: u32, hidden_size: u32, bidirectional: bool },
+    RNN {
+        num_layers: u32,
+        hidden_size: u32,
+        bidirectional: bool,
+    },
     /// Vision Transformer
-    ViT { patch_size: u32, num_layers: u32, hidden_size: u32 },
+    ViT {
+        patch_size: u32,
+        num_layers: u32,
+        hidden_size: u32,
+    },
     /// Custom architecture
     Custom(String),
 }
@@ -1206,15 +1227,24 @@ pub struct ModelOptimizationProfile {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OptimizationTechnique {
     /// Model quantization
-    Quantization { bits: u8, calibration_dataset: Option<String> },
+    Quantization {
+        bits: u8,
+        calibration_dataset: Option<String>,
+    },
     /// Model pruning
     Pruning { sparsity: f64, structured: bool },
     /// Knowledge distillation
-    KnowledgeDistillation { teacher_model: String, temperature: f64 },
+    KnowledgeDistillation {
+        teacher_model: String,
+        temperature: f64,
+    },
     /// ONNX optimization
     OnnxOptimization { optimization_level: String },
     /// TensorRT optimization
-    TensorRTOptimization { precision: String, max_workspace_size: u64 },
+    TensorRTOptimization {
+        precision: String,
+        max_workspace_size: u64,
+    },
 }
 
 /// Performance Targets
@@ -1303,16 +1333,25 @@ impl PyTorchCudaManager {
     ) -> Result<String> {
         let session_id = Uuid::new_v4().to_string();
 
-        info!("Creating PyTorch session: {} (type: {:?})", session_id, session_type);
+        info!(
+            "Creating PyTorch session: {} (type: {:?})",
+            session_id, session_type
+        );
 
         // Allocate resources
-        let resource_allocation = self.allocate_resources(&session_type, &model_info, &cuda_config).await?;
+        let resource_allocation = self
+            .allocate_resources(&session_type, &model_info, &cuda_config)
+            .await?;
 
         // Create performance settings
-        let performance_settings = self.create_performance_settings(&session_type, &model_info).await?;
+        let performance_settings = self
+            .create_performance_settings(&session_type, &model_info)
+            .await?;
 
         // Create container configuration
-        let container_config = self.create_container_config(&session_type, &resource_allocation).await?;
+        let container_config = self
+            .create_container_config(&session_type, &resource_allocation)
+            .await?;
 
         let session = PyTorchSession {
             session_id: session_id.clone(),
@@ -1376,7 +1415,10 @@ impl PyTorchCudaManager {
 
         for &device_id in &device_ids {
             let memory_required = if let Some(model) = model_info {
-                model.optimization_requirements.memory_requirements.optimal_gpu_memory_bytes
+                model
+                    .optimization_requirements
+                    .memory_requirements
+                    .optimal_gpu_memory_bytes
             } else {
                 4 * 1024 * 1024 * 1024 // 4GB default
             };
@@ -1463,7 +1505,7 @@ impl PyTorchCudaManager {
         let image = match session_type {
             PyTorchSessionType::Training | PyTorchSessionType::DistributedTraining => {
                 "pytorch/pytorch:latest"
-            },
+            }
             PyTorchSessionType::Serving => "pytorch/torchserve:latest",
             _ => "pytorch/pytorch:latest",
         };
@@ -1471,20 +1513,20 @@ impl PyTorchCudaManager {
         let mut environment = HashMap::new();
         environment.insert(
             "CUDA_VISIBLE_DEVICES".to_string(),
-            resource_allocation.gpu_allocation.device_ids
+            resource_allocation
+                .gpu_allocation
+                .device_ids
                 .iter()
                 .map(|id| id.to_string())
                 .collect::<Vec<_>>()
-                .join(",")
+                .join(","),
         );
 
-        let volumes = vec![
-            VolumeMount {
-                host_path: "/tmp/pytorch-models".to_string(),
-                container_path: "/workspace/models".to_string(),
-                read_only: false,
-            }
-        ];
+        let volumes = vec![VolumeMount {
+            host_path: "/tmp/pytorch-models".to_string(),
+            container_path: "/workspace/models".to_string(),
+            read_only: false,
+        }];
 
         let network = NetworkConfiguration {
             ports: vec![8080, 8081],
@@ -1509,7 +1551,8 @@ impl PyTorchCudaManager {
 
         let session = {
             let sessions = self.sessions.read().unwrap();
-            sessions.get(session_id)
+            sessions
+                .get(session_id)
                 .ok_or_else(|| anyhow!("Session not found: {}", session_id))?
                 .clone()
         };
@@ -1519,17 +1562,31 @@ impl PyTorchCudaManager {
                 OptimizationTechnique::Quantization { bits, .. } => {
                     info!("Applying quantization: {} bits", bits);
                     self.apply_quantization(&session, bits).await?;
-                },
-                OptimizationTechnique::Pruning { sparsity, structured } => {
-                    info!("Applying pruning: {}% sparsity, structured: {}", sparsity * 100.0, structured);
+                }
+                OptimizationTechnique::Pruning {
+                    sparsity,
+                    structured,
+                } => {
+                    info!(
+                        "Applying pruning: {}% sparsity, structured: {}",
+                        sparsity * 100.0,
+                        structured
+                    );
                     self.apply_pruning(&session, sparsity, structured).await?;
-                },
-                OptimizationTechnique::TensorRTOptimization { precision, max_workspace_size } => {
+                }
+                OptimizationTechnique::TensorRTOptimization {
+                    precision,
+                    max_workspace_size,
+                } => {
                     info!("Applying TensorRT optimization: {} precision", precision);
-                    self.apply_tensorrt_optimization(&session, &precision, max_workspace_size).await?;
-                },
+                    self.apply_tensorrt_optimization(&session, &precision, max_workspace_size)
+                        .await?;
+                }
                 _ => {
-                    warn!("Optimization technique not yet implemented: {:?}", technique);
+                    warn!(
+                        "Optimization technique not yet implemented: {:?}",
+                        technique
+                    );
                 }
             }
         }
@@ -1546,7 +1603,12 @@ impl PyTorchCudaManager {
     }
 
     /// Apply pruning optimization
-    async fn apply_pruning(&self, _session: &PyTorchSession, _sparsity: f64, _structured: bool) -> Result<()> {
+    async fn apply_pruning(
+        &self,
+        _session: &PyTorchSession,
+        _sparsity: f64,
+        _structured: bool,
+    ) -> Result<()> {
         // Implementation would apply PyTorch pruning
         debug!("Applying model pruning");
         Ok(())
@@ -1586,7 +1648,8 @@ impl PyTorchCudaManager {
             session.last_activity = chrono::Utc::now();
 
             // Deallocate resources
-            self.deallocate_resources(&session.resource_allocation).await?;
+            self.deallocate_resources(&session.resource_allocation)
+                .await?;
 
             session.status = PyTorchSessionStatus::Stopped;
         }
@@ -1638,7 +1701,8 @@ impl PyTorchCudaManager {
         // Distributed configuration
         if let Some(dist_config) = &session.distributed_config {
             config.push_str("\n# Distributed Configuration\n");
-            config.push_str(&format!("dist.init_process_group(backend='{}', rank={}, world_size={})\n",
+            config.push_str(&format!(
+                "dist.init_process_group(backend='{}', rank={}, world_size={})\n",
                 match dist_config.backend {
                     DistributedBackend::Nccl => "nccl",
                     DistributedBackend::Gloo => "gloo",
@@ -1664,7 +1728,8 @@ impl CudaMemoryManager {
 
     pub async fn get_memory_statistics(&self, device_id: u32) -> Result<MemoryStatistics> {
         let stats = self.memory_stats.read().unwrap();
-        stats.get(&device_id)
+        stats
+            .get(&device_id)
             .cloned()
             .ok_or_else(|| anyhow!("Memory statistics not found for device: {}", device_id))
     }

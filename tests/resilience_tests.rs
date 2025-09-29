@@ -4,15 +4,15 @@
 //! various failure conditions gracefully
 
 use anyhow::Result;
-use nvbind::gpu;
-use nvbind::runtime;
 use nvbind::cdi;
 use nvbind::config::{Config, ConfigManager};
+use nvbind::gpu;
 use nvbind::graceful_degradation::GracefulDegradationHandler;
+use nvbind::runtime;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::{sleep, timeout};
-use std::collections::HashMap;
 
 /// Failure injection modes
 #[derive(Debug, Clone)]
@@ -74,9 +74,15 @@ impl ResilienceTestResults {
         println!("  Successful recoveries: {}", self.successful_recoveries);
         println!("  Failed recoveries: {}", self.failed_recoveries);
         println!("  Recovery rate: {:.2}%", self.recovery_rate());
-        println!("  Average recovery time: {:.2} ms", self.average_recovery_time_ms);
+        println!(
+            "  Average recovery time: {:.2} ms",
+            self.average_recovery_time_ms
+        );
         println!("  Max recovery time: {} ms", self.max_recovery_time_ms);
-        println!("  Degradation activations: {}", self.degradation_activations);
+        println!(
+            "  Degradation activations: {}",
+            self.degradation_activations
+        );
 
         if !self.failure_types.is_empty() {
             println!("  Failure type breakdown:");
@@ -94,7 +100,9 @@ pub struct FailureInjector {
 
 impl FailureInjector {
     pub fn new(failure_probability: f64) -> Self {
-        Self { failure_probability }
+        Self {
+            failure_probability,
+        }
     }
 
     pub fn should_inject_failure(&self) -> bool {
@@ -110,7 +118,9 @@ impl FailureInjector {
         if self.should_inject_failure() {
             match operation_type {
                 "gpu_discovery" => Err(anyhow::anyhow!("Simulated GPU discovery failure")),
-                "runtime_validation" => Err(anyhow::anyhow!("Simulated runtime validation failure")),
+                "runtime_validation" => {
+                    Err(anyhow::anyhow!("Simulated runtime validation failure"))
+                }
                 "cdi_generation" => Err(anyhow::anyhow!("Simulated CDI generation failure")),
                 "config_load" => Err(anyhow::anyhow!("Simulated config loading failure")),
                 _ => Err(anyhow::anyhow!("Simulated generic failure")),
@@ -193,17 +203,23 @@ impl ResilienceTestRunner {
             // Simulate failure injection
             if let Err(e) = self.failure_injector.inject_failure("gpu_discovery") {
                 results.failures_injected += 1;
-                *results.failure_types.entry("gpu_discovery".to_string()).or_insert(0) += 1;
+                *results
+                    .failure_types
+                    .entry("gpu_discovery".to_string())
+                    .or_insert(0) += 1;
 
                 println!("Failure injected: {}", e);
 
                 // Test recovery mechanism
                 let recovery_start = Instant::now();
 
-                let recovery_result = self.recovery_manager.execute_with_recovery(|| {
-                    // Simulate recovery attempt with simple mock result
-                    Ok(())
-                }).await;
+                let recovery_result = self
+                    .recovery_manager
+                    .execute_with_recovery(|| {
+                        // Simulate recovery attempt with simple mock result
+                        Ok(())
+                    })
+                    .await;
 
                 let recovery_time = recovery_start.elapsed();
                 recovery_times.push(recovery_time.as_millis() as u64);
@@ -226,7 +242,10 @@ impl ResilienceTestRunner {
                     }
                     Err(e) => {
                         println!("Unexpected failure: {}", e);
-                        *results.failure_types.entry("unexpected".to_string()).or_insert(0) += 1;
+                        *results
+                            .failure_types
+                            .entry("unexpected".to_string())
+                            .or_insert(0) += 1;
                     }
                 }
             }
@@ -236,7 +255,8 @@ impl ResilienceTestRunner {
 
         // Calculate recovery time statistics
         if !recovery_times.is_empty() {
-            results.average_recovery_time_ms = recovery_times.iter().sum::<u64>() as f64 / recovery_times.len() as f64;
+            results.average_recovery_time_ms =
+                recovery_times.iter().sum::<u64>() as f64 / recovery_times.len() as f64;
             results.max_recovery_time_ms = *recovery_times.iter().max().unwrap();
         }
 
@@ -260,17 +280,26 @@ impl ResilienceTestRunner {
                 // Simulate failure injection
                 if let Err(e) = self.failure_injector.inject_failure("runtime_validation") {
                     results.failures_injected += 1;
-                    *results.failure_types.entry("runtime_validation".to_string()).or_insert(0) += 1;
+                    *results
+                        .failure_types
+                        .entry("runtime_validation".to_string())
+                        .or_insert(0) += 1;
 
-                    println!("Runtime validation failure injected for {}: {}", runtime_name, e);
+                    println!(
+                        "Runtime validation failure injected for {}: {}",
+                        runtime_name, e
+                    );
 
                     // Test recovery mechanism
                     let recovery_start = Instant::now();
 
-                    let recovery_result = self.recovery_manager.execute_with_recovery(|| {
-                        // Simulate recovery attempt with fallback runtime
-                        runtime::validate_runtime("docker")
-                    }).await;
+                    let recovery_result = self
+                        .recovery_manager
+                        .execute_with_recovery(|| {
+                            // Simulate recovery attempt with fallback runtime
+                            runtime::validate_runtime("docker")
+                        })
+                        .await;
 
                     let recovery_time = recovery_start.elapsed();
                     recovery_times.push(recovery_time.as_millis() as u64);
@@ -278,7 +307,10 @@ impl ResilienceTestRunner {
                     match recovery_result {
                         Ok(_) => {
                             results.successful_recoveries += 1;
-                            println!("Runtime validation recovery successful in {:?}", recovery_time);
+                            println!(
+                                "Runtime validation recovery successful in {:?}",
+                                recovery_time
+                            );
                         }
                         Err(e) => {
                             results.failed_recoveries += 1;
@@ -292,8 +324,14 @@ impl ResilienceTestRunner {
                             // Success
                         }
                         Err(e) => {
-                            println!("Unexpected runtime validation failure for {}: {}", runtime_name, e);
-                            *results.failure_types.entry("unexpected".to_string()).or_insert(0) += 1;
+                            println!(
+                                "Unexpected runtime validation failure for {}: {}",
+                                runtime_name, e
+                            );
+                            *results
+                                .failure_types
+                                .entry("unexpected".to_string())
+                                .or_insert(0) += 1;
                         }
                     }
                 }
@@ -308,7 +346,8 @@ impl ResilienceTestRunner {
 
         // Calculate recovery time statistics
         if !recovery_times.is_empty() {
-            results.average_recovery_time_ms = recovery_times.iter().sum::<u64>() as f64 / recovery_times.len() as f64;
+            results.average_recovery_time_ms =
+                recovery_times.iter().sum::<u64>() as f64 / recovery_times.len() as f64;
             results.max_recovery_time_ms = *recovery_times.iter().max().unwrap();
         }
 
@@ -330,17 +369,23 @@ impl ResilienceTestRunner {
             // Simulate failure injection
             if let Err(e) = self.failure_injector.inject_failure("cdi_generation") {
                 results.failures_injected += 1;
-                *results.failure_types.entry("cdi_generation".to_string()).or_insert(0) += 1;
+                *results
+                    .failure_types
+                    .entry("cdi_generation".to_string())
+                    .or_insert(0) += 1;
 
                 println!("CDI generation failure injected: {}", e);
 
                 // Test recovery mechanism
                 let recovery_start = Instant::now();
 
-                let recovery_result = self.recovery_manager.execute_with_recovery(|| {
-                    // Simulate recovery attempt with simplified CDI spec
-                    futures::executor::block_on(cdi::generate_nvidia_cdi_spec())
-                }).await;
+                let recovery_result = self
+                    .recovery_manager
+                    .execute_with_recovery(|| {
+                        // Simulate recovery attempt with simplified CDI spec
+                        futures::executor::block_on(cdi::generate_nvidia_cdi_spec())
+                    })
+                    .await;
 
                 let recovery_time = recovery_start.elapsed();
                 recovery_times.push(recovery_time.as_millis() as u64);
@@ -363,7 +408,10 @@ impl ResilienceTestRunner {
                     }
                     Err(e) => {
                         println!("Unexpected CDI generation failure: {}", e);
-                        *results.failure_types.entry("unexpected".to_string()).or_insert(0) += 1;
+                        *results
+                            .failure_types
+                            .entry("unexpected".to_string())
+                            .or_insert(0) += 1;
                     }
                 }
             }
@@ -377,7 +425,8 @@ impl ResilienceTestRunner {
 
         // Calculate recovery time statistics
         if !recovery_times.is_empty() {
-            results.average_recovery_time_ms = recovery_times.iter().sum::<u64>() as f64 / recovery_times.len() as f64;
+            results.average_recovery_time_ms =
+                recovery_times.iter().sum::<u64>() as f64 / recovery_times.len() as f64;
             results.max_recovery_time_ms = *recovery_times.iter().max().unwrap();
         }
 
@@ -391,11 +440,16 @@ impl ResilienceTestRunner {
         let mut results = ResilienceTestResults::default();
 
         // Simulate a cascading failure scenario
-        println!("Simulating cascading failure: GPU discovery -> Runtime validation -> CDI generation");
+        println!(
+            "Simulating cascading failure: GPU discovery -> Runtime validation -> CDI generation"
+        );
 
         results.total_operations += 1;
         results.failures_injected += 1;
-        *results.failure_types.entry("cascading_failure".to_string()).or_insert(0) += 1;
+        *results
+            .failure_types
+            .entry("cascading_failure".to_string())
+            .or_insert(0) += 1;
 
         let recovery_start = Instant::now();
 
@@ -417,15 +471,17 @@ impl ResilienceTestRunner {
         let recovery_time = recovery_start.elapsed();
 
         // Evaluate overall system resilience
-        let systems_recovered = [
-            runtime_result.is_ok(),
-            cdi_result.is_ok(),
-        ].iter().filter(|&&x| x).count();
+        let systems_recovered = [runtime_result.is_ok(), cdi_result.is_ok()]
+            .iter()
+            .filter(|&&x| x)
+            .count();
 
         if systems_recovered >= 1 {
             results.successful_recoveries += 1;
-            println!("Cascading failure recovery successful: {}/2 systems recovered in {:?}",
-                    systems_recovered, recovery_time);
+            println!(
+                "Cascading failure recovery successful: {}/2 systems recovered in {:?}",
+                systems_recovered, recovery_time
+            );
         } else {
             results.failed_recoveries += 1;
             println!("Cascading failure recovery failed: no systems recovered");
@@ -453,8 +509,11 @@ async fn test_basic_resilience() -> Result<()> {
     results.print_summary("Basic Resilience Test");
 
     // Assert that system can recover from at least 50% of failures
-    assert!(results.recovery_rate() >= 50.0,
-           "Recovery rate too low: {:.2}%", results.recovery_rate());
+    assert!(
+        results.recovery_rate() >= 50.0,
+        "Recovery rate too low: {:.2}%",
+        results.recovery_rate()
+    );
 
     println!("✓ Basic resilience test completed");
     Ok(())
@@ -474,8 +533,11 @@ async fn test_runtime_validation_resilience() -> Result<()> {
 
     results.print_summary("Runtime Validation Resilience Test");
 
-    assert!(results.recovery_rate() >= 70.0,
-           "Runtime validation recovery rate too low: {:.2}%", results.recovery_rate());
+    assert!(
+        results.recovery_rate() >= 70.0,
+        "Runtime validation recovery rate too low: {:.2}%",
+        results.recovery_rate()
+    );
 
     println!("✓ Runtime validation resilience test completed");
     Ok(())
@@ -495,8 +557,11 @@ async fn test_cdi_generation_resilience() -> Result<()> {
 
     results.print_summary("CDI Generation Resilience Test");
 
-    assert!(results.recovery_rate() >= 60.0,
-           "CDI generation recovery rate too low: {:.2}%", results.recovery_rate());
+    assert!(
+        results.recovery_rate() >= 60.0,
+        "CDI generation recovery rate too low: {:.2}%",
+        results.recovery_rate()
+    );
 
     println!("✓ CDI generation resilience test completed");
     Ok(())
@@ -516,8 +581,10 @@ async fn test_cascading_failure_resilience() -> Result<()> {
     results.print_summary("Cascading Failure Resilience Test");
 
     // For cascading failures, even partial recovery is considered success
-    assert!(results.recovery_rate() >= 0.0,
-           "Cascading failure test should complete without panicking");
+    assert!(
+        results.recovery_rate() >= 0.0,
+        "Cascading failure test should complete without panicking"
+    );
 
     println!("✓ Cascading failure resilience test completed");
     Ok(())
@@ -539,8 +606,11 @@ async fn test_high_failure_rate_resilience() -> Result<()> {
     results.print_summary("High Failure Rate Resilience Test");
 
     // Even with high failure rates, system should recover some operations
-    assert!(results.recovery_rate() >= 20.0,
-           "High failure rate recovery too low: {:.2}%", results.recovery_rate());
+    assert!(
+        results.recovery_rate() >= 20.0,
+        "High failure rate recovery too low: {:.2}%",
+        results.recovery_rate()
+    );
 
     println!("✓ High failure rate resilience test completed");
     Ok(())

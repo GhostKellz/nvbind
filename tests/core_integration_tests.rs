@@ -3,11 +3,11 @@
 //! These tests validate the main GPU passthrough and container execution features.
 
 use anyhow::Result;
+use nvbind::cdi::{CdiRegistry, generate_nvidia_cdi_spec};
 use nvbind::config::Config;
-use nvbind::gpu::{discover_gpus, get_driver_info, DriverType};
-use nvbind::runtime::{validate_runtime, run_with_config};
-use nvbind::cdi::{generate_nvidia_cdi_spec, CdiRegistry};
-use nvbind::distro::{DistroManager, Distribution};
+use nvbind::distro::{Distribution, DistroManager};
+use nvbind::gpu::{DriverType, discover_gpus, get_driver_info};
+use nvbind::runtime::{run_with_config, validate_runtime};
 use std::process::Command;
 use tempfile::TempDir;
 
@@ -72,13 +72,13 @@ fn test_distribution_compatibility() -> Result<()> {
     // Verify distribution detection
     assert!(matches!(
         compatibility.distribution,
-        Distribution::Ubuntu |
-        Distribution::Debian |
-        Distribution::Fedora |
-        Distribution::Arch |
-        Distribution::OpenSUSE |
-        Distribution::RHEL |
-        Distribution::Unknown(_)
+        Distribution::Ubuntu
+            | Distribution::Debian
+            | Distribution::Fedora
+            | Distribution::Arch
+            | Distribution::OpenSUSE
+            | Distribution::RHEL
+            | Distribution::Unknown(_)
     ));
 
     println!(
@@ -89,7 +89,11 @@ fn test_distribution_compatibility() -> Result<()> {
 
     // Check container runtime availability
     for (runtime, available) in &compatibility.container_runtime_available {
-        println!("Runtime {}: {}", runtime, if *available { "✓" } else { "✗" });
+        println!(
+            "Runtime {}: {}",
+            runtime,
+            if *available { "✓" } else { "✗" }
+        );
     }
 
     // Check recommendations
@@ -144,11 +148,7 @@ async fn test_cdi_spec_generation_and_registry() -> Result<()> {
 /// Test runtime validation for all supported container runtimes
 #[test]
 fn test_all_runtime_validation() {
-    let runtimes = vec![
-        ("docker", "Docker"),
-        ("podman", "Podman"),
-        ("bolt", "Bolt"),
-    ];
+    let runtimes = vec![("docker", "Docker"), ("podman", "Podman"), ("bolt", "Bolt")];
 
     for (cmd, name) in runtimes {
         let result = validate_runtime(cmd);
@@ -158,9 +158,7 @@ fn test_all_runtime_validation() {
                 println!("✓ {} runtime is available", name);
 
                 // Additional validation - check version command works
-                let version_check = Command::new(cmd)
-                    .arg("--version")
-                    .output();
+                let version_check = Command::new(cmd).arg("--version").output();
 
                 if let Ok(output) = version_check {
                     if output.status.success() {
@@ -188,10 +186,10 @@ fn test_config_environment_setup() -> Result<()> {
     );
 
     // Test adding custom environment variables
-    config.runtime.environment.insert(
-        "CUSTOM_GPU_VAR".to_string(),
-        "test_value".to_string()
-    );
+    config
+        .runtime
+        .environment
+        .insert("CUSTOM_GPU_VAR".to_string(), "test_value".to_string());
 
     // Test GPU selection configurations
     assert_eq!(config.get_gpu_selection(None), "all");
@@ -218,7 +216,7 @@ fn test_config_environment_setup() -> Result<()> {
 /// Test WSL2 detection and GPU support
 #[tokio::test]
 async fn test_wsl2_gpu_support() {
-    use nvbind::wsl2::{Wsl2Manager, Wsl2GpuSupport};
+    use nvbind::wsl2::{Wsl2GpuSupport, Wsl2Manager};
 
     if Wsl2Manager::detect_wsl2() {
         println!("WSL2 environment detected");
@@ -227,7 +225,13 @@ async fn test_wsl2_gpu_support() {
         let gpu_support = manager.check_gpu_support().unwrap();
 
         match gpu_support {
-            Wsl2GpuSupport::Available { cuda, opencl, directx, opengl, vulkan } => {
+            Wsl2GpuSupport::Available {
+                cuda,
+                opencl,
+                directx,
+                opengl,
+                vulkan,
+            } => {
                 println!("WSL2 GPU support available:");
                 println!("  CUDA: {}", if cuda { "✓" } else { "✗" });
                 println!("  OpenCL: {}", if opencl { "✓" } else { "✗" });
@@ -263,7 +267,7 @@ fn test_isolation_manager() -> Result<()> {
             let container_result = manager.create_isolated_container(
                 "test-container",
                 Some("ai-ml"),
-                vec!["gpu0".to_string()]
+                vec!["gpu0".to_string()],
             );
 
             match container_result {
@@ -273,7 +277,10 @@ fn test_isolation_manager() -> Result<()> {
                     assert!(!container.id.is_empty());
                 }
                 Err(e) => {
-                    println!("Container creation failed (expected without privileges): {}", e);
+                    println!(
+                        "Container creation failed (expected without privileges): {}",
+                        e
+                    );
                 }
             }
         }
@@ -295,15 +302,16 @@ async fn test_error_handling_and_recovery() {
         "invalid_runtime".to_string(),
         "gpu999".to_string(),
         "test/image".to_string(),
-        vec![]
-    ).await;
+        vec![],
+    )
+    .await;
 
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(
-        error_msg.contains("invalid_runtime") ||
-        error_msg.contains("not available") ||
-        error_msg.contains("NVIDIA")
+        error_msg.contains("invalid_runtime")
+            || error_msg.contains("not available")
+            || error_msg.contains("NVIDIA")
     );
 
     // Test missing image
@@ -312,8 +320,9 @@ async fn test_error_handling_and_recovery() {
         "echo".to_string(), // Use echo as a "runtime" for testing
         "all".to_string(),
         "nonexistent/image:notreal".to_string(),
-        vec![]
-    ).await;
+        vec![],
+    )
+    .await;
 
     // Should fail gracefully
     assert!(result.is_err());
@@ -322,9 +331,9 @@ async fn test_error_handling_and_recovery() {
 /// Test concurrent CDI registry access
 #[tokio::test]
 async fn test_concurrent_cdi_access() {
-    use tokio::task;
     use std::sync::Arc;
     use tokio::sync::RwLock;
+    use tokio::task;
 
     let registry = Arc::new(RwLock::new(CdiRegistry::new()));
 
@@ -369,7 +378,10 @@ async fn test_concurrent_cdi_access() {
     // Verify all specs were registered
     let reg = registry.read().await;
     let devices = reg.list_devices();
-    println!("Final device count after concurrent access: {}", devices.len());
+    println!(
+        "Final device count after concurrent access: {}",
+        devices.len()
+    );
 }
 
 /// Test performance profiling integration
@@ -389,7 +401,7 @@ async fn test_performance_profiling() -> Result<()> {
 /// Test service mesh functionality
 #[tokio::test]
 async fn test_service_mesh_basic() -> Result<()> {
-    use nvbind::mesh::{ServiceMesh, MeshConfig, ServiceInstance};
+    use nvbind::mesh::{MeshConfig, ServiceInstance, ServiceMesh};
     use uuid::Uuid;
 
     let config = MeshConfig::default();

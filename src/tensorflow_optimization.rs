@@ -1,11 +1,11 @@
+use anyhow::{Result, anyhow};
+use chrono::Timelike;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use chrono::Timelike;
 
 /// TensorFlow GPU Allocation and Optimization Module
 /// Provides optimized GPU allocation for TensorFlow Serving, training, and inference workloads
@@ -489,7 +489,10 @@ pub struct AllocationRule {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RuleCondition {
     /// Model size condition
-    ModelSize { min_bytes: Option<u64>, max_bytes: Option<u64> },
+    ModelSize {
+        min_bytes: Option<u64>,
+        max_bytes: Option<u64>,
+    },
     /// Session type condition
     SessionType(SessionType),
     /// User/namespace condition
@@ -688,19 +691,30 @@ impl TensorFlowGpuManager {
     ) -> Result<String> {
         let session_id = Uuid::new_v4().to_string();
 
-        info!("Creating TensorFlow session: {} (type: {:?})", session_id, session_type);
+        info!(
+            "Creating TensorFlow session: {} (type: {:?})",
+            session_id, session_type
+        );
 
         // Determine allocation strategy based on policy
-        let allocation_strategy = self.determine_allocation_strategy(&session_type, &model_info, &resource_requirements).await?;
+        let allocation_strategy = self
+            .determine_allocation_strategy(&session_type, &model_info, &resource_requirements)
+            .await?;
 
         // Allocate GPU resources
-        let gpu_allocation = self.allocate_gpu_resources(&allocation_strategy, &resource_requirements).await?;
+        let gpu_allocation = self
+            .allocate_gpu_resources(&allocation_strategy, &resource_requirements)
+            .await?;
 
         // Create performance configuration
-        let performance_config = self.create_performance_config(&session_type, &model_info).await?;
+        let performance_config = self
+            .create_performance_config(&session_type, &model_info)
+            .await?;
 
         // Create container configuration
-        let container_config = self.create_container_config(&session_type, &gpu_allocation).await?;
+        let container_config = self
+            .create_container_config(&session_type, &gpu_allocation)
+            .await?;
 
         let session = TensorFlowSession {
             session_id: session_id.clone(),
@@ -737,10 +751,20 @@ impl TensorFlowGpuManager {
         // Apply allocation policies in priority order
         for policy in policies.values() {
             for rule in &policy.rules {
-                if self.evaluate_rule_condition(&rule.condition, session_type, model_info, resource_requirements).await? {
+                if self
+                    .evaluate_rule_condition(
+                        &rule.condition,
+                        session_type,
+                        model_info,
+                        resource_requirements,
+                    )
+                    .await?
+                {
                     match &rule.action {
                         RuleAction::UseStrategy(strategy) => return Ok(strategy.clone()),
-                        RuleAction::Deny(reason) => return Err(anyhow!("Allocation denied: {}", reason)),
+                        RuleAction::Deny(reason) => {
+                            return Err(anyhow!("Allocation denied: {}", reason));
+                        }
                         _ => continue,
                     }
                 }
@@ -766,35 +790,45 @@ impl TensorFlowGpuManager {
         _resource_requirements: &ResourceLimits,
     ) -> Result<bool> {
         match condition {
-            RuleCondition::ModelSize { min_bytes, max_bytes } => {
+            RuleCondition::ModelSize {
+                min_bytes,
+                max_bytes,
+            } => {
                 if let Some(model) = model_info {
                     let size = model.model_size_bytes;
                     if let Some(min) = min_bytes {
-                        if size < *min { return Ok(false); }
+                        if size < *min {
+                            return Ok(false);
+                        }
                     }
                     if let Some(max) = max_bytes {
-                        if size > *max { return Ok(false); }
+                        if size > *max {
+                            return Ok(false);
+                        }
                     }
                     Ok(true)
                 } else {
                     Ok(false)
                 }
-            },
+            }
             RuleCondition::SessionType(rule_type) => {
                 Ok(std::mem::discriminant(session_type) == std::mem::discriminant(rule_type))
-            },
+            }
             RuleCondition::Namespace(_namespace) => {
                 // Implementation would check user namespace
                 Ok(true)
-            },
-            RuleCondition::TimeWindow { start_hour, end_hour } => {
+            }
+            RuleCondition::TimeWindow {
+                start_hour,
+                end_hour,
+            } => {
                 let current_hour = chrono::Utc::now().hour() as u8;
                 Ok(current_hour >= *start_hour && current_hour <= *end_hour)
-            },
+            }
             RuleCondition::ResourceAvailability { min_gpu_memory_gb } => {
                 let available_memory = self.get_available_gpu_memory().await?;
                 Ok(available_memory >= *min_gpu_memory_gb)
-            },
+            }
         }
     }
 
@@ -813,20 +847,25 @@ impl TensorFlowGpuManager {
 
         match strategy {
             AllocationStrategy::Exclusive => {
-                self.allocate_exclusive_gpu(&available_gpus, resource_requirements).await
-            },
+                self.allocate_exclusive_gpu(&available_gpus, resource_requirements)
+                    .await
+            }
             AllocationStrategy::SharedMemory => {
-                self.allocate_shared_memory_gpu(&available_gpus, resource_requirements).await
-            },
+                self.allocate_shared_memory_gpu(&available_gpus, resource_requirements)
+                    .await
+            }
             AllocationStrategy::TimeSliced => {
-                self.allocate_time_sliced_gpu(&available_gpus, resource_requirements).await
-            },
+                self.allocate_time_sliced_gpu(&available_gpus, resource_requirements)
+                    .await
+            }
             AllocationStrategy::MultiInstance => {
-                self.allocate_mig_gpu(&available_gpus, resource_requirements).await
-            },
+                self.allocate_mig_gpu(&available_gpus, resource_requirements)
+                    .await
+            }
             AllocationStrategy::Fractional(fraction) => {
-                self.allocate_fractional_gpu(&available_gpus, resource_requirements, *fraction).await
-            },
+                self.allocate_fractional_gpu(&available_gpus, resource_requirements, *fraction)
+                    .await
+            }
         }
     }
 
@@ -839,7 +878,8 @@ impl TensorFlowGpuManager {
         let gpu_id = available_gpus[0].clone();
         let total_memory = self.get_gpu_memory(&gpu_id).await?;
 
-        let memory_to_allocate = resource_requirements.max_gpu_memory_bytes
+        let memory_to_allocate = resource_requirements
+            .max_gpu_memory_bytes
             .unwrap_or(total_memory);
 
         let mut memory_per_gpu = HashMap::new();
@@ -866,7 +906,8 @@ impl TensorFlowGpuManager {
         let gpu_id = available_gpus[0].clone();
         let total_memory = self.get_gpu_memory(&gpu_id).await?;
 
-        let memory_to_allocate = resource_requirements.max_gpu_memory_bytes
+        let memory_to_allocate = resource_requirements
+            .max_gpu_memory_bytes
             .unwrap_or(total_memory / 4); // Default to 1/4 of GPU memory
 
         let mut memory_per_gpu = HashMap::new();
@@ -893,7 +934,8 @@ impl TensorFlowGpuManager {
         let gpu_id = available_gpus[0].clone();
         let total_memory = self.get_gpu_memory(&gpu_id).await?;
 
-        let memory_to_allocate = resource_requirements.max_gpu_memory_bytes
+        let memory_to_allocate = resource_requirements
+            .max_gpu_memory_bytes
             .unwrap_or(total_memory / 2);
 
         let mut memory_per_gpu = HashMap::new();
@@ -921,7 +963,8 @@ impl TensorFlowGpuManager {
         let gpu_id = available_gpus[0].clone();
         let total_memory = self.get_gpu_memory(&gpu_id).await?;
 
-        let memory_to_allocate = resource_requirements.max_gpu_memory_bytes
+        let memory_to_allocate = resource_requirements
+            .max_gpu_memory_bytes
             .unwrap_or(total_memory / 7); // MIG slice (1g.5gb)
 
         let mut memory_per_gpu = HashMap::new();
@@ -949,7 +992,8 @@ impl TensorFlowGpuManager {
         let gpu_id = available_gpus[0].clone();
         let total_memory = self.get_gpu_memory(&gpu_id).await?;
 
-        let memory_to_allocate = resource_requirements.max_gpu_memory_bytes
+        let memory_to_allocate = resource_requirements
+            .max_gpu_memory_bytes
             .unwrap_or((total_memory as f64 * fraction) as u64);
 
         let mut memory_per_gpu = HashMap::new();
@@ -1037,25 +1081,24 @@ impl TensorFlowGpuManager {
         };
 
         let mut environment = HashMap::new();
-        environment.insert("CUDA_VISIBLE_DEVICES".to_string(), gpu_allocation.gpu_ids.join(","));
+        environment.insert(
+            "CUDA_VISIBLE_DEVICES".to_string(),
+            gpu_allocation.gpu_ids.join(","),
+        );
         environment.insert("TF_FORCE_GPU_ALLOW_GROWTH".to_string(), "true".to_string());
 
-        let volumes = vec![
-            VolumeMount {
-                host_path: "/tmp/tensorflow-models".to_string(),
-                container_path: "/models".to_string(),
-                read_only: true,
-            }
-        ];
+        let volumes = vec![VolumeMount {
+            host_path: "/tmp/tensorflow-models".to_string(),
+            container_path: "/models".to_string(),
+            read_only: true,
+        }];
 
         let network_config = NetworkConfig {
-            port_mappings: vec![
-                PortMapping {
-                    host_port: 8501,
-                    container_port: 8501,
-                    protocol: "tcp".to_string(),
-                }
-            ],
+            port_mappings: vec![PortMapping {
+                host_port: 8501,
+                container_port: 8501,
+                protocol: "tcp".to_string(),
+            }],
             network_mode: "bridge".to_string(),
         };
 
@@ -1102,7 +1145,8 @@ impl TensorFlowGpuManager {
             session.last_activity = chrono::Utc::now();
 
             // Deallocate GPU resources
-            self.deallocate_gpu_resources(&session.gpu_allocation).await?;
+            self.deallocate_gpu_resources(&session.gpu_allocation)
+                .await?;
 
             session.status = SessionStatus::Terminated;
         }
@@ -1159,8 +1203,12 @@ impl TensorFlowGpuManager {
         }
 
         if let Some(fraction) = config.gpu_config.memory_fraction {
-            tf_config.push_str(&format!("    tf.config.experimental.set_memory_growth(gpus[0], False)\n"));
-            tf_config.push_str(&format!("    tf.config.experimental.set_virtual_device_configuration(\n"));
+            tf_config.push_str(&format!(
+                "    tf.config.experimental.set_memory_growth(gpus[0], False)\n"
+            ));
+            tf_config.push_str(&format!(
+                "    tf.config.experimental.set_virtual_device_configuration(\n"
+            ));
             tf_config.push_str(&format!("        gpus[0],\n"));
             tf_config.push_str(&format!("        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=int({} * 1024))])\n", fraction * 16384.0));
         }
@@ -1177,7 +1225,10 @@ impl TensorFlowGpuManager {
                 MixedPrecisionPolicy::MixedBfloat16 => "mixed_bfloat16",
                 MixedPrecisionPolicy::Custom(name) => name,
             };
-            tf_config.push_str(&format!("policy = tf.keras.mixed_precision.Policy('{}')\n", policy_name));
+            tf_config.push_str(&format!(
+                "policy = tf.keras.mixed_precision.Policy('{}')\n",
+                policy_name
+            ));
             tf_config.push_str("tf.keras.mixed_precision.set_global_policy(policy)\n");
         }
 
@@ -1196,12 +1247,17 @@ impl ResourceMonitor {
 
     pub async fn get_session_metrics(&self, session_id: &str) -> Result<SessionMetrics> {
         let metrics = self.session_metrics.read().unwrap();
-        metrics.get(session_id)
+        metrics
+            .get(session_id)
             .cloned()
             .ok_or_else(|| anyhow!("Session metrics not found for: {}", session_id))
     }
 
-    pub async fn update_session_metrics(&self, session_id: &str, metrics: SessionMetrics) -> Result<()> {
+    pub async fn update_session_metrics(
+        &self,
+        session_id: &str,
+        metrics: SessionMetrics,
+    ) -> Result<()> {
         let mut session_metrics = self.session_metrics.write().unwrap();
         session_metrics.insert(session_id.to_string(), metrics);
         Ok(())

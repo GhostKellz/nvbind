@@ -1,8 +1,8 @@
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -129,13 +129,20 @@ pub struct PromotionRule {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PromotionCondition {
     /// Metric threshold
-    MetricThreshold { metric_name: String, threshold: f64, comparison: Comparison },
+    MetricThreshold {
+        metric_name: String,
+        threshold: f64,
+        comparison: Comparison,
+    },
     /// Minimum number of runs
     MinimumRuns(u32),
     /// Manual approval required
     ManualApproval,
     /// GPU performance threshold
-    GpuPerformanceThreshold { min_gpu_utilization: f64, max_gpu_memory: u64 },
+    GpuPerformanceThreshold {
+        min_gpu_utilization: f64,
+        max_gpu_memory: u64,
+    },
 }
 
 /// Comparison operator
@@ -824,7 +831,10 @@ impl MlflowIntegrationManager {
     ) -> Result<String> {
         let experiment_id = Uuid::new_v4().to_string();
 
-        info!("Creating MLflow experiment: {} ({})", experiment_name, experiment_id);
+        info!(
+            "Creating MLflow experiment: {} ({})",
+            experiment_name, experiment_id
+        );
 
         let experiment = MlflowExperiment {
             experiment_id: experiment_id.clone(),
@@ -853,7 +863,10 @@ impl MlflowIntegrationManager {
     ) -> Result<String> {
         let run_id = Uuid::new_v4().to_string();
 
-        info!("Starting MLflow run: {} in experiment: {}", run_id, experiment_id);
+        info!(
+            "Starting MLflow run: {} in experiment: {}",
+            run_id, experiment_id
+        );
 
         let run = MlflowRun {
             run_id: run_id.clone(),
@@ -873,7 +886,8 @@ impl MlflowIntegrationManager {
         // Add run to experiment
         {
             let mut experiments = self.experiments.write().unwrap();
-            let experiment = experiments.get_mut(&experiment_id)
+            let experiment = experiments
+                .get_mut(&experiment_id)
                 .ok_or_else(|| anyhow!("Experiment not found: {}", experiment_id))?;
             experiment.runs.insert(run_id.clone(), run);
             experiment.last_update_time = chrono::Utc::now();
@@ -882,7 +896,8 @@ impl MlflowIntegrationManager {
         // Start GPU tracking if enabled
         let experiment = {
             let experiments = self.experiments.read().unwrap();
-            experiments.get(&experiment_id)
+            experiments
+                .get(&experiment_id)
                 .ok_or_else(|| anyhow!("Experiment not found: {}", experiment_id))?
                 .clone()
         };
@@ -911,7 +926,13 @@ impl MlflowIntegrationManager {
     }
 
     /// Log metric
-    pub async fn log_metric(&self, run_id: &str, key: String, value: f64, step: Option<u64>) -> Result<()> {
+    pub async fn log_metric(
+        &self,
+        run_id: &str,
+        key: String,
+        value: f64,
+        step: Option<u64>,
+    ) -> Result<()> {
         debug!("Logging metric: {} = {} for run: {}", key, value, run_id);
 
         let metric_value = MetricValue {
@@ -932,7 +953,12 @@ impl MlflowIntegrationManager {
     }
 
     /// Log artifact
-    pub async fn log_artifact(&self, run_id: &str, artifact_path: String, local_path: PathBuf) -> Result<()> {
+    pub async fn log_artifact(
+        &self,
+        run_id: &str,
+        artifact_path: String,
+        local_path: PathBuf,
+    ) -> Result<()> {
         info!("Logging artifact: {} for run: {}", artifact_path, run_id);
 
         // Get file info
@@ -941,7 +967,9 @@ impl MlflowIntegrationManager {
         let is_dir = metadata.is_dir();
 
         // Store artifact in artifact store
-        self.artifact_store.store_artifact(&artifact_path, &local_path).await?;
+        self.artifact_store
+            .store_artifact(&artifact_path, &local_path)
+            .await?;
 
         // Update run with artifact info
         let artifact_info = ArtifactInfo {
@@ -990,7 +1018,8 @@ impl MlflowIntegrationManager {
         };
 
         // Log model as artifact
-        self.log_artifact(run_id, "model".to_string(), model_path).await?;
+        self.log_artifact(run_id, "model".to_string(), model_path)
+            .await?;
 
         // Update run with model info
         let mut experiments = self.experiments.write().unwrap();
@@ -1092,41 +1121,33 @@ impl MlflowIntegrationManager {
     /// Collect GPU metrics for a session
     async fn collect_gpu_metrics(&self, session: &GpuTrackingSession) -> Result<GpuMetrics> {
         // Implementation would collect actual GPU metrics
-        let utilization_history = vec![
-            TimestampedValue {
-                timestamp: session.start_time,
-                value: 75.0,
-            }
-        ];
+        let utilization_history = vec![TimestampedValue {
+            timestamp: session.start_time,
+            value: 75.0,
+        }];
 
-        let memory_usage_history = vec![
-            TimestampedValue {
-                timestamp: session.start_time,
-                value: 4096.0 * 1024.0 * 1024.0, // 4GB
-            }
-        ];
+        let memory_usage_history = vec![TimestampedValue {
+            timestamp: session.start_time,
+            value: 4096.0 * 1024.0 * 1024.0, // 4GB
+        }];
 
-        let temperature_history = vec![
-            TimestampedValue {
-                timestamp: session.start_time,
-                value: 68.0,
-            }
-        ];
+        let temperature_history = vec![TimestampedValue {
+            timestamp: session.start_time,
+            value: 68.0,
+        }];
 
-        let power_consumption_history = vec![
-            TimestampedValue {
-                timestamp: session.start_time,
-                value: 180.0,
-            }
-        ];
+        let power_consumption_history = vec![TimestampedValue {
+            timestamp: session.start_time,
+            value: 180.0,
+        }];
 
         let performance_stats = GpuPerformanceStats {
             avg_utilization: 75.0,
             peak_utilization: 95.0,
             avg_memory_utilization: 60.0,
             peak_memory_usage: 6 * 1024 * 1024 * 1024, // 6GB
-            training_throughput: Some(128.0), // samples/second
-            inference_latency: Some(15.0), // milliseconds
+            training_throughput: Some(128.0),          // samples/second
+            inference_latency: Some(15.0),             // milliseconds
         };
 
         Ok(GpuMetrics {
@@ -1149,12 +1170,10 @@ impl MlflowIntegrationManager {
     ) -> Result<String> {
         info!("Registering model: {}", model_name);
 
-        let version = self.model_registry.register_model(
-            model_name,
-            model_uri,
-            description,
-            tags,
-        ).await?;
+        let version = self
+            .model_registry
+            .register_model(model_name, model_uri, description, tags)
+            .await?;
 
         info!("Registered model version: {}", version);
         Ok(version)
@@ -1167,9 +1186,14 @@ impl MlflowIntegrationManager {
         version: &str,
         stage: ModelStage,
     ) -> Result<()> {
-        info!("Transitioning model {} version {} to stage: {:?}", model_name, version, stage);
+        info!(
+            "Transitioning model {} version {} to stage: {:?}",
+            model_name, version, stage
+        );
 
-        self.model_registry.transition_model_stage(model_name, version, stage).await?;
+        self.model_registry
+            .transition_model_stage(model_name, version, stage)
+            .await?;
 
         Ok(())
     }
@@ -1198,7 +1222,11 @@ impl MlflowIntegrationManager {
     }
 
     /// Search runs
-    pub fn search_runs(&self, experiment_ids: Vec<String>, filter: Option<String>) -> Vec<MlflowRun> {
+    pub fn search_runs(
+        &self,
+        experiment_ids: Vec<String>,
+        filter: Option<String>,
+    ) -> Vec<MlflowRun> {
         let experiments = self.experiments.read().unwrap();
         let mut runs = Vec::new();
 
@@ -1294,10 +1322,12 @@ impl ModelRegistry {
         stage: ModelStage,
     ) -> Result<()> {
         let mut model_versions = self.model_versions.write().unwrap();
-        let versions = model_versions.get_mut(model_name)
+        let versions = model_versions
+            .get_mut(model_name)
             .ok_or_else(|| anyhow!("Model not found: {}", model_name))?;
 
-        let model_version = versions.iter_mut()
+        let model_version = versions
+            .iter_mut()
             .find(|v| v.version == version)
             .ok_or_else(|| anyhow!("Model version not found: {} v{}", model_name, version))?;
 
@@ -1307,7 +1337,8 @@ impl ModelRegistry {
         // Update latest version for stage
         {
             let mut models = self.models.write().unwrap();
-            let model = models.get_mut(model_name)
+            let model = models
+                .get_mut(model_name)
                 .ok_or_else(|| anyhow!("Model not found: {}", model_name))?;
             model.latest_versions.insert(stage, version.to_string());
             model.last_updated_timestamp = chrono::Utc::now();

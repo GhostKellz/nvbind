@@ -4,14 +4,14 @@
 //! failure modes and ensure graceful degradation
 
 use anyhow::Result;
-use nvbind::gpu;
-use nvbind::runtime;
 use nvbind::cdi;
 use nvbind::config::{Config, ConfigManager};
+use nvbind::gpu;
+use nvbind::runtime;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::{sleep, timeout};
-use std::collections::HashMap;
 
 /// Stress test configuration
 #[derive(Debug, Clone)]
@@ -93,12 +93,13 @@ impl StressTestRunner {
         let mut latencies = Vec::new();
 
         let operations_per_batch = self.config.max_concurrent_operations;
-        let total_batches = (self.config.total_operations + operations_per_batch - 1) / operations_per_batch;
+        let total_batches =
+            (self.config.total_operations + operations_per_batch - 1) / operations_per_batch;
 
         for batch in 0..total_batches {
             let batch_size = std::cmp::min(
                 operations_per_batch,
-                self.config.total_operations - batch * operations_per_batch
+                self.config.total_operations - batch * operations_per_batch,
             );
 
             for _ in 0..batch_size {
@@ -161,7 +162,8 @@ impl StressTestRunner {
 
         // Calculate latency statistics
         if !latencies.is_empty() {
-            results.average_latency_ms = latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
+            results.average_latency_ms =
+                latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
             results.min_latency_ms = *latencies.iter().min().unwrap();
             results.max_latency_ms = *latencies.iter().max().unwrap();
         }
@@ -183,10 +185,7 @@ impl StressTestRunner {
             let handle = tokio::spawn(async move {
                 let start = Instant::now();
 
-                let result = timeout(
-                    timeout_duration,
-                    cdi::generate_nvidia_cdi_spec()
-                ).await;
+                let result = timeout(timeout_duration, cdi::generate_nvidia_cdi_spec()).await;
 
                 let latency = start.elapsed();
 
@@ -214,7 +213,8 @@ impl StressTestRunner {
 
         // Calculate latency statistics
         if !latencies.is_empty() {
-            results.average_latency_ms = latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
+            results.average_latency_ms =
+                latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
             results.min_latency_ms = *latencies.iter().min().unwrap();
             results.max_latency_ms = *latencies.iter().max().unwrap();
         }
@@ -268,7 +268,8 @@ impl StressTestRunner {
 
         // Calculate latency statistics
         if !latencies.is_empty() {
-            results.average_latency_ms = latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
+            results.average_latency_ms =
+                latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
             results.min_latency_ms = *latencies.iter().min().unwrap();
             results.max_latency_ms = *latencies.iter().max().unwrap();
         }
@@ -304,10 +305,10 @@ impl StressTestRunner {
                 let handle = tokio::spawn(async move {
                     let start = Instant::now();
 
-                    let result = timeout(
-                        timeout_duration,
-                        async { runtime::validate_runtime(&runtime_clone) }
-                    ).await;
+                    let result = timeout(timeout_duration, async {
+                        runtime::validate_runtime(&runtime_clone)
+                    })
+                    .await;
 
                     let latency = start.elapsed();
 
@@ -336,7 +337,8 @@ impl StressTestRunner {
 
         // Calculate latency statistics
         if !latencies.is_empty() {
-            results.average_latency_ms = latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
+            results.average_latency_ms =
+                latencies.iter().sum::<u64>() as f64 / latencies.len() as f64;
             results.min_latency_ms = *latencies.iter().min().unwrap();
             results.max_latency_ms = *latencies.iter().max().unwrap();
         }
@@ -349,7 +351,9 @@ impl StressTestRunner {
         &self,
         results: &mut StressTestResults,
         latencies: &mut Vec<u64>,
-        batch_results: Vec<Result<Result<(Duration, String), (Duration, String)>, tokio::task::JoinError>>
+        batch_results: Vec<
+            Result<Result<(Duration, String), (Duration, String)>, tokio::task::JoinError>,
+        >,
     ) {
         for batch_result in batch_results {
             results.total_operations += 1;
@@ -399,7 +403,11 @@ async fn test_gpu_discovery_stress() -> Result<()> {
     results.print_summary("GPU Discovery Stress Test");
 
     // Assert reasonable success rate (should handle failures gracefully)
-    assert!(results.success_rate() >= 50.0, "Success rate too low: {:.2}%", results.success_rate());
+    assert!(
+        results.success_rate() >= 50.0,
+        "Success rate too low: {:.2}%",
+        results.success_rate()
+    );
 
     println!("✓ GPU discovery stress test completed");
     Ok(())
@@ -420,7 +428,11 @@ async fn test_cdi_generation_stress() -> Result<()> {
     results.print_summary("CDI Generation Stress Test");
 
     // CDI generation should be more reliable
-    assert!(results.success_rate() >= 70.0, "Success rate too low: {:.2}%", results.success_rate());
+    assert!(
+        results.success_rate() >= 70.0,
+        "Success rate too low: {:.2}%",
+        results.success_rate()
+    );
 
     println!("✓ CDI generation stress test completed");
     Ok(())
@@ -442,7 +454,11 @@ async fn test_config_stress() -> Result<()> {
     results.print_summary("Configuration Management Stress Test");
 
     // Config operations should be very reliable
-    assert!(results.success_rate() >= 90.0, "Success rate too low: {:.2}%", results.success_rate());
+    assert!(
+        results.success_rate() >= 90.0,
+        "Success rate too low: {:.2}%",
+        results.success_rate()
+    );
 
     println!("✓ Configuration management stress test completed");
     Ok(())
@@ -463,7 +479,11 @@ async fn test_runtime_validation_stress() -> Result<()> {
     results.print_summary("Runtime Validation Stress Test");
 
     // Note: This test includes invalid runtimes, so lower success rate is expected
-    assert!(results.success_rate() >= 30.0, "Success rate too low: {:.2}%", results.success_rate());
+    assert!(
+        results.success_rate() >= 30.0,
+        "Success rate too low: {:.2}%",
+        results.success_rate()
+    );
 
     println!("✓ Runtime validation stress test completed");
     Ok(())
@@ -496,8 +516,15 @@ async fn test_extreme_edge_cases() -> Result<()> {
 
     for runtime_name in special_runtime_names {
         match runtime_manager.validate_runtime(runtime_name).await {
-            Ok(_) => println!("✓ Special runtime name '{}' handled", runtime_name.replace('\n', "\\n").replace('\0', "\\0")),
-            Err(e) => println!("✓ Special runtime name '{}' rejected: {}", runtime_name.replace('\n', "\\n").replace('\0', "\\0"), e),
+            Ok(_) => println!(
+                "✓ Special runtime name '{}' handled",
+                runtime_name.replace('\n', "\\n").replace('\0', "\\0")
+            ),
+            Err(e) => println!(
+                "✓ Special runtime name '{}' rejected: {}",
+                runtime_name.replace('\n', "\\n").replace('\0', "\\0"),
+                e
+            ),
         }
     }
 

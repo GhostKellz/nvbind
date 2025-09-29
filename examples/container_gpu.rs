@@ -21,7 +21,10 @@ async fn main() -> Result<()> {
     // Create container specification
     let mut environment = HashMap::new();
     environment.insert("NVIDIA_VISIBLE_DEVICES".to_string(), "all".to_string());
-    environment.insert("NVIDIA_DRIVER_CAPABILITIES".to_string(), "compute,utility".to_string());
+    environment.insert(
+        "NVIDIA_DRIVER_CAPABILITIES".to_string(),
+        "compute,utility".to_string(),
+    );
 
     let container_spec = ContainerSpec {
         image: "nvidia/cuda:12.0-runtime-ubuntu22.04".to_string(),
@@ -33,7 +36,10 @@ async fn main() -> Result<()> {
     println!("📋 Container Specification:");
     println!("   Image: {}", container_spec.image);
     println!("   Command: {:?}", container_spec.command);
-    println!("   Environment vars: {} set", container_spec.environment.len());
+    println!(
+        "   Environment vars: {} set",
+        container_spec.environment.len()
+    );
     println!();
 
     // This is a demonstration of how to create container specifications

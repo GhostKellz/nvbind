@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tokio::signal;
-use tokio::sync::{Semaphore, RwLock as AsyncRwLock};
+use tokio::sync::{RwLock as AsyncRwLock, Semaphore};
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
@@ -154,9 +154,11 @@ impl GpuContextPool {
         let start = Instant::now();
 
         // Use semaphore for fast acquisition
-        let _permit = self.semaphore.acquire().await.map_err(|e| {
-            anyhow::anyhow!("Failed to acquire GPU context: {}", e)
-        })?;
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to acquire GPU context: {}", e))?;
 
         let context = {
             let mut contexts = self.contexts.write().unwrap();
@@ -165,7 +167,10 @@ impl GpuContextPool {
             } else {
                 // Fallback context creation (should rarely happen with proper pool sizing)
                 GpuContext {
-                    id: format!("gpu_ctx_fallback_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)),
+                    id: format!(
+                        "gpu_ctx_fallback_{}",
+                        chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+                    ),
                     device_path: "/dev/nvidia0".to_string(),
                     initialized: true,
                     last_used: Instant::now(),
@@ -175,7 +180,10 @@ impl GpuContextPool {
 
         let elapsed = start.elapsed();
         if elapsed.as_nanos() > 1000 {
-            warn!("GPU context acquisition took {}ns (> 1000ns target)", elapsed.as_nanos());
+            warn!(
+                "GPU context acquisition took {}ns (> 1000ns target)",
+                elapsed.as_nanos()
+            );
         } else {
             debug!("GPU context acquired in {}ns", elapsed.as_nanos());
         }
@@ -198,10 +206,15 @@ impl GpuContextPool {
         let contexts = self.contexts.read().unwrap();
         let mut stats = HashMap::new();
 
-        stats.insert("total_contexts".to_string(), self.config.gpu_context_pool_size);
+        stats.insert(
+            "total_contexts".to_string(),
+            self.config.gpu_context_pool_size,
+        );
         stats.insert("available_contexts".to_string(), contexts.len());
-        stats.insert("active_contexts".to_string(),
-                     self.config.gpu_context_pool_size - contexts.len());
+        stats.insert(
+            "active_contexts".to_string(),
+            self.config.gpu_context_pool_size - contexts.len(),
+        );
 
         stats
     }
@@ -248,7 +261,8 @@ impl CdiSpecCache {
 
         // Evict old entries if at capacity
         if cache.len() >= self.max_size {
-            let oldest_key = cache.iter()
+            let oldest_key = cache
+                .iter()
                 .min_by_key(|(_, (_, timestamp))| timestamp)
                 .map(|(k, _)| k.clone());
 
@@ -267,8 +281,10 @@ impl CdiSpecCache {
 
         stats.insert("cache_size".to_string(), cache.len() as f64);
         stats.insert("max_size".to_string(), self.max_size as f64);
-        stats.insert("utilization".to_string(),
-                     (cache.len() as f64 / self.max_size as f64) * 100.0);
+        stats.insert(
+            "utilization".to_string(),
+            (cache.len() as f64 / self.max_size as f64) * 100.0,
+        );
 
         stats
     }
@@ -325,10 +341,15 @@ impl PerformanceOptimizer {
 
         // Check if we achieved sub-microsecond performance
         if latency_ns < self.config.target_gpu_latency_ns {
-            info!("GPU discovery achieved sub-microsecond latency: {}ns", latency_ns);
+            info!(
+                "GPU discovery achieved sub-microsecond latency: {}ns",
+                latency_ns
+            );
         } else {
-            warn!("GPU discovery latency {}ns exceeded target {}ns",
-                  latency_ns, self.config.target_gpu_latency_ns);
+            warn!(
+                "GPU discovery latency {}ns exceeded target {}ns",
+                latency_ns, self.config.target_gpu_latency_ns
+            );
         }
 
         Ok(devices)
@@ -349,7 +370,9 @@ impl PerformanceOptimizer {
         let cdi_spec = self.perform_optimized_cdi_generation().await?;
 
         // Cache the result
-        self.cdi_cache.put(cache_key.to_string(), cdi_spec.clone()).await;
+        self.cdi_cache
+            .put(cache_key.to_string(), cdi_spec.clone())
+            .await;
 
         let elapsed = start.elapsed();
         let latency_ns = elapsed.as_nanos() as u64;
@@ -390,7 +413,10 @@ impl PerformanceOptimizer {
                 *shutdown = true;
             }
 
-            info!("Graceful shutdown initiated, waiting up to {:?}", shutdown_timeout);
+            info!(
+                "Graceful shutdown initiated, waiting up to {:?}",
+                shutdown_timeout
+            );
 
             // Wait for shutdown timeout
             tokio::time::sleep(shutdown_timeout).await;
@@ -448,32 +474,47 @@ impl PerformanceOptimizer {
         let mut report = HashMap::new();
         let metrics = self.get_metrics();
 
-        report.insert("gpu_latency_ns".to_string(),
-                     serde_json::Value::Number(serde_json::Number::from(metrics.gpu_operation_latency_ns)));
-        report.insert("cdi_latency_ns".to_string(),
-                     serde_json::Value::Number(serde_json::Number::from(metrics.cdi_generation_latency_ns)));
-        report.insert("sub_microsecond_achieved".to_string(),
-                     serde_json::Value::Bool(metrics.gpu_operation_latency_ns < 1000));
+        report.insert(
+            "gpu_latency_ns".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(metrics.gpu_operation_latency_ns)),
+        );
+        report.insert(
+            "cdi_latency_ns".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(metrics.cdi_generation_latency_ns)),
+        );
+        report.insert(
+            "sub_microsecond_achieved".to_string(),
+            serde_json::Value::Bool(metrics.gpu_operation_latency_ns < 1000),
+        );
 
         // Add pool statistics
         let pool_stats = self.gpu_pool.get_statistics();
         for (key, value) in pool_stats {
-            report.insert(format!("pool_{}", key),
-                         serde_json::Value::Number(serde_json::Number::from(value)));
+            report.insert(
+                format!("pool_{}", key),
+                serde_json::Value::Number(serde_json::Number::from(value)),
+            );
         }
 
         // Add cache statistics
         let cache_stats = self.cdi_cache.get_statistics().await;
         for (key, value) in cache_stats {
-            report.insert(format!("cache_{}", key),
-                         serde_json::Value::Number(serde_json::Number::from_f64(value).unwrap_or(serde_json::Number::from(0))));
+            report.insert(
+                format!("cache_{}", key),
+                serde_json::Value::Number(
+                    serde_json::Number::from_f64(value).unwrap_or(serde_json::Number::from(0)),
+                ),
+            );
         }
 
         report
     }
 
     /// Internal optimized GPU discovery implementation
-    async fn perform_optimized_gpu_discovery(&self, _context: &GpuContext) -> Result<Vec<crate::gpu::GpuDevice>> {
+    async fn perform_optimized_gpu_discovery(
+        &self,
+        _context: &GpuContext,
+    ) -> Result<Vec<crate::gpu::GpuDevice>> {
         // Use cached detection logic with pre-warmed context
         let devices = crate::gpu::discover_gpus().await?;
         Ok(devices)
@@ -522,16 +563,25 @@ pub async fn benchmark_sub_microsecond_performance() -> Result<HashMap<String, u
     results.insert("min_gpu_latency_ns".to_string(), min_gpu_latency);
     results.insert("max_gpu_latency_ns".to_string(), max_gpu_latency);
     results.insert("avg_gpu_latency_ns".to_string(), avg_gpu_latency);
-    results.insert("sub_microsecond_operations".to_string(), sub_microsecond_count as u64);
+    results.insert(
+        "sub_microsecond_operations".to_string(),
+        sub_microsecond_count as u64,
+    );
     results.insert("total_operations".to_string(), gpu_latencies.len() as u64);
 
     info!("Sub-microsecond benchmark results:");
     info!("  Min latency: {}ns", min_gpu_latency);
     info!("  Max latency: {}ns", max_gpu_latency);
     info!("  Avg latency: {}ns", avg_gpu_latency);
-    info!("  Sub-microsecond ops: {}/{}", sub_microsecond_count, gpu_latencies.len());
-    info!("  Success rate: {:.2}%",
-          (sub_microsecond_count as f64 / gpu_latencies.len() as f64) * 100.0);
+    info!(
+        "  Sub-microsecond ops: {}/{}",
+        sub_microsecond_count,
+        gpu_latencies.len()
+    );
+    info!(
+        "  Success rate: {:.2}%",
+        (sub_microsecond_count as f64 / gpu_latencies.len() as f64) * 100.0
+    );
 
     Ok(results)
 }
@@ -564,7 +614,9 @@ mod tests {
         // Test cache miss and put
         assert!(cache.get("test_key").await.is_none());
 
-        cache.put("test_key".to_string(), "test_spec".to_string()).await;
+        cache
+            .put("test_key".to_string(), "test_spec".to_string())
+            .await;
 
         // Test cache hit
         let cached = cache.get("test_key").await;

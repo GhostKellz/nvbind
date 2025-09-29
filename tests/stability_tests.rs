@@ -4,14 +4,14 @@
 //! crash recovery, and overall system stability
 
 use anyhow::Result;
-use nvbind::gpu;
-use nvbind::runtime;
-use nvbind::metrics::{MetricsCollector, MetricsConfig};
 use nvbind::cdi;
 use nvbind::config::{Config, RuntimeConfig};
+use nvbind::gpu;
+use nvbind::metrics::{MetricsCollector, MetricsConfig};
+use nvbind::runtime;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::{sleep, timeout};
-use std::collections::HashMap;
 
 /// Configuration for stability tests
 #[derive(Debug, Clone)]
@@ -117,7 +117,10 @@ impl StabilityTestRunner {
             // Check memory usage periodically
             if self.operations_completed % 100 == 0 {
                 self.memory_stats.update();
-                if self.memory_stats.is_growing_excessively(self.config.max_memory_growth_mb) {
+                if self
+                    .memory_stats
+                    .is_growing_excessively(self.config.max_memory_growth_mb)
+                {
                     return Err(anyhow::anyhow!(
                         "Memory leak detected: {} MB growth",
                         self.memory_stats.growth_mb
@@ -191,7 +194,10 @@ impl StabilityTestRunner {
         while Instant::now() < end_time {
             // Perform memory-intensive operations
             let mut tags = HashMap::new();
-            tags.insert("test".to_string(), format!("iteration_{}", self.operations_completed));
+            tags.insert(
+                "test".to_string(),
+                format!("iteration_{}", self.operations_completed),
+            );
 
             match collector.start_session(format!("session_{}", self.operations_completed), tags) {
                 Ok(_) => {
@@ -227,7 +233,8 @@ impl StabilityTestRunner {
                     if recent_avg > older_avg + 20 {
                         return Err(anyhow::anyhow!(
                             "Potential memory leak detected: {} MB -> {} MB",
-                            older_avg, recent_avg
+                            older_avg,
+                            recent_avg
                         ));
                     }
                 }
@@ -295,7 +302,8 @@ impl StabilityTestRunner {
     fn print_test_summary(&self, test_name: &str) {
         let elapsed = self.start_time.elapsed();
         let ops_per_sec = self.operations_completed as f64 / elapsed.as_secs_f64();
-        let error_rate = (self.errors_encountered as f64 / self.operations_completed.max(1) as f64) * 100.0;
+        let error_rate =
+            (self.errors_encountered as f64 / self.operations_completed.max(1) as f64) * 100.0;
 
         println!("\n{} Summary:", test_name);
         println!("  Duration: {:?}", elapsed);
@@ -303,8 +311,10 @@ impl StabilityTestRunner {
         println!("  Errors: {}", self.errors_encountered);
         println!("  Ops/sec: {:.2}", ops_per_sec);
         println!("  Error rate: {:.2}%", error_rate);
-        println!("  Memory usage: {} MB (growth: {} MB)",
-                self.memory_stats.current_mb, self.memory_stats.growth_mb);
+        println!(
+            "  Memory usage: {} MB (growth: {} MB)",
+            self.memory_stats.current_mb, self.memory_stats.growth_mb
+        );
         println!("  Peak memory: {} MB", self.memory_stats.peak_mb);
     }
 }
@@ -444,11 +454,16 @@ async fn test_resource_exhaustion_handling() -> Result<()> {
         }
 
         if i % 100 == 0 {
-            println!("Completed {} operations, {} recoveries", operations, successful_recoveries);
+            println!(
+                "Completed {} operations, {} recoveries",
+                operations, successful_recoveries
+            );
         }
     }
 
-    println!("✓ Resource exhaustion test completed: {} operations, {} recoveries",
-             operations, successful_recoveries);
+    println!(
+        "✓ Resource exhaustion test completed: {} operations, {} recoveries",
+        operations, successful_recoveries
+    );
     Ok(())
 }

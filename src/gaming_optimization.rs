@@ -332,7 +332,10 @@ impl GamingOptimizationManager {
         &self,
         profile: GameOptimizationProfile,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Creating gaming optimization profile for game: {}", profile.game_name);
+        info!(
+            "Creating gaming optimization profile for game: {}",
+            profile.game_name
+        );
 
         self.validate_profile(&profile)?;
 
@@ -340,18 +343,27 @@ impl GamingOptimizationManager {
         profiles.insert(profile.profile_id.clone(), profile.clone());
 
         if let Some(dlss_config) = &profile.dlss_config {
-            self.dlss_manager.configure_for_game(&profile.profile_id, dlss_config).await?;
+            self.dlss_manager
+                .configure_for_game(&profile.profile_id, dlss_config)
+                .await?;
         }
 
         if let Some(fsr_config) = &profile.fsr_config {
-            self.fsr_manager.configure_for_game(&profile.profile_id, fsr_config).await?;
+            self.fsr_manager
+                .configure_for_game(&profile.profile_id, fsr_config)
+                .await?;
         }
 
         if let Some(rt_config) = &profile.ray_tracing_config {
-            self.ray_tracing_manager.configure_for_game(&profile.profile_id, rt_config).await?;
+            self.ray_tracing_manager
+                .configure_for_game(&profile.profile_id, rt_config)
+                .await?;
         }
 
-        info!("Successfully created gaming profile: {}", profile.profile_id);
+        info!(
+            "Successfully created gaming profile: {}",
+            profile.profile_id
+        );
         Ok(())
     }
 
@@ -363,8 +375,7 @@ impl GamingOptimizationManager {
         let session_id = Uuid::new_v4().to_string();
 
         let profiles = self.profiles.read().unwrap();
-        let profile = profiles.get(profile_id)
-            .ok_or("Gaming profile not found")?;
+        let profile = profiles.get(profile_id).ok_or("Gaming profile not found")?;
 
         let session = GamingSession {
             session_id: session_id.clone(),
@@ -373,7 +384,9 @@ impl GamingOptimizationManager {
             game_process_id: None,
             start_time: chrono::Utc::now(),
             current_fps: 0.0,
-            target_fps: profile.dlss_config.as_ref()
+            target_fps: profile
+                .dlss_config
+                .as_ref()
                 .and_then(|c| c.target_fps)
                 .unwrap_or(60),
             gpu_utilization: 0.0,
@@ -384,9 +397,13 @@ impl GamingOptimizationManager {
         let mut active_sessions = self.active_sessions.write().unwrap();
         active_sessions.insert(session_id.clone(), session);
 
-        self.apply_gaming_optimizations(profile_id, &session_id).await?;
+        self.apply_gaming_optimizations(profile_id, &session_id)
+            .await?;
 
-        info!("Started gaming session: {} for profile: {}", session_id, profile_id);
+        info!(
+            "Started gaming session: {} for profile: {}",
+            session_id, profile_id
+        );
         Ok(session_id)
     }
 
@@ -396,19 +413,24 @@ impl GamingOptimizationManager {
         session_id: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let profiles = self.profiles.read().unwrap();
-        let profile = profiles.get(profile_id)
-            .ok_or("Profile not found")?;
+        let profile = profiles.get(profile_id).ok_or("Profile not found")?;
 
         if let Some(dlss_config) = &profile.dlss_config {
-            self.dlss_manager.activate_for_session(session_id, dlss_config).await?;
+            self.dlss_manager
+                .activate_for_session(session_id, dlss_config)
+                .await?;
         }
 
         if let Some(fsr_config) = &profile.fsr_config {
-            self.fsr_manager.activate_for_session(session_id, fsr_config).await?;
+            self.fsr_manager
+                .activate_for_session(session_id, fsr_config)
+                .await?;
         }
 
         if let Some(rt_config) = &profile.ray_tracing_config {
-            self.ray_tracing_manager.activate_for_session(session_id, rt_config).await?;
+            self.ray_tracing_manager
+                .activate_for_session(session_id, rt_config)
+                .await?;
         }
 
         Ok(())
@@ -420,13 +442,13 @@ impl GamingOptimizationManager {
         current_metrics: &PerformanceMetric,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let active_sessions = self.active_sessions.read().unwrap();
-        let session = active_sessions.get(session_id)
-            .ok_or("Session not found")?;
+        let session = active_sessions.get(session_id).ok_or("Session not found")?;
 
         let target_metrics = self.performance_monitor.target_metrics.read().unwrap();
         if let Some(targets) = target_metrics.get(session_id) {
             if targets.auto_adjust {
-                self.adjust_quality_settings(session_id, current_metrics, targets).await?;
+                self.adjust_quality_settings(session_id, current_metrics, targets)
+                    .await?;
             }
         }
 
@@ -440,10 +462,16 @@ impl GamingOptimizationManager {
         targets: &TargetMetrics,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if metrics.fps < targets.min_fps_threshold {
-            warn!("Performance below target, reducing quality for session: {}", session_id);
+            warn!(
+                "Performance below target, reducing quality for session: {}",
+                session_id
+            );
             self.reduce_quality_settings(session_id).await?;
         } else if metrics.fps > targets.target_fps as f32 * 1.1 {
-            debug!("Performance above target, potentially increasing quality for session: {}", session_id);
+            debug!(
+                "Performance above target, potentially increasing quality for session: {}",
+                session_id
+            );
             self.increase_quality_settings(session_id).await?;
         }
 
@@ -466,7 +494,9 @@ impl GamingOptimizationManager {
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.dlss_manager.increase_quality(session_id).await?;
         self.fsr_manager.increase_quality(session_id).await?;
-        self.ray_tracing_manager.increase_quality(session_id).await?;
+        self.ray_tracing_manager
+            .increase_quality(session_id)
+            .await?;
         Ok(())
     }
 
@@ -505,12 +535,18 @@ impl GamingOptimizationManager {
         mut metrics_receiver: mpsc::UnboundedReceiver<PerformanceMetric>,
     ) {
         while let Some(metric) = metrics_receiver.recv().await {
-            debug!("Received performance metric for session: {}", metric.session_id);
+            debug!(
+                "Received performance metric for session: {}",
+                metric.session_id
+            );
 
             let target_metrics = monitor.target_metrics.read().unwrap();
             if let Some(targets) = target_metrics.get(&metric.session_id) {
                 if metric.fps < targets.min_fps_threshold {
-                    warn!("Performance degradation detected in session: {}", metric.session_id);
+                    warn!(
+                        "Performance degradation detected in session: {}",
+                        metric.session_id
+                    );
                 }
             }
         }
@@ -522,11 +558,16 @@ impl GamingOptimizationManager {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut active_sessions = self.active_sessions.write().unwrap();
         if let Some(session) = active_sessions.remove(session_id) {
-            info!("Ending gaming session: {} for profile: {}", session_id, session.profile_id);
+            info!(
+                "Ending gaming session: {} for profile: {}",
+                session_id, session.profile_id
+            );
 
             self.dlss_manager.deactivate_session(session_id).await?;
             self.fsr_manager.deactivate_session(session_id).await?;
-            self.ray_tracing_manager.deactivate_session(session_id).await?;
+            self.ray_tracing_manager
+                .deactivate_session(session_id)
+                .await?;
         }
 
         Ok(())
@@ -561,7 +602,8 @@ impl DlssManager {
             session_id: session_id.to_string(),
             current_mode: config.quality_mode.clone(),
             adaptive_quality: true,
-            performance_target: config.target_fps
+            performance_target: config
+                .target_fps
                 .map(PerformanceTarget::Fps)
                 .unwrap_or(PerformanceTarget::Balanced),
         };
@@ -577,12 +619,18 @@ impl DlssManager {
         Ok(())
     }
 
-    pub async fn increase_quality(&self, session_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn increase_quality(
+        &self,
+        session_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Increasing DLSS quality for session: {}", session_id);
         Ok(())
     }
 
-    pub async fn deactivate_session(&self, session_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn deactivate_session(
+        &self,
+        session_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Deactivating DLSS for session: {}", session_id);
         let mut configs = self.runtime_configs.write().unwrap();
         configs.remove(session_id);
@@ -632,12 +680,18 @@ impl FsrManager {
         Ok(())
     }
 
-    pub async fn increase_quality(&self, session_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn increase_quality(
+        &self,
+        session_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Increasing FSR quality for session: {}", session_id);
         Ok(())
     }
 
-    pub async fn deactivate_session(&self, session_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn deactivate_session(
+        &self,
+        session_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Deactivating FSR for session: {}", session_id);
         let mut configs = self.runtime_configs.write().unwrap();
         configs.remove(session_id);
@@ -683,12 +737,18 @@ impl RayTracingManager {
         Ok(())
     }
 
-    pub async fn increase_quality(&self, session_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn increase_quality(
+        &self,
+        session_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Increasing ray tracing quality for session: {}", session_id);
         Ok(())
     }
 
-    pub async fn deactivate_session(&self, session_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn deactivate_session(
+        &self,
+        session_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Deactivating ray tracing for session: {}", session_id);
         Ok(())
     }
