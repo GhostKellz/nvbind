@@ -70,6 +70,14 @@ impl Default for DriverInfo {
     }
 }
 
+/// Display information about detected NVIDIA GPUs and drivers.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - NVIDIA driver is not installed or not loaded
+/// - GPU devices cannot be accessed (permission denied)
+/// - Driver information cannot be retrieved
 pub async fn info() -> Result<()> {
     // Enhanced driver availability check with diagnostics
     match check_nvidia_driver_status() {
@@ -123,6 +131,14 @@ pub async fn info() -> Result<()> {
     Ok(())
 }
 
+/// Discover all available NVIDIA GPU devices in the system.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - `/dev` directory cannot be read
+/// - NVIDIA device nodes are not accessible
+/// - GPU information cannot be retrieved from sysfs or procfs
 pub async fn discover_gpus() -> Result<Vec<GpuDevice>> {
     let mut gpus = Vec::new();
 
@@ -246,6 +262,14 @@ fn get_gpu_memory(index: usize) -> Result<Option<u64>> {
     Ok(None)
 }
 
+/// Get NVIDIA driver information including version, type, and libraries.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Driver version cannot be determined from procfs or nvidia-smi
+/// - NVIDIA library directories cannot be read
+/// - Driver type detection fails
 pub async fn get_driver_info() -> Result<DriverInfo> {
     let (version, driver_type) = get_driver_version_and_type()?;
     let cuda_version = get_cuda_version().ok();

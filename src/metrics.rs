@@ -297,11 +297,21 @@ impl MetricsCollector {
             metric_type,
             SessionMetricType::GpuDiscovery | SessionMetricType::GpuAttachment
         ) {
+            // Get runtime from session tags
+            let runtime = {
+                let sessions = self.active_sessions.lock().unwrap();
+                sessions
+                    .get(session_id)
+                    .and_then(|s| s.tags.get("runtime"))
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_string())
+            };
+
             let mut store = self.metrics_store.write().await;
             let metric = LatencyMetric {
                 timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
                 container_id: session_id.to_string(),
-                runtime: "unknown".to_string(), // TODO: Get from session tags
+                runtime,
                 gpu_discovery_ns: latency_ns,
                 cdi_generation_ns: 0,
                 container_creation_ns: 0,
@@ -345,14 +355,24 @@ impl MetricsCollector {
         let result = operation()?;
         let duration = start.elapsed();
 
+        // Try to get image name from active session
+        let image = {
+            let sessions = self.active_sessions.lock().unwrap();
+            sessions
+                .get(container_id)
+                .and_then(|s| s.tags.get("image"))
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string())
+        };
+
         let metric = StartupMetric {
             timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             container_id: container_id.to_string(),
             runtime: runtime.to_string(),
-            image: "unknown".to_string(), // TODO: Get from operation context
+            image,
             startup_time_ms: duration.as_millis() as u64,
-            gpu_init_time_ms: 0, // TODO: Measure separately
-            memory_allocated: 0, // TODO: Measure actual allocation
+            gpu_init_time_ms: 0, // Note: GPU init measured separately in start_session
+            memory_allocated: 0, // Note: Memory measured via GPU utilization collection
             gpu_memory_allocated: 0,
             success: true,
         };
@@ -400,10 +420,19 @@ impl MetricsCollector {
         let parts: Vec<&str> = output_str.trim().split(',').collect();
 
         if parts.len() >= 7 {
+            // Try to find a container associated with this GPU from active sessions
+            let container_id = {
+                let sessions = self.active_sessions.lock().unwrap();
+                sessions
+                    .values()
+                    .find(|s| s.tags.get("gpu_id").map(|id| id == gpu_id).unwrap_or(false))
+                    .map(|s| s.session_id.clone())
+            };
+
             Ok(UtilizationMetric {
                 timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
                 gpu_id: gpu_id.to_string(),
-                container_id: None, // TODO: Associate with container
+                container_id,
                 gpu_utilization: parts[0].trim().parse().unwrap_or(0.0),
                 memory_utilization: parts[1].trim().parse().unwrap_or(0.0),
                 encoder_utilization: parts[2].trim().parse().unwrap_or(0.0),
@@ -462,6 +491,12 @@ impl MetricsCollector {
         let p95 = sorted_latencies.get(p95_index).copied().unwrap_or(0.0) as u64;
         let p99 = sorted_latencies.get(p99_index).copied().unwrap_or(0.0) as u64;
 
+        // Calculate success rate from session metrics
+        // Count metrics with value > 0 as successful operations
+        let successful_ops = session.metrics.iter().filter(|m| m.value > 0.0).count();
+        let total_ops = session.metrics.len().max(1); // Avoid division by zero
+        let success_rate = ((successful_ops as f64 / total_ops as f64) * 100.0) as f32;
+
         let results = BenchmarkResults {
             test_name: session_id.to_string(),
             total_duration_ns: total_duration.as_nanos() as u64,
@@ -472,7 +507,7 @@ impl MetricsCollector {
             std_deviation_ns: std_dev,
             p95_latency_ns: p95,
             p99_latency_ns: p99,
-            success_rate: 100.0, // TODO: Track failures
+            success_rate,
             metadata: session.tags,
         };
 

@@ -4,7 +4,16 @@ use anyhow::{Context, Result};
 use std::process::Command;
 use tracing::{debug, info};
 
-/// Run container with CDI devices
+/// Run container with CDI (Container Device Interface) devices for GPU passthrough.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - NVIDIA requirements are not met (driver not installed, devices not accessible)
+/// - Container runtime is not installed or not in PATH
+/// - CDI specifications cannot be loaded or are invalid
+/// - Requested GPU device is not found
+/// - Container execution fails
 pub async fn run_with_cdi_devices(
     config: Config,
     runtime: String,
@@ -144,6 +153,15 @@ pub async fn run(runtime: String, gpu: String, image: String, args: Vec<String>)
     run_with_config(config, runtime, gpu, image, args).await
 }
 
+/// Run container with traditional GPU passthrough (device mounting and library binding).
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - NVIDIA requirements are not met
+/// - Container runtime is not available
+/// - GPU devices or libraries cannot be found
+/// - Container execution fails
 pub async fn run_with_config(
     config: Config,
     runtime: String,
@@ -398,6 +416,13 @@ async fn run_bolt_with_cdi(
     Ok(())
 }
 
+/// Validate that a container runtime is installed and available in PATH.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The runtime executable is not found in PATH
+/// - The runtime `--version` command fails
 pub fn validate_runtime(runtime: &str) -> Result<()> {
     let output = match runtime {
         "bolt" => Command::new("bolt")
@@ -407,7 +432,7 @@ pub fn validate_runtime(runtime: &str) -> Result<()> {
         _ => Command::new(runtime)
             .arg("--version")
             .output()
-            .context(format!("Failed to check {} availability", runtime))?,
+            .with_context(|| format!("Failed to check {} availability", runtime))?,
     };
 
     if !output.status.success() {
@@ -497,7 +522,9 @@ mod tests {
         let devices = config.get_all_devices();
         assert!(devices.contains(&"/dev/test-device".to_string()));
 
-        let libraries = config.get_all_libraries().unwrap();
+        let libraries = config
+            .get_all_libraries()
+            .expect("Failed to get libraries in test");
         assert!(libraries.contains(&"/lib/test-lib.so".to_string()));
     }
 

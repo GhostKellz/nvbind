@@ -755,7 +755,7 @@ mod tests {
     fn test_wsl2_detection() {
         // Test WSL2 detection (will be false in most test environments)
         let is_wsl = Wsl2Manager::detect_wsl2();
-        println!("WSL2 detected: {}", is_wsl);
+        println!("WSL2 detected: {is_wsl}");
         // Just ensure the function doesn't panic
     }
 

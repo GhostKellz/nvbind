@@ -263,8 +263,8 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
 
     // Add CUDA version if available
     if let Some(cuda_version) = &driver_info.cuda_version {
-        env_vars.push(format!("CUDA_VERSION={}", cuda_version));
-        env_vars.push(format!("NVIDIA_REQUIRE_CUDA=cuda>={}", cuda_version));
+        env_vars.push(format!("CUDA_VERSION={cuda_version}"));
+        env_vars.push(format!("NVIDIA_REQUIRE_CUDA=cuda>={cuda_version}"));
     }
 
     // Add driver type information
@@ -335,14 +335,15 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
 
                 // Add GPU-specific environment variables
                 if let (Some(memory), Some(env)) = (gpu.memory, &mut device_edits.env) {
-                    env.push(format!("GPU_MEMORY_SIZE={}", memory));
-                    env.push(format!("GPU_MEMORY_SIZE_MB={}", memory / 1024 / 1024));
+                    env.push(format!("GPU_MEMORY_SIZE={memory}"));
+                    let memory_mb = memory / 1024 / 1024;
+                    env.push(format!("GPU_MEMORY_SIZE_MB={memory_mb}"));
                 }
 
                 if let (Some(driver_version), Some(env)) =
                     (&gpu.driver_version, &mut device_edits.env)
                 {
-                    env.push(format!("GPU_DRIVER_VERSION={}", driver_version));
+                    env.push(format!("GPU_DRIVER_VERSION={driver_version}"));
                 }
 
                 devices.push(CdiDevice {
@@ -465,20 +466,18 @@ fn create_device_node(device_path: &str) -> Result<DeviceNode> {
 
     // Validate device path for security
     if !device_path.starts_with("/dev/") {
-        return Err(anyhow::anyhow!("Invalid device path: {}", device_path));
+        return Err(anyhow::anyhow!("Invalid device path: {device_path}"));
     }
 
     // Check if device exists before getting metadata
     if !path.exists() {
-        warn!("Device does not exist: {}", device_path);
-        return Err(anyhow::anyhow!("Device does not exist: {}", device_path));
+        warn!("Device does not exist: {device_path}");
+        return Err(anyhow::anyhow!("Device does not exist: {device_path}"));
     }
 
     // Get device information using stat
-    let metadata = fs::metadata(path).context(format!(
-        "Failed to get metadata for device: {}",
-        device_path
-    ))?;
+    let metadata = fs::metadata(path)
+        .with_context(|| format!("Failed to get metadata for device: {device_path}"))?;
 
     // Extract device numbers on Unix systems with correct calculation
     #[cfg(unix)]
@@ -537,7 +536,7 @@ pub fn apply_cdi_device(device_name: &str) -> Result<ContainerEdits> {
     if let Some(device) = registry.get_device(device_name) {
         Ok(device.container_edits.clone())
     } else {
-        Err(anyhow::anyhow!("CDI device not found: {}", device_name))
+        Err(anyhow::anyhow!("CDI device not found: {device_name}"))
     }
 }
 
