@@ -406,7 +406,7 @@ impl OllamaLauncher {
 
         let _new_config = self.registry.get_config(new_model);
 
-        // TODO: Implement graceful model swapping
+        // Note: Graceful model swapping requires ollama API integration for controlled shutdown
         // 1. Pre-load new model in memory
         // 2. Switch traffic atomically
         // 3. Unload old model

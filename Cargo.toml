@@ -31,6 +31,18 @@ async-trait = "0.1"
 # Additional dependencies for new modules
 chrono = { version = "0.4", features = ["serde"] }
 prometheus = "0.14"
+rand = "0.8"
+
+# GhostForge real-time metrics API
+tokio-tungstenite = "0.21"
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors"] }
+sysinfo = "0.30"
+futures-util = "0.3"
+
+# GPU metrics
+nvml-wrapper = "0.10"
 
 # CLI enhancement dependencies
 colored = "2.0"
@@ -40,13 +52,14 @@ prettytable-rs = "0.10"
 serde_yaml = "0.9"
 
 [features]
-default = []
+default = ["bolt", "ml-optimizations", "cloud"]
 bolt = []
+ml-optimizations = []
+cloud = []
 
 # Experimental/unimplemented features (in development)
 experimental-k8s = []
 experimental-scheduling = []
-experimental-ml-optimizations = []
 experimental-raytracing = []
 experimental-distributed = []
 

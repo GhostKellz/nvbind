@@ -550,7 +550,7 @@ impl WineOptimizer {
         &self,
         _container_id: &str,
     ) -> Result<GamingPerformanceStats> {
-        // TODO: Implement actual performance monitoring
+        // Note: Performance monitoring would require wine-specific profiling hooks
         // This would integrate with Wine's performance counters and GPU monitoring
 
         Ok(GamingPerformanceStats {

@@ -1,0 +1,202 @@
+# nvbind Multi-Cloud Configuration Example
+# This demonstrates how to configure nvbind for AWS, GCP, and Azure GPU instances
+
+[cloud]
+enabled = true
+
+# AWS Configuration
+[[cloud.providers]]
+provider = "AWS"
+enabled = true
+regions = ["us-west-2", "us-east-1", "eu-west-1"]
+
+# AWS GPU Instance Types
+[[cloud.providers.instance_types]]
+name = "p3.2xlarge"
+gpu_type = "V100"
+gpu_count = 1
+vcpus = 8
+memory_gb = 61
+storage_gb = 0
+hourly_cost = 3.06
+spot_eligible = true
+network_performance = "UpTo25Gbps"
+
+[[cloud.providers.instance_types]]
+name = "p3.8xlarge"
+gpu_type = "V100"
+gpu_count = 4
+vcpus = 32
+memory_gb = 244
+storage_gb = 0
+hourly_cost = 12.24
+spot_eligible = true
+network_performance = "UpTo25Gbps"
+
+[[cloud.providers.instance_types]]
+name = "p4d.24xlarge"
+gpu_type = "A100"
+gpu_count = 8
+vcpus = 96
+memory_gb = 1152
+storage_gb = 8000
+hourly_cost = 32.77
+spot_eligible = true
+network_performance = "UpTo100Gbps"
+
+[[cloud.providers.instance_types]]
+name = "g5.xlarge"
+gpu_type = "A10G"
+gpu_count = 1
+vcpus = 4
+memory_gb = 16
+storage_gb = 250
+hourly_cost = 1.006
+spot_eligible = true
+network_performance = "UpTo10Gbps"
+
+# GCP Configuration
+[[cloud.providers]]
+provider = "GCP"
+enabled = true
+regions = ["us-central1", "us-west1", "europe-west4"]
+
+# GCP GPU Instance Types
+[[cloud.providers.instance_types]]
+name = "n1-highmem-8-v100-1"
+gpu_type = "V100"
+gpu_count = 1
+vcpus = 8
+memory_gb = 52
+storage_gb = 0
+hourly_cost = 2.95
+spot_eligible = true
+network_performance = "UpTo50Gbps"
+
+[[cloud.providers.instance_types]]
+name = "a2-highgpu-1g"
+gpu_type = "A100"
+gpu_count = 1
+vcpus = 12
+memory_gb = 85
+storage_gb = 0
+hourly_cost = 3.67
+spot_eligible = true
+network_performance = "UpTo50Gbps"
+
+[[cloud.providers.instance_types]]
+name = "a2-highgpu-4g"
+gpu_type = "A100"
+gpu_count = 4
+vcpus = 48
+memory_gb = 340
+storage_gb = 0
+hourly_cost = 14.69
+spot_eligible = true
+network_performance = "UpTo100Gbps"
+
+[[cloud.providers.instance_types]]
+name = "a2-highgpu-8g"
+gpu_type = "A100"
+gpu_count = 8
+vcpus = 96
+memory_gb = 680
+storage_gb = 0
+hourly_cost = 29.39
+spot_eligible = true
+network_performance = "UpTo100Gbps"
+
+# Azure Configuration
+[[cloud.providers]]
+provider = "Azure"
+enabled = true
+regions = ["eastus", "westus2", "westeurope"]
+
+# Azure GPU Instance Types (NC, ND, NV series)
+[[cloud.providers.instance_types]]
+name = "Standard_NC6s_v3"
+gpu_type = "V100"
+gpu_count = 1
+vcpus = 6
+memory_gb = 112
+storage_gb = 736
+hourly_cost = 3.06
+spot_eligible = true
+network_performance = "Moderate"
+
+[[cloud.providers.instance_types]]
+name = "Standard_NC24s_v3"
+gpu_type = "V100"
+gpu_count = 4
+vcpus = 24
+memory_gb = 448
+storage_gb = 2948
+hourly_cost = 12.24
+spot_eligible = true
+network_performance = "High"
+
+[[cloud.providers.instance_types]]
+name = "Standard_ND96asr_v4"
+gpu_type = "A100_80GB"
+gpu_count = 8
+vcpus = 96
+memory_gb = 900
+storage_gb = 6000
+hourly_cost = 32.77
+spot_eligible = true
+network_performance = "VeryHigh"
+
+[[cloud.providers.instance_types]]
+name = "Standard_NC4as_T4_v3"
+gpu_type = "T4"
+gpu_count = 1
+vcpus = 4
+memory_gb = 28
+storage_gb = 180
+hourly_cost = 0.526
+spot_eligible = true
+network_performance = "Moderate"
+
+# Hybrid Scheduling Configuration
+[cloud.hybrid_scheduling]
+enabled = true
+strategy = "HybridBalanced"
+
+[cloud.hybrid_scheduling.priorities]
+cost_weight = 0.3
+performance_weight = 0.4
+latency_weight = 0.2
+availability_weight = 0.05
+compliance_weight = 0.05
+
+[cloud.hybrid_scheduling.constraints]
+data_residency = ["US", "EU"]
+compliance_requirements = ["SOC2"]
+max_latency_ms = 100
+preferred_providers = ["AWS", "OnPremises"]
+
+# Cost Optimization
+[cloud.cost_optimization]
+enabled = true
+
+[cloud.cost_optimization.spot_instances]
+enabled = true
+max_price_multiplier = 0.7
+interruption_handling = "Migrate"
+fallback_to_ondemand = true
+
+[cloud.cost_optimization.auto_scaling]
+enabled = true
+min_instances = 0
+max_instances = 10
+target_utilization = 0.8
+scale_up_threshold = 0.9
+scale_down_threshold = 0.3
+cooldown_period_secs = 300
+
+[cloud.cost_optimization.cost_alerts]
+enabled = true
+daily_budget = 100.0
+monthly_budget = 3000.0
+alert_thresholds = [0.5, 0.8, 0.9, 1.0]
+notification_channels = ["email"]

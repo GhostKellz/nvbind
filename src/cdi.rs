@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
 /// CDI (Container Device Interface) specification version
-const CDI_VERSION: &str = "0.6.0";
+const CDI_VERSION: &str = "0.8.0";
 
 /// Default CDI spec directory
 const CDI_SPEC_DIR: &str = "/etc/cdi";
@@ -98,6 +98,19 @@ impl Default for CdiSpec {
             devices: Vec::new(),
         }
     }
+}
+
+/// Runtime optimization settings
+#[derive(Debug, Clone)]
+pub struct RuntimeOptimizations {
+    /// Enable Docker-specific optimizations
+    pub docker: bool,
+    /// Enable Podman-specific optimizations
+    pub podman: bool,
+    /// Use nvidia-ctk for hooks (default: true)
+    pub use_nvidia_ctk: bool,
+    /// Additional library paths to scan
+    pub extra_lib_paths: Vec<String>,
 }
 
 /// CDI registry for managing device specifications
@@ -257,6 +270,7 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
 
     let mut devices = Vec::new();
     let mut env_vars = vec![
+        "NVIDIA_VISIBLE_DEVICES=void".to_string(),
         "NVIDIA_DRIVER_CAPABILITIES=all".to_string(),
         format!("NVIDIA_DRIVER_VERSION={}", driver_info.version),
     ];
@@ -270,11 +284,71 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
     // Add driver type information
     env_vars.push(format!("NVIDIA_DRIVER_TYPE={:?}", driver_info.driver_type));
 
+    // Create hooks for CDI
+    let mut hooks = Vec::new();
+
+    // Add create-symlinks hook for library compatibility
+    // Creates symlinks like libcuda.so.1 -> libcuda.so for compatibility
+    let mut symlink_args = vec![
+        "nvidia-ctk".to_string(),
+        "hook".to_string(),
+        "create-symlinks".to_string(),
+    ];
+
+    // Add common library symlinks
+    for link in &[
+        "libcuda.so.1::/usr/lib64/libcuda.so",
+        "libnvidia-ml.so.1::/usr/lib64/libnvidia-ml.so",
+        "libnvidia-opticalflow.so.1::/usr/lib64/libnvidia-opticalflow.so",
+        "libnvidia-encode.so.1::/usr/lib64/libnvidia-encode.so",
+        "libnvidia-fbc.so.1::/usr/lib64/libnvidia-fbc.so",
+    ] {
+        symlink_args.push("--link".to_string());
+        symlink_args.push(link.to_string());
+    }
+
+    hooks.push(Hook {
+        hook_name: "createContainer".to_string(),
+        path: "/usr/bin/nvidia-ctk".to_string(),
+        args: Some(symlink_args),
+        env: None,
+        timeout: Some(5),
+    });
+
+    // Add update-ldcache hook to ensure libraries are discoverable
+    hooks.push(Hook {
+        hook_name: "createContainer".to_string(),
+        path: "/usr/bin/nvidia-ctk".to_string(),
+        args: Some(vec![
+            "nvidia-ctk".to_string(),
+            "hook".to_string(),
+            "update-ldcache".to_string(),
+            "--folder".to_string(),
+            "/usr/lib64:/lib64".to_string(),
+        ]),
+        env: None,
+        timeout: Some(5),
+    });
+
+    // Add disable-device-node-modification hook
+    // Prevents NVML from creating device nodes inside containers
+    hooks.push(Hook {
+        hook_name: "createContainer".to_string(),
+        path: "/usr/bin/nvidia-ctk".to_string(),
+        args: Some(vec![
+            "nvidia-ctk".to_string(),
+            "hook".to_string(),
+            "disable-device-node-modification".to_string(),
+        ]),
+        env: None,
+        timeout: Some(5),
+    });
+
     let mut container_edits = ContainerEdits {
         env: Some(env_vars),
         device_nodes: Some(Vec::new()),
         mounts: Some(Vec::new()),
-        hooks: None,
+        hooks: Some(hooks),
     };
 
     // Add control devices to container edits with error handling
@@ -309,6 +383,7 @@ pub async fn generate_nvidia_cdi_spec() -> Result<CdiSpec> {
                         "ro".to_string(),
                         "nosuid".to_string(),
                         "nodev".to_string(),
+                        "bind".to_string(),
                     ]),
                 });
             }

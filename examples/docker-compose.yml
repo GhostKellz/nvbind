@@ -1,0 +1,66 @@
+# nvbind Docker Compose Examples
+
+version: '3.8'
+
+services:
+  # Example 1: Basic GPU container with CDI
+  cuda-test:
+    image: nvidia/cuda:12.6.3-base-ubuntu24.04
+    devices:
+      - nvidia.com/gpu=gpu0  # Use nvbind CDI device
+    command: nvidia-smi
+
+  # Example 2: PyTorch training container
+  pytorch:
+    image: pytorch/pytorch:2.5.1-cuda12.6-cudnn9-runtime
+    devices:
+      - nvidia.com/gpu=gpu0
+    volumes:
+      - ./models:/models
+      - ./data:/data
+    working_dir: /workspace
+    command: python train.py
+
+  # Example 3: Multi-GPU setup
+  distributed-training:
+    image: pytorch/pytorch:2.5.1-cuda12.6-cudnn9-runtime
+    devices:
+      - nvidia.com/gpu=all  # Use all GPUs
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./code:/workspace
+    command: torchrun --nproc_per_node=4 train_distributed.py
+
+  # Example 4: Jupyter notebook with GPU
+  jupyter:
+    image: pytorch/pytorch:2.5.1-cuda12.6-cudnn9-runtime
+    devices:
+      - nvidia.com/gpu=gpu0
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/workspace
+    command: jupyter notebook --ip=0.0.0.0 --allow-root
+
+  # Example 5: TensorFlow inference server
+  tensorflow-serving:
+    image: tensorflow/serving:latest-gpu
+    devices:
+      - nvidia.com/gpu=gpu0
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./saved_model:/models/my_model
+    environment:
+      - MODEL_NAME=my_model
+
+  # Example 6: CUDA development environment
+  cuda-dev:
+    image: nvidia/cuda:12.6.3-devel-ubuntu24.04
+    devices:
+      - nvidia.com/gpu=gpu0
+    volumes:
+      - ./src:/workspace
+    working_dir: /workspace
+    command: /bin/bash

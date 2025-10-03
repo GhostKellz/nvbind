@@ -1,0 +1,17 @@
+services:
+  nvbind:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile
+    container_name: nvbind
+    runtime: nvidia
+    privileged: true
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    stdin_open: true
+    tty: true
+    command: /bin/bash

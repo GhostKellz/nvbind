@@ -38,7 +38,7 @@ pub mod ollama;
 pub mod performance;
 pub mod performance_optimization;
 pub mod plugin;
-#[cfg(feature = "experimental-ml-optimizations")]
+#[cfg(feature = "ml-optimizations")]
 pub mod pytorch_optimization;
 #[cfg(feature = "experimental-raytracing")]
 pub mod raytracing_acceleration;
@@ -47,7 +47,7 @@ pub mod runtime;
 pub mod security;
 pub mod security_audit;
 pub mod snapshot;
-#[cfg(feature = "experimental-ml-optimizations")]
+#[cfg(feature = "ml-optimizations")]
 pub mod tensorflow_optimization;
 pub mod user_error;
 pub mod wine;
@@ -55,3 +55,7 @@ pub mod wsl2;
 
 #[cfg(feature = "bolt")]
 pub mod bolt;
+
+// GhostForge integration
+pub mod ghostforge_api;
+pub mod gaming_profiles;
