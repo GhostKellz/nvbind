@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+# Pre-removal script for nvbind
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        echo "Removing nvbind..."
+
+        # Warn if containers are using nvbind
+        if command -v docker &> /dev/null; then
+            RUNNING_CONTAINERS=$(docker ps -q --filter "runtime=nvbind" 2>/dev/null | wc -l)
+            if [ "$RUNNING_CONTAINERS" -gt 0 ]; then
+                echo "Warning: $RUNNING_CONTAINERS container(s) are running with nvbind runtime"
+                echo "They will continue to run but nvbind will be unavailable for new containers"
+            fi
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

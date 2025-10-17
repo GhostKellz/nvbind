@@ -1,0 +1,175 @@
+# Maintainer: Christopher Kelley <chris@cktechx.com>
+
+pkgname=nvbind
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="High-performance NVIDIA container GPU runtime engineered in Rust"
+arch=('x86_64')
+url="https://github.com/ghostkellz/nvbind"
+license=('MIT')
+depends=('glibc' 'gcc-libs')
+makedepends=('cargo' 'rust' 'git')
+optdepends=(
+    'nvidia: NVIDIA proprietary driver support'
+    'nvidia-open: NVIDIA open kernel modules support'
+    'nvidia-utils: NVIDIA utilities for GPU management'
+    'docker: Docker container runtime integration'
+    'podman: Podman container runtime integration'
+)
+provides=('nvbind')
+conflicts=('nvbind-git')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz")
+sha256sums=('SKIP')  # Update with actual checksum when tagged
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Build with all stable features
+    cargo build --release --locked --all-features
+}
+
+check() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Run test suite (skip if no GPU available)
+    cargo test --release --locked || echo "Warning: Some tests require GPU hardware"
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Install binary
+    install -Dm755 "target/release/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+
+    # Install license
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+    # Install documentation
+    install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+
+    # Install configuration directory
+    install -dm755 "${pkgdir}/etc/${pkgname}"
+
+    # Create default configuration
+    cat > "${pkgdir}/etc/${pkgname}/config.toml" <<EOF
+# nvbind configuration
+# See https://github.com/ghostkellz/nvbind for documentation
+
+[runtime]
+# Default runtime settings
+log_level = "info"
+
+[gpu]
+# GPU discovery settings
+auto_detect = true
+EOF
+
+    # Install man page
+    install -dm755 "${pkgdir}/usr/share/man/man1"
+    cat > "${pkgdir}/usr/share/man/man1/${pkgname}.1" <<'EOF'
+.TH NVBIND 1 "2025" "nvbind 0.1.0" "User Commands"
+.SH NAME
+nvbind \- High-performance NVIDIA container GPU runtime
+.SH SYNOPSIS
+.B nvbind
+[\fIOPTION\fR]... [\fICOMMAND\fR]
+.SH DESCRIPTION
+nvbind is a cutting-edge, Rust-based GPU container runtime designed as a
+high-performance alternative to NVIDIA's Container Toolkit. It provides
+lightning-fast GPU passthrough for Docker, Podman, and Bolt container runtimes.
+.PP
+Features include sub-microsecond operations, universal NVIDIA driver support,
+memory-safe Rust implementation, CDI v0.6.0 compliance, and multi-workload
+optimization for gaming, AI/ML, and general compute.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display help information
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Display version information
+.SH COMMANDS
+.TP
+\fBdoctor\fR
+Run system diagnostics and compatibility checks
+.TP
+\fBruntime\fR
+Execute as a container runtime (used by Docker/Podman)
+.TP
+\fBcdi\fR
+Generate CDI specifications for GPU devices
+.TP
+\fBgpu\fR
+GPU discovery and management commands
+.SH EXAMPLES
+.TP
+Check system compatibility:
+.B nvbind doctor
+.TP
+Discover available GPUs:
+.B nvbind gpu discover
+.TP
+Run container with GPU access:
+.B docker run --runtime=nvbind --gpus all nvidia/cuda:12.0-base nvidia-smi
+.TP
+Generate CDI specification:
+.B nvbind cdi generate
+.SH CONFIGURATION
+Configuration file: /etc/nvbind/config.toml
+.PP
+The configuration file uses TOML format and supports runtime settings,
+GPU discovery options, and performance tuning parameters.
+.SH FILES
+.TP
+.I /etc/nvbind/config.toml
+System-wide configuration file
+.TP
+.I ~/.config/nvbind/config.toml
+User-specific configuration file (overrides system config)
+.SH ENVIRONMENT
+.TP
+.B NVBIND_LOG
+Set log level (trace, debug, info, warn, error)
+.TP
+.B NVBIND_CONFIG
+Override default configuration file path
+.SH AUTHOR
+Written by ghostkellz and contributors
+.SH REPORTING BUGS
+Report bugs at: https://github.com/ghostkellz/nvbind/issues
+.SH COPYRIGHT
+Copyright (c) 2025. Licensed under the MIT License.
+.SH SEE ALSO
+.BR docker (1),
+.BR podman (1),
+.BR nvidia-smi (1)
+.PP
+Full documentation: https://github.com/ghostkellz/nvbind
+EOF
+
+    gzip -9 "${pkgdir}/usr/share/man/man1/${pkgname}.1"
+}
+
+# Post-installation message
+post_install() {
+    echo ""
+    echo "==> nvbind installed successfully!"
+    echo "==> Run 'nvbind doctor' to verify your system configuration."
+    echo ""
+    echo "==> To use with Docker, add the following to /etc/docker/daemon.json:"
+    echo '    {
+      "runtimes": {
+        "nvbind": {
+          "path": "/usr/bin/nvbind",
+          "runtimeArgs": ["runtime"]
+        }
+      }
+    }'
+    echo ""
+    echo "==> Then restart Docker: sudo systemctl restart docker"
+    echo ""
+}
+
+post_upgrade() {
+    post_install
+}

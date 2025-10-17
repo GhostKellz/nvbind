@@ -1,0 +1,23 @@
+pkgbase = nvbind
+	pkgdesc = High-performance NVIDIA container GPU runtime engineered in Rust
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/ghostkellz/nvbind
+	arch = x86_64
+	license = MIT
+	makedepends = cargo
+	makedepends = rust
+	makedepends = git
+	depends = glibc
+	depends = gcc-libs
+	optdepends = nvidia: NVIDIA proprietary driver support
+	optdepends = nvidia-open: NVIDIA open kernel modules support
+	optdepends = nvidia-utils: NVIDIA utilities for GPU management
+	optdepends = docker: Docker container runtime integration
+	optdepends = podman: Podman container runtime integration
+	provides = nvbind
+	conflicts = nvbind-git
+	source = nvbind-0.1.0.tar.gz::https://github.com/ghostkellz/nvbind/archive/v0.1.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = nvbind

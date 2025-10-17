@@ -10,10 +10,11 @@ use axum::{
     Json, Router,
 };
 use axum::extract::ws::{Message, WebSocket};
+use nvml_wrapper::bitmasks::device::ThrottleReasons;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::{SystemTime, Instant};
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 use tracing::{debug, info, warn};
@@ -93,8 +94,10 @@ pub struct GhostForgeMetricsServer {
 struct ContainerGpuMonitor {
     container_id: String,
     gpu_indices: Vec<u32>,
-    last_metrics: RealtimeGpuMetrics,
     config: GpuConfiguration,
+    start_time: Instant,
+    frame_timestamps: VecDeque<Instant>, // Rolling window for FPS calculation
+    gpu_model_cache: Option<String>,
 }
 
 impl GhostForgeMetricsServer {
@@ -118,6 +121,49 @@ impl GhostForgeMetricsServer {
         })
     }
 
+    /// Register a container for monitoring
+    pub async fn register_container(
+        &self,
+        container_id: String,
+        gpu_indices: Vec<u32>,
+    ) -> Result<()> {
+        let mut monitors = self.monitors.write().await;
+
+        // Get GPU model name if available
+        let gpu_model = if let Some(nvml) = self.nvml.read().await.as_ref() {
+            if let Some(&first_gpu) = gpu_indices.first() {
+                nvml.device_by_index(first_gpu)
+                    .and_then(|d| d.name())
+                    .ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        monitors.insert(
+            container_id.clone(),
+            ContainerGpuMonitor {
+                container_id: container_id.clone(),
+                gpu_indices: gpu_indices.clone(),
+                config: GpuConfiguration {
+                    power_limit: None,
+                    gpu_clock_offset: None,
+                    memory_clock_offset: None,
+                    fan_speed: None,
+                    performance_mode: PerformanceMode::Balanced,
+                },
+                start_time: Instant::now(),
+                frame_timestamps: VecDeque::with_capacity(120), // Track last 2 seconds at 60fps
+                gpu_model_cache: gpu_model,
+            },
+        );
+
+        info!("Registered container {} with GPUs {:?}", gpu_indices.len(), gpu_indices);
+        Ok(())
+    }
+
     /// Start HTTP + WebSocket server for GhostForge
     pub async fn start_server(self: Arc<Self>, port: u16) -> Result<()> {
         let app = Router::new()
@@ -138,13 +184,84 @@ impl GhostForgeMetricsServer {
         Ok(())
     }
 
+    /// Record a frame render for FPS calculation
+    pub async fn record_frame(&self, container_id: &str) {
+        let mut monitors = self.monitors.write().await;
+        if let Some(monitor) = monitors.get_mut(container_id) {
+            let now = Instant::now();
+            monitor.frame_timestamps.push_back(now);
+
+            // Keep only last 2 seconds of frames
+            while let Some(&oldest) = monitor.frame_timestamps.front() {
+                if now.duration_since(oldest).as_secs() > 2 {
+                    monitor.frame_timestamps.pop_front();
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Calculate FPS and frame times from recorded timestamps
+    fn calculate_fps_metrics(frame_timestamps: &VecDeque<Instant>) -> (f32, f32, f32) {
+        if frame_timestamps.len() < 2 {
+            return (0.0, 0.0, 0.0);
+        }
+
+        let now = Instant::now();
+        let oldest = frame_timestamps.front().unwrap();
+        let duration = now.duration_since(*oldest).as_secs_f32();
+
+        if duration == 0.0 {
+            return (0.0, 0.0, 0.0);
+        }
+
+        // Calculate FPS
+        let fps = frame_timestamps.len() as f32 / duration;
+
+        // Calculate frame times (need to convert VecDeque to slice)
+        let timestamps: Vec<Instant> = frame_timestamps.iter().copied().collect();
+        let mut frame_times: Vec<f32> = timestamps
+            .windows(2)
+            .map(|w| w[1].duration_since(w[0]).as_secs_f32() * 1000.0) // Convert to ms
+            .collect();
+
+        let avg_frame_time = if !frame_times.is_empty() {
+            frame_times.iter().sum::<f32>() / frame_times.len() as f32
+        } else {
+            0.0
+        };
+
+        // Calculate 99th percentile
+        frame_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let p99_index = ((frame_times.len() as f32 * 0.99).ceil() as usize).min(frame_times.len() - 1);
+        let p99_frame_time = frame_times.get(p99_index).copied().unwrap_or(0.0);
+
+        (fps, avg_frame_time, p99_frame_time)
+    }
+
     /// Collect metrics for a specific container
     async fn collect_metrics(&self, container_id: &str) -> Result<RealtimeGpuMetrics> {
+        let monitors = self.monitors.read().await;
+        let monitor = monitors.get(container_id);
+
+        // Get GPU index from container monitor
+        let gpu_index = monitor
+            .and_then(|m| m.gpu_indices.first().copied())
+            .unwrap_or(0);
+
+        // Calculate FPS metrics from frame timestamps
+        let (fps, frame_time_ms, frame_time_p99) = monitor
+            .map(|m| Self::calculate_fps_metrics(&m.frame_timestamps))
+            .unwrap_or((0.0, 0.0, 0.0));
+
+        drop(monitors); // Release lock
+
         let nvml_guard = self.nvml.read().await;
 
         if let Some(nvml) = nvml_guard.as_ref() {
-            // Get GPU device
-            let device = nvml.device_by_index(0)?; // TODO: get actual GPU index from container
+            // Get GPU device using actual container's GPU index
+            let device = nvml.device_by_index(gpu_index)?;
 
             let utilization = device.utilization_rates()?;
             let memory_info = device.memory_info()?;
@@ -154,17 +271,36 @@ impl GhostForgeMetricsServer {
             let clock_info = device.clock_info(nvml_wrapper::enum_wrappers::device::Clock::Graphics)?;
             let mem_clock = device.clock_info(nvml_wrapper::enum_wrappers::device::Clock::Memory)?;
 
-            // Check thermal throttling
-            let thermal_throttling = false; // TODO: Properly check throttle reasons with NVML bindings
+            // Check thermal throttling using clock throttle reasons
+            let thermal_throttling = device
+                .current_throttle_reasons()
+                .map(|reasons| {
+                    // Check if thermal or power throttling is active
+                    !reasons.contains(ThrottleReasons::GPU_IDLE)
+                        && (reasons.contains(ThrottleReasons::HW_SLOWDOWN)
+                            || reasons.contains(ThrottleReasons::SW_THERMAL_SLOWDOWN))
+                })
+                .unwrap_or(false);
+
+            // Try to get encoder (NVENC) utilization as proxy for RTX workload
+            // Note: NVML doesn't expose RT core utilization directly
+            let encoder_util = device
+                .encoder_utilization()
+                .map(|u| u.utilization as f32)
+                .ok();
+
+            // Detect DLSS/Reflex by checking running processes
+            // This is a heuristic - look for known DLLs/processes
+            let (dlss_active, reflex_enabled) = Self::detect_gaming_features(container_id).await;
 
             Ok(RealtimeGpuMetrics {
                 timestamp: SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)?
                     .as_secs(),
                 container_id: container_id.to_string(),
-                fps: 0.0, // TODO: Calculate from frame timestamps
-                frame_time_ms: 0.0,
-                frame_time_p99: 0.0,
+                fps,
+                frame_time_ms,
+                frame_time_p99,
                 gpu_utilization: utilization.gpu as f32,
                 gpu_temp_c: temperature as f32,
                 gpu_clock_mhz: clock_info,
@@ -175,10 +311,10 @@ impl GhostForgeMetricsServer {
                 power_draw_w: power_usage as f32 / 1000.0,
                 power_limit_w: power_limit as f32 / 1000.0,
                 thermal_throttling,
-                rtx_utilization: None, // TODO: Get from NVML if available
-                tensor_core_utilization: None,
-                dlss_active: false,   // TODO: Detect from process
-                reflex_enabled: false, // TODO: Detect from process
+                rtx_utilization: encoder_util, // Use encoder util as proxy
+                tensor_core_utilization: None, // Not exposed by NVML
+                dlss_active,
+                reflex_enabled,
             })
         } else {
             // Fallback metrics when NVML not available
@@ -187,9 +323,9 @@ impl GhostForgeMetricsServer {
                     .duration_since(SystemTime::UNIX_EPOCH)?
                     .as_secs(),
                 container_id: container_id.to_string(),
-                fps: 0.0,
-                frame_time_ms: 0.0,
-                frame_time_p99: 0.0,
+                fps,
+                frame_time_ms,
+                frame_time_p99,
                 gpu_utilization: 0.0,
                 gpu_temp_c: 0.0,
                 gpu_clock_mhz: 0,
@@ -208,6 +344,15 @@ impl GhostForgeMetricsServer {
         }
     }
 
+    /// Detect DLSS and Reflex usage from container processes
+    async fn detect_gaming_features(_container_id: &str) -> (bool, bool) {
+        // This would require inspecting the container's process list
+        // and looking for loaded libraries or modules
+        // For now, return conservative defaults
+        // TODO: Implement actual detection via /proc inspection or container inspection
+        (false, false)
+    }
+
     /// Update GPU configuration (hot-reload)
     pub async fn update_gpu_config(
         &self,
@@ -216,20 +361,28 @@ impl GhostForgeMetricsServer {
     ) -> Result<()> {
         info!("Updating GPU config for container: {}", container_id);
 
+        // Get actual GPU index from container monitor
+        let monitors = self.monitors.read().await;
+        let gpu_index = monitors
+            .get(container_id)
+            .and_then(|m| m.gpu_indices.first().copied())
+            .unwrap_or(0);
+        drop(monitors);
+
         let nvml_guard = self.nvml.read().await;
         if let Some(nvml) = nvml_guard.as_ref() {
-            let mut device = nvml.device_by_index(0)?; // TODO: get actual GPU index
+            let mut device = nvml.device_by_index(gpu_index)?;
 
             // Apply power limit
             if let Some(power_limit) = config.power_limit {
                 device.set_power_management_limit(power_limit * 1000)?; // Convert W to mW
-                debug!("Set power limit to {}W", power_limit);
+                debug!("Set power limit to {}W for GPU {}", power_limit, gpu_index);
             }
 
             // Note: Clock offsets and fan speed require root/NVML advanced features
             // These would typically be set via nvidia-smi or nvidia-settings
 
-            info!("GPU configuration updated successfully");
+            info!("GPU configuration updated successfully for GPU {}", gpu_index);
         }
 
         // Update monitor config
@@ -335,13 +488,22 @@ async fn container_gpu_handler(
     let monitors = server.monitors.read().await;
 
     if let Some(monitor) = monitors.get(&container_id) {
+        // Calculate uptime
+        let uptime_secs = monitor.start_time.elapsed().as_secs();
+
+        // Get GPU model from cache or fallback
+        let gpu_model = monitor
+            .gpu_model_cache
+            .clone()
+            .unwrap_or_else(|| "NVIDIA GPU".to_string());
+
         Json(Some(ContainerGpuStatus {
             container_id: monitor.container_id.clone(),
             gpu_allocated: !monitor.gpu_indices.is_empty(),
             gpu_index: monitor.gpu_indices.clone(),
-            gpu_model: "NVIDIA GPU".to_string(), // TODO: Get actual model
+            gpu_model,
             current_config: monitor.config.clone(),
-            uptime_secs: 0, // TODO: Calculate uptime
+            uptime_secs,
         }))
     } else {
         Json(None)

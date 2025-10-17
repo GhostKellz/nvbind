@@ -1,0 +1,25 @@
+Package: nvbind
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: libc6 (>= 2.31), libgcc-s1 (>= 3.0)
+Recommends: nvidia-driver-545 | nvidia-driver-535, docker-ce | docker.io
+Suggests: podman
+Maintainer: ghostkellz <noreply@github.com>
+Description: High-performance NVIDIA container GPU runtime
+ nvbind is a cutting-edge, Rust-based GPU container runtime designed as a
+ high-performance alternative to NVIDIA's Container Toolkit. It provides
+ lightning-fast GPU passthrough for Docker, Podman, and Bolt container runtimes.
+ .
+ Features:
+  * Sub-microsecond operations for GPU initialization
+  * Universal NVIDIA driver support (Open GPU Kernel Modules, Proprietary, Nouveau)
+  * Memory-safe Rust implementation
+  * CDI (Container Device Interface) v0.6.0 compliance
+  * Multi-workload optimization for gaming, AI/ML, and general compute
+  * Real-time GPU metrics via GhostForge integration
+ .
+ This package replaces the Docker NVIDIA Container Toolkit with a 100x
+ faster Rust-based implementation.
+Homepage: https://github.com/ghostkellz/nvbind

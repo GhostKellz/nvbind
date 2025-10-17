@@ -1,0 +1,74 @@
+#!/bin/bash
+set -e
+
+# Post-installation script for nvbind
+
+case "$1" in
+    configure)
+        # Create nvbind config directory
+        mkdir -p /etc/nvbind
+
+        # Set up default configuration if not exists
+        if [ ! -f /etc/nvbind/config.toml ]; then
+            cat > /etc/nvbind/config.toml <<EOF
+# nvbind configuration
+# Auto-generated on $(date)
+
+[runtime]
+# Default runtime settings
+log_level = "info"
+
+[gpu]
+# GPU discovery settings
+auto_detect = true
+EOF
+            chmod 644 /etc/nvbind/config.toml
+        fi
+
+        # Register nvbind runtime with Docker if available
+        if command -v docker &> /dev/null; then
+            echo "Configuring Docker runtime..."
+
+            # Create docker daemon config directory
+            mkdir -p /etc/docker
+
+            # Check if daemon.json exists
+            if [ -f /etc/docker/daemon.json ]; then
+                # Backup existing config
+                cp /etc/docker/daemon.json /etc/docker/daemon.json.backup.$(date +%s)
+                echo "Backed up existing Docker daemon.json"
+            fi
+
+            # Add nvbind runtime to Docker daemon config
+            # Note: This is a simple append - in production, should use jq or similar
+            echo "Note: To use nvbind with Docker, add the following to /etc/docker/daemon.json:"
+            echo '{
+  "runtimes": {
+    "nvbind": {
+      "path": "/usr/bin/nvbind",
+      "runtimeArgs": ["runtime"]
+    }
+  }
+}'
+            echo "Then restart Docker: sudo systemctl restart docker"
+        fi
+
+        # Run initial doctor check
+        echo "Running nvbind doctor to verify installation..."
+        /usr/bin/nvbind doctor || echo "Warning: Some checks failed. Run 'nvbind doctor' for details."
+
+        echo ""
+        echo "nvbind installed successfully!"
+        echo "Run 'nvbind --help' to get started."
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
