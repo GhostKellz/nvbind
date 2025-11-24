@@ -1,6 +1,8 @@
 # nvbind Documentation
 
-Welcome to the nvbind documentation! This guide will help you get started with using nvbind, a lightweight Rust-based alternative to NVIDIA Container Toolkit.
+Welcome to the nvbind documentation! This guide will help you get started with using nvbind, a lightning-fast Rust-based alternative to NVIDIA Container Toolkit.
+
+**Start Here**: [📚 Documentation Hub (INDEX.md)](INDEX.md) - Complete navigation and feature overview
 
 ## Quick Links
 
@@ -8,6 +10,7 @@ Welcome to the nvbind documentation! This guide will help you get started with u
 - [API Reference](api/)
 - [Code Examples](examples/)
 - [Advanced Configuration](guides/advanced_configuration.md)
+- [RTX 5090 / Blackwell Support](INDEX.md#asus-rog-astral-rtx-5090) - NEW!
 
 ## API Reference
 
@@ -43,8 +46,14 @@ Welcome to the nvbind documentation! This guide will help you get started with u
 ## System Requirements
 
 - Linux (Arch, Ubuntu, Debian, Fedora, PopOS)
-- NVIDIA GPU with CUDA support
-- NVIDIA Driver (Open or Proprietary)
+- **NVIDIA GPU**: RTX 30/40/50 series (Ampere, Ada, Blackwell)
+  - RTX 5090 (Blackwell) - Full FP4 Tensor Core support
+  - RTX 4090 (Ada Lovelace) - 4th Gen Tensor Cores
+  - RTX 3090 Ti (Ampere) - MIG support
+- **NVIDIA Driver**: Open Kernel Modules (recommended) or Proprietary
+  - Blackwell (RTX 50): Driver 580+
+  - Ada (RTX 40): Driver 525+
+  - Ampere (RTX 30): Driver 470+
 - Container runtime (Docker, Podman, or Containerd)
 - Rust 1.70+ (for building from source)
 

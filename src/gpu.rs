@@ -13,6 +13,80 @@ pub struct GpuDevice {
     pub driver_version: Option<String>,
     pub memory: Option<u64>,
     pub device_path: String,
+    pub architecture: Option<GpuArchitecture>,
+    pub compute_capability: Option<(u32, u32)>,
+}
+
+/// GPU Architecture Generation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GpuArchitecture {
+    Maxwell,     // GTX 900 series - Compute 5.x
+    Pascal,      // GTX 10 series - Compute 6.x
+    Volta,       // TITAN V - Compute 7.0
+    Turing,      // RTX 20 series - Compute 7.5
+    Ampere,      // RTX 30 series - Compute 8.x
+    AdaLovelace, // RTX 40 series - Compute 8.9
+    Hopper,      // H100 - Compute 9.0
+    Blackwell,   // RTX 50 series - Compute 10.0
+    Unknown,
+}
+
+impl GpuArchitecture {
+    pub fn from_compute_capability(major: u32, minor: u32) -> Self {
+        match (major, minor) {
+            (5, _) => Self::Maxwell,
+            (6, _) => Self::Pascal,
+            (7, 0) => Self::Volta,
+            (7, 5) => Self::Turing,
+            (8, 0) | (8, 6) => Self::Ampere,
+            (8, 9) => Self::AdaLovelace,
+            (9, 0) => Self::Hopper,
+            (10, 0) => Self::Blackwell,
+            _ if major >= 10 => Self::Blackwell, // Future Blackwell variants
+            _ => Self::Unknown,
+        }
+    }
+
+    pub fn from_gpu_name(name: &str) -> Self {
+        // Detect from GPU name as fallback
+        if name.contains("RTX 50") || name.contains("5090") || name.contains("5080") {
+            Self::Blackwell
+        } else if name.contains("RTX 40") || name.contains("4090") || name.contains("4080") {
+            Self::AdaLovelace
+        } else if name.contains("RTX 30") || name.contains("3090") || name.contains("3080") {
+            Self::Ampere
+        } else if name.contains("RTX 20") || name.contains("2080") || name.contains("2070") {
+            Self::Turing
+        } else if name.contains("GTX 10") || name.contains("1080") || name.contains("1070") {
+            Self::Pascal
+        } else if name.contains("GTX 9") || name.contains("980") || name.contains("970") {
+            Self::Maxwell
+        } else if name.contains("H100") {
+            Self::Hopper
+        } else {
+            Self::Unknown
+        }
+    }
+
+    pub fn supports_mig(&self) -> bool {
+        matches!(self, Self::Ampere | Self::Hopper | Self::Blackwell)
+    }
+
+    pub fn tensor_core_generation(&self) -> Option<u8> {
+        match self {
+            Self::Volta => Some(1),
+            Self::Turing => Some(2),
+            Self::Ampere => Some(3),
+            Self::AdaLovelace => Some(4),
+            Self::Hopper => Some(4), // Enhanced 4th gen
+            Self::Blackwell => Some(5),
+            _ => None,
+        }
+    }
+
+    pub fn supports_fp4(&self) -> bool {
+        matches!(self, Self::Blackwell)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -120,6 +194,28 @@ pub async fn info() -> Result<()> {
         if let Some(memory) = gpu.memory {
             println!("    Memory: {} MB", memory / 1024 / 1024);
         }
+        if let Some((major, minor)) = gpu.compute_capability {
+            println!("    Compute Capability: {}.{}", major, minor);
+        }
+        if let Some(arch) = gpu.architecture {
+            println!("    Architecture: {:?}", arch);
+            if let Some(tc_gen) = arch.tensor_core_generation() {
+                println!("    Tensor Cores: {} Generation", match tc_gen {
+                    1 => "1st",
+                    2 => "2nd",
+                    3 => "3rd",
+                    4 => "4th",
+                    5 => "5th",
+                    _ => "Unknown",
+                });
+                if arch.supports_fp4() {
+                    println!("    FP4 Support: Yes (Blackwell)");
+                }
+            }
+            if arch.supports_mig() {
+                println!("    MIG Support: Yes");
+            }
+        }
         println!();
     }
 
@@ -192,6 +288,13 @@ fn create_gpu_device(index: usize, device_path: &str) -> Result<GpuDevice> {
     let name = get_gpu_name(index)?;
     let pci_address = get_pci_address(index)?;
     let memory = get_gpu_memory(index)?;
+    let compute_capability = get_compute_capability(index);
+    let architecture = if let Some((major, minor)) = compute_capability {
+        Some(GpuArchitecture::from_compute_capability(major, minor))
+    } else {
+        // Fallback to name-based detection
+        Some(GpuArchitecture::from_gpu_name(&name))
+    };
 
     Ok(GpuDevice {
         id: index.to_string(),
@@ -200,7 +303,53 @@ fn create_gpu_device(index: usize, device_path: &str) -> Result<GpuDevice> {
         driver_version: None,
         memory,
         device_path: device_path.to_string(),
+        architecture,
+        compute_capability,
     })
+}
+
+fn get_compute_capability(index: usize) -> Option<(u32, u32)> {
+    // Try nvidia-smi first
+    if let Ok(output) = std::process::Command::new("nvidia-smi")
+        .args(&[
+            "--id", &index.to_string(),
+            "--query-gpu=compute_cap",
+            "--format=csv,noheader"
+        ])
+        .output()
+    {
+        if output.status.success() {
+            let cap_str = String::from_utf8_lossy(&output.stdout);
+            let parts: Vec<&str> = cap_str.trim().split('.').collect();
+            if parts.len() == 2 {
+                if let (Ok(major), Ok(minor)) = (parts[0].parse(), parts[1].parse()) {
+                    debug!("GPU {}: Compute capability {}.{}", index, major, minor);
+                    return Some((major, minor));
+                }
+            }
+        }
+    }
+
+    // Fallback: Try reading from procfs
+    let path = format!("/proc/driver/nvidia/gpus/nvidia{}/information", index);
+    if let Ok(content) = fs::read_to_string(&path) {
+        for line in content.lines() {
+            if line.contains("Compute Capability") || line.contains("compute capability") {
+                // Parse format like "Compute Capability: 10.0"
+                if let Some(cap_part) = line.split(':').nth(1) {
+                    let parts: Vec<&str> = cap_part.trim().split('.').collect();
+                    if parts.len() == 2 {
+                        if let (Ok(major), Ok(minor)) = (parts[0].parse(), parts[1].parse()) {
+                            debug!("GPU {}: Compute capability {}.{} (from procfs)", index, major, minor);
+                            return Some((major, minor));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 fn get_gpu_name(index: usize) -> Result<String> {

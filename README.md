@@ -25,8 +25,11 @@
 - 🛠 **Universal**: Native support for **Docker**, **Podman**, and **Bolt**
 - 🧠 **Intelligent**: Auto-detects NVIDIA Open, proprietary, and Nouveau drivers
 - 🎯 **Production Ready**: Comprehensive testing, benchmarks, and CI/CD
+- 🚀 **Next-Gen GPU Support**: RTX 30/40/50 series (Ampere, Ada, Blackwell)
 
 **The future of GPU containerization** — simpler, faster, and more secure than legacy toolkits.
+
+**NEW**: Full Blackwell (RTX 5090) support with FP4 Tensor Core detection!
 
 ---
 
@@ -34,9 +37,11 @@
 
 ### **🎯 Core Capabilities**
 - ✅ **Smart GPU Discovery** - Auto-detects discrete GPUs, vGPUs, and multi-GPU setups
+- ✅ **Architecture Detection** - Blackwell, Ada Lovelace, Ampere tracking with compute capability
 - ✅ **Universal Driver Support** - NVIDIA Open GPU Kernel Modules, proprietary, and Nouveau
 - ✅ **Dynamic Library Mounting** - Automatic detection and bind-mounting of GPU libraries
 - ✅ **Rootless Containers** - Full support for unprivileged container execution
+- ✅ **RTX 5090 Ready** - FP4 Tensor Core support, MIG detection, 5th Gen acceleration
 
 ### **🛠 Container Integration**
 - ✅ **Docker Integration** - Native GPU passthrough with `--runtime nvbind`
